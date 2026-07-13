@@ -1,0 +1,28 @@
+{
+  "name": "silent-review",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TikTok-style 5-second silent product review platform",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:generate": "pnpm --filter @silent-review/shared db:generate",
+    "db:migrate": "pnpm --filter @silent-review/shared db:migrate",
+    "db:deploy": "pnpm --filter @silent-review/shared db:deploy",
+    "db:seed": "pnpm --filter @silent-review/shared db:seed",
+    "db:studio": "pnpm --filter @silent-review/shared db:studio",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.12.0"
+}
