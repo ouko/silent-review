@@ -51,6 +51,16 @@ pnpm dev
 - API: http://localhost:3001
 - API health check: http://localhost:3001/health
 
+### Demo credentials
+
+The seed script creates demo accounts you can use to try the app:
+
+| Email | Password |
+|-------|----------|
+| `demo@silentreview.app` | `DemoPass123!` |
+| `alice@silentreview.app` | `AlicePass123!` |
+| `bob@silentreview.app` | `BobPass123!` |
+
 ## Useful Scripts
 
 | Script | Description |

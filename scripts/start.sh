@@ -58,10 +58,13 @@ pnpm exec dotenv -e .env -- pnpm --filter database generate
 
 if ! pnpm exec dotenv -e .env -- pnpm --filter database exec prisma migrate status 2>/dev/null | grep -q "Database schema is up to date"; then
   log "Running database migrations..."
-  pnpm exec dotenv -e .env -- pnpm --filter database migrate deploy
+  pnpm exec dotenv -e .env -- pnpm --filter database run deploy
 else
   success "Database schema is already up to date"
 fi
+
+log "Seeding demo users..."
+pnpm db:seed
 
 log "Building workspace packages..."
 pnpm --filter shared build
