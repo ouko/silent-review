@@ -5,8 +5,10 @@ import { createAdapter } from "@socket.io/redis-adapter";
 import { env } from "../config/index.js";
 import { prisma } from "../prisma.js";
 
+let io: Server | null = null;
+
 export function initSocketServer(httpServer: HttpServer) {
-  const io = new Server(httpServer, {
+  io = new Server(httpServer, {
     cors: {
       origin: env.WEB_APP_URL,
       credentials: true,
@@ -54,7 +56,7 @@ export function initSocketServer(httpServer: HttpServer) {
           score: g.score,
         }));
 
-        io.to(`review:${reviewId}`).emit("review:revealed", {
+        io?.to(`review:${reviewId}`).emit("review:revealed", {
           reviewId,
           rating: review.rating,
           totalGuesses,
@@ -69,4 +71,50 @@ export function initSocketServer(httpServer: HttpServer) {
   });
 
   return io;
+}
+
+export function getSocketServer(): Server | null {
+  return io;
+}
+
+export async function notifyFollowersOfReview(review: {
+  id: string;
+  userId: string;
+  productId: string;
+  videoUrl: string;
+  thumbnailUrl: string | null;
+  rating: number;
+  caption: string | null;
+}): Promise<void> {
+  if (!io) return;
+
+  const followers = await prisma.follow.findMany({
+    where: { followingId: review.userId },
+    select: { followerId: true },
+  });
+
+  const author = await prisma.user.findUnique({
+    where: { id: review.userId },
+    select: { username: true, displayName: true, avatarUrl: true },
+  });
+
+  const product = await prisma.product.findUnique({
+    where: { id: review.productId },
+    select: { name: true },
+  });
+
+  const payload = {
+    type: "NEW_REVIEW",
+    reviewId: review.id,
+    authorId: review.userId,
+    authorName: author?.displayName ?? author?.username ?? "Someone",
+    authorAvatar: author?.avatarUrl,
+    productName: product?.name ?? "a product",
+    thumbnailUrl: review.thumbnailUrl,
+    createdAt: new Date().toISOString(),
+  };
+
+  for (const follower of followers) {
+    io.to(`user:${follower.followerId}`).emit("notification", payload);
+  }
 }

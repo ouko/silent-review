@@ -97,6 +97,9 @@ model Product {
   // Full-text search vector maintained by application layer or trigger
   searchVector String?
 
+  // Moderation queue for newly added products
+  moderationStatus ProductModerationStatus @default(APPROVED)
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -108,6 +111,12 @@ model Product {
   @@index([deletedAt])
   @@index([searchVector])
   @@index([tags])
+}
+
+enum ProductModerationStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model Review {

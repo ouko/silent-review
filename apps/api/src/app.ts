@@ -6,8 +6,8 @@ import { errorHandler } from "./middleware/error.js";
 import { healthRouter } from "./routes/health.js";
 import { authRouter } from "./routes/auth.js";
 import { feedRouter } from "./routes/feed.js";
-import { productsRouter } from "./routes/products.js";
-import { reviewsRouter } from "./routes/reviews.js";
+import { productsRouter } from "./products/products.routes.js";
+import { reviewsRouter } from "./reviews/reviews.routes.js";
 import { uploadRouter, UPLOAD_BASE_URL, UPLOAD_DIR } from "./routes/upload.js";
 import { usersRouter } from "./routes/users.js";
 
