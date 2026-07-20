@@ -22,6 +22,10 @@ export function createApp() {
   app.use(express.json());
   app.use(cookieParser());
 
+  app.get("/health", (_req, res) => {
+    res.json({ status: "ok", service: "silent-review-api" });
+  });
+
   app.use("/api/health", healthRouter);
   app.use("/api/auth", authRouter);
   app.use("/api/feed", feedRouter);

@@ -16,15 +16,16 @@
     "build": "pnpm --filter shared build && pnpm --filter database build && pnpm --filter api build && pnpm --filter web build",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "db:generate": "pnpm --filter database generate",
-    "db:migrate": "pnpm --filter database migrate",
-    "db:deploy": "pnpm --filter database deploy",
-    "db:seed": "pnpm --filter database seed",
-    "db:studio": "pnpm --filter database studio",
+    "db:generate": "dotenv -e .env -- pnpm --filter database generate",
+    "db:migrate": "dotenv -e .env -- pnpm --filter database migrate",
+    "db:deploy": "dotenv -e .env -- pnpm --filter database deploy",
+    "db:seed": "dotenv -e .env -- pnpm --filter database seed",
+    "db:studio": "dotenv -e .env -- pnpm --filter database studio",
     "clean": "pnpm -r clean && rm -rf node_modules"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
+    "dotenv-cli": "^7.4.2",
     "typescript": "^5.5.0"
   }
 }

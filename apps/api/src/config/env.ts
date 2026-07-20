@@ -1,7 +1,14 @@
+import { fileURLToPath } from "url";
+import { dirname, resolve } from "path";
 import { z } from "zod";
 import dotenv from "dotenv";
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Load environment variables from the monorepo root .env file.
+// In production, variables are injected by the runtime.
+dotenv.config({ path: resolve(__dirname, "../../../../.env") });
 
 const envSchema = z.object({
   PORT: z.string().default("3001"),
