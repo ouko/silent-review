@@ -21,39 +21,29 @@ A TikTok-style mobile web app where users create 5-second silent video reviews a
 - [pnpm](https://pnpm.io/) >= 9
 - [Docker Compose](https://docs.docker.com/compose/)
 
-### 1. Clone and install
+### One-command start
+
+```bash
+pnpm start:dev
+```
+
+This script will:
+1. Create `.env` from `.env.example` if it doesn't exist
+2. Install dependencies if needed
+3. Start PostgreSQL and Redis via Docker Compose
+4. Generate the Prisma client and run migrations
+5. Build the shared and database packages
+6. Start the API and web dev servers
+
+### Manual steps
 
 ```bash
 git clone <repo-url>
 cd silent-review
 pnpm install
-```
-
-### 2. Configure environment
-
-```bash
 cp .env.example .env
-```
-
-The defaults in `.env.example` point to the local Docker services.
-
-### 3. Start infrastructure
-
-```bash
 pnpm dev:infra
-```
-
-This starts PostgreSQL on `5432` and Redis on `6379` in the background.
-
-### 4. Run database migrations
-
-```bash
 pnpm db:migrate
-```
-
-### 5. Start development servers
-
-```bash
 pnpm dev
 ```
 

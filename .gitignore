@@ -33,3 +33,4 @@ packages/database/prisma/migrations/*/migration.sql
 
 # Turbo (no longer used)
 .turbo
+.tools/
