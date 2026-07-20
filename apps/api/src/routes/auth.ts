@@ -1,8 +1,6 @@
 import { Router } from "express";
-import {
-  LoginSchema,
-  RegisterSchema,
-} from "@silent-review/shared";
+import rateLimit from "express-rate-limit";
+import { LoginSchema, RegisterSchema } from "@silent-review/shared";
 import { prisma } from "../prisma.js";
 import { env, REFRESH_COOKIE_NAME } from "../config/index.js";
 import {
@@ -10,15 +8,27 @@ import {
   signAccessToken,
   findUserById,
   type AuthenticatedRequest,
+  type UserRole,
 } from "../middleware/auth.js";
 import {
   hashPassword,
   verifyPassword,
+} from "../auth/providers/email.provider.js";
+import {
+  AuthService,
   createRefreshToken,
   verifyRefreshToken,
   revokeRefreshToken,
   toSafeUser,
-} from "../services/auth.js";
+} from "../auth/auth.service.js";
+import {
+  EmailProvider,
+  GoogleProvider,
+  AppleProvider,
+  TikTokProvider,
+  InstagramProvider,
+} from "../auth/providers/index.js";
+import { getEnabledProviders, isProviderEnabled } from "../services/features.js";
 
 export const authRouter = Router();
 
@@ -29,14 +39,36 @@ const REFRESH_COOKIE_OPTIONS = {
   maxAge: 30 * 24 * 60 * 60 * 1000,
 };
 
-async function issueTokens(res: import("express").Response, userId: string, email: string) {
-  const accessToken = signAccessToken({ userId, email });
+const authService = new AuthService();
+authService.register(new EmailProvider());
+authService.register(new GoogleProvider());
+authService.register(new AppleProvider());
+authService.register(new TikTokProvider());
+authService.register(new InstagramProvider());
+
+// Rate limit: 5 login attempts per IP per minute.
+const loginLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false,
+  message: { error: "Too many login attempts. Please try again in a minute." },
+});
+
+async function issueTokens(
+  res: import("express").Response,
+  userId: string,
+  email: string,
+  role: import("../middleware/auth.js").UserRole
+) {
+  const accessToken = signAccessToken({ userId, email, role });
   const refreshToken = await createRefreshToken(userId);
   res.cookie(REFRESH_COOKIE_NAME, refreshToken, REFRESH_COOKIE_OPTIONS);
   return { accessToken, refreshToken };
 }
 
-authRouter.post("/register", async (req, res, next) => {
+authRouter.post("/register", loginLimiter, async (req, res, next) => {
   try {
     const data = RegisterSchema.parse(req.body);
     const existing = await prisma.user.findFirst({
@@ -55,17 +87,16 @@ authRouter.post("/register", async (req, res, next) => {
         displayName: data.displayName,
         passwordHash,
       },
-      select: { id: true, email: true, username: true, displayName: true, avatarUrl: true, createdAt: true },
     });
 
-    const { accessToken } = await issueTokens(res, user.id, user.email);
+    const { accessToken } = await issueTokens(res, user.id, user.email, user.role as UserRole);
     res.status(201).json({ user: toSafeUser(user), accessToken });
   } catch (err) {
     next(err);
   }
 });
 
-authRouter.post("/login", async (req, res, next) => {
+authRouter.post("/login", loginLimiter, async (req, res, next) => {
   try {
     const data = LoginSchema.parse(req.body);
     const user = await prisma.user.findUnique({ where: { email: data.email } });
@@ -74,7 +105,7 @@ authRouter.post("/login", async (req, res, next) => {
       return;
     }
 
-    const { accessToken } = await issueTokens(res, user.id, user.email);
+    const { accessToken } = await issueTokens(res, user.id, user.email, user.role as UserRole);
     res.json({ user: toSafeUser(user), accessToken });
   } catch (err) {
     next(err);
@@ -100,7 +131,7 @@ authRouter.post("/refresh", async (req, res, next) => {
       res.status(401).json({ error: "User not found" });
       return;
     }
-    const { accessToken } = await issueTokens(res, user.id, user.email);
+    const { accessToken } = await issueTokens(res, user.id, user.email, user.role as UserRole);
     res.json({ user: toSafeUser(user), accessToken });
   } catch (err) {
     next(err);
@@ -131,26 +162,53 @@ authRouter.get("/me", requireAuth, async (req: AuthenticatedRequest, res, next) 
   }
 });
 
-authRouter.get("/google", (_req, res) => {
-  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
-    res.status(501).json({ error: "Google OAuth not configured" });
-    return;
-  }
-  res.status(501).json({ error: "Google OAuth strategy wired in next phase" });
+authRouter.get("/providers", async (_req, res) => {
+  const availability: Record<string, boolean> = {
+    google: new GoogleProvider().isAvailable(),
+    apple: new AppleProvider().isAvailable(),
+    tiktok: new TikTokProvider().isAvailable(),
+    instagram: new InstagramProvider().isAvailable(),
+  };
+  const enabledIds = await getEnabledProviders(availability);
+  const providers = authService
+    .listAvailableProviders()
+    .filter((p) => p.id === "email" || enabledIds.includes(p.id))
+    .map((p) => ({ id: p.id, label: p.label }));
+  res.json({ providers });
 });
 
-authRouter.get("/google/callback", (_req, res) => {
-  res.redirect(`${env.WEB_APP_URL}/login?error=google_not_implemented`);
+authRouter.post("/oauth/:provider", loginLimiter, async (req, res, next) => {
+  try {
+    const providerId = req.params.provider;
+    if (!["google", "apple", "tiktok", "instagram"].includes(providerId)) {
+      res.status(400).json({ error: "Unsupported provider" });
+      return;
+    }
+
+    const provider = authService.getProvider(providerId as "google" | "apple" | "tiktok" | "instagram");
+    if (!provider?.isAvailable()) {
+      res.status(503).json({ error: "Provider not available" });
+      return;
+    }
+    const enabled = await isProviderEnabled(providerId, provider.isAvailable());
+    if (!enabled) {
+      res.status(503).json({ error: "Provider disabled by feature flag" });
+      return;
+    }
+
+    const result = await authService.authenticate(providerId as "google" | "apple" | "tiktok" | "instagram", req.body);
+    const { accessToken } = await issueTokens(res, result.user.id, result.user.email, result.user.role as UserRole);
+    res.json({ user: result.user, accessToken, isNewUser: result.isNewUser });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Legacy redirect endpoints for OAuth flows that need a server-side redirect.
+authRouter.get("/google", (_req, res) => {
+  res.status(501).json({ error: "Use POST /api/auth/oauth/google with the authorization code" });
 });
 
 authRouter.get("/apple", (_req, res) => {
-  if (!env.APPLE_CLIENT_ID) {
-    res.status(501).json({ error: "Apple OAuth not configured" });
-    return;
-  }
-  res.status(501).json({ error: "Apple OAuth strategy wired in next phase" });
-});
-
-authRouter.post("/apple/callback", (_req, res) => {
-  res.redirect(`${env.WEB_APP_URL}/login?error=apple_not_implemented`);
+  res.status(501).json({ error: "Use POST /api/auth/oauth/apple with the authorization code" });
 });

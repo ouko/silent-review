@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useAuthStore } from "../stores/authStore";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "",
@@ -7,7 +8,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("accessToken");
+  const token = useAuthStore.getState().accessToken;
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -22,10 +23,10 @@ api.interceptors.response.use(
       original._retry = true;
       try {
         const { data } = await api.post("/api/auth/refresh", {});
-        localStorage.setItem("accessToken", data.accessToken);
+        useAuthStore.getState().setAccessToken(data.accessToken);
         return api(original);
       } catch {
-        localStorage.removeItem("accessToken");
+        useAuthStore.getState().logout();
         window.location.href = "/login";
       }
     }

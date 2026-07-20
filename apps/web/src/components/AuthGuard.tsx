@@ -5,11 +5,10 @@ import { fetchMe } from "../lib/auth";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const { user, isLoading, setUser, setLoading } = useAuthStore();
+  const { user, accessToken, isLoading, setUser, setLoading, logout } = useAuthStore();
 
   useEffect(() => {
-    const token = localStorage.getItem("accessToken");
-    if (!token) {
+    if (!accessToken) {
       setLoading(false);
       navigate("/login");
       return;
@@ -17,11 +16,11 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     fetchMe()
       .then(setUser)
       .catch(() => {
-        localStorage.removeItem("accessToken");
+        logout();
         navigate("/login");
       })
       .finally(() => setLoading(false));
-  }, [navigate, setUser, setLoading]);
+  }, [navigate, accessToken, setUser, setLoading, logout]);
 
   if (isLoading) {
     return (

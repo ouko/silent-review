@@ -23,10 +23,15 @@ export interface Review {
   updatedAt: Date;
 }
 
-export type SafeUser = Pick<
-  User,
-  "id" | "email" | "username" | "displayName" | "avatarUrl" | "createdAt"
->;
+export interface SafeUser {
+  id: string;
+  email: string;
+  username: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  role: string;
+  createdAt: string;
+}
 
 export interface ReviewWithAuthor extends Review {
   user: SafeUser;
