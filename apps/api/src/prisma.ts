@@ -1,2 +1,2 @@
-import { prisma } from "@silent-review/shared";
+import { prisma } from "@silent-review/database";
 export { prisma };
