@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../lib/api";
+import { useAuthStore } from "../stores/authStore";
 
 interface ProfileData {
   id: string;
@@ -15,12 +16,15 @@ interface ProfileData {
 
 export function Profile() {
   const { id } = useParams<{ id: string }>();
+  const currentUser = useAuthStore((s) => s.user);
   const [profile, setProfile] = useState<ProfileData | null>(null);
 
   useEffect(() => {
     if (!id) return;
-    api.get(`/api/users/${id}`).then((res) => setProfile(res.data));
-  }, [id]);
+    const targetId = id === "me" ? currentUser?.id : id;
+    if (!targetId) return;
+    api.get(`/api/users/${targetId}`).then((res) => setProfile(res.data));
+  }, [id, currentUser?.id]);
 
   if (!profile) {
     return (
