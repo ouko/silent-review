@@ -29,4 +29,8 @@ Thumbs.db
 !.vscode/settings.json
 
 # Prisma
-packages/shared/prisma/migrations/*/migration.sql
+packages/database/prisma/migrations/*/migration.sql
+
+# Turbo (no longer used)
+.turbo
+.tools/
