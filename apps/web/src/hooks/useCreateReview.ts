@@ -62,38 +62,41 @@ export function useCreateReview(options?: { onSuccess?: () => void }) {
 
       const tempId = crypto.randomUUID();
       const videoUrl = URL.createObjectURL(file);
-      const optimistic: FeedReview = {
-        id: tempId,
-        videoUrl,
-        thumbnailUrl: null,
-        caption: review.caption || null,
-        productTag: review.productTag || null,
-        rating: review.rating,
-        duration: 5,
-        createdAt: new Date().toISOString(),
-        user: {
-          id: user!.id,
-          username: user!.username,
-          displayName: user!.displayName,
-          avatarUrl: user!.avatarUrl,
-        },
-        product: {
-          id: review.product.id,
-          name: review.product.name,
-          category: review.product.category,
-        },
-        counts: { likes: 0, comments: 0, guesses: 0 },
-      };
 
-      queryClient.setQueryData<InfiniteData<FeedResponse>>(FEED_QUERY_KEY, (old) => {
-        if (!old) return old;
-        const [firstPage, ...rest] = old.pages;
-        return {
-          ...old,
-          pages: [{ ...firstPage, reviews: [optimistic, ...firstPage.reviews] }, ...rest],
-          pageParams: old.pageParams,
+      if (user) {
+        const optimistic: FeedReview = {
+          id: tempId,
+          videoUrl,
+          thumbnailUrl: null,
+          caption: review.caption || null,
+          productTag: review.productTag || null,
+          rating: review.rating,
+          duration: 5,
+          createdAt: new Date().toISOString(),
+          user: {
+            id: user.id,
+            username: user.username,
+            displayName: user.displayName,
+            avatarUrl: user.avatarUrl,
+          },
+          product: {
+            id: review.product.id,
+            name: review.product.name,
+            category: review.product.category,
+          },
+          counts: { likes: 0, comments: 0, guesses: 0 },
         };
-      });
+
+        queryClient.setQueryData<InfiniteData<FeedResponse>>(FEED_QUERY_KEY, (old) => {
+          if (!old) return old;
+          const [firstPage, ...rest] = old.pages;
+          return {
+            ...old,
+            pages: [{ ...firstPage, reviews: [optimistic, ...firstPage.reviews] }, ...rest],
+            pageParams: old.pageParams,
+          };
+        });
+      }
 
       return { previous, tempId, videoUrl };
     },

@@ -17,10 +17,13 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
   const chunksRef = useRef<BlobPart[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completedRef = useRef(false);
+  const activeRef = useRef(true);
 
   const { stream, isReady, error, permission, start: startCamera, stop: stopCamera } = useCamera();
   const [phase, setPhase] = useState<"idle" | "countdown" | "recording" | "processing">("idle");
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
+  const [isPressed, setIsPressed] = useState(false);
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -30,16 +33,23 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
 
   useEffect(() => {
     return () => {
+      activeRef.current = false;
       stopAll();
     };
   }, []);
 
   function stopAll() {
-    recorderRef.current?.stop();
-    recorderRef.current = null;
     if (timerRef.current) clearInterval(timerRef.current);
     if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current);
+    recorderRef.current?.stop();
+    recorderRef.current = null;
     stopCamera();
+  }
+
+  function resetToIdle() {
+    setPhase("idle");
+    setCountdown(COUNTDOWN_SECONDS);
+    setIsPressed(false);
   }
 
   function selectMimeType(): string | undefined {
@@ -52,14 +62,24 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
     return types.find((t) => MediaRecorder.isTypeSupported(t));
   }
 
-  async function startRecording() {
-    await startCamera();
+  function handlePressStart() {
+    if (phase !== "idle") return;
+    setIsPressed(true);
+    startCamera();
+  }
+
+  function handlePressEnd() {
+    setIsPressed(false);
+    if (phase === "countdown" || phase === "recording") {
+      recorderRef.current?.stop();
+    }
   }
 
   useEffect(() => {
-    if (!isReady || !stream || phase !== "idle") return;
+    if (!isReady || !stream || phase !== "idle" || !isPressed) return;
 
     chunksRef.current = [];
+    completedRef.current = false;
     const mimeType = selectMimeType();
     const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     recorderRef.current = recorder;
@@ -69,11 +89,18 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
     };
 
     recorder.onstop = () => {
-      const blobType = recorder.mimeType || stream.getTracks()[0]?.label || "video/webm";
+      if (!activeRef.current) return;
+      const blobType = recorder.mimeType || "video/webm";
       const blob = new Blob(chunksRef.current, { type: blobType });
       stopCamera();
-      setPhase("idle");
-      onRecorded(blob);
+      const completed = completedRef.current;
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current);
+      recorderRef.current = null;
+      resetToIdle();
+      if (completed) {
+        onRecorded(blob);
+      }
     };
 
     recorder.start();
@@ -85,17 +112,19 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
       remaining -= 1;
       setCountdown(remaining);
       if (remaining <= 0 && timerRef.current) {
+        completedRef.current = true;
         clearInterval(timerRef.current);
       }
     }, 1000);
 
     stopTimeoutRef.current = setTimeout(() => {
       if (recorder.state !== "inactive") {
+        completedRef.current = true;
         setPhase("processing");
         recorder.stop();
       }
     }, COUNTDOWN_SECONDS * 1000);
-  }, [isReady, stream, phase, onRecorded, stopCamera]);
+  }, [isReady, stream, phase, isPressed, onRecorded, stopCamera]);
 
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -124,7 +153,34 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
             </>
           ) : (
             <>
-              <Button onClick={startRecording} className="text-lg">
+              <Button
+                onMouseDown={handlePressStart}
+                onMouseUp={handlePressEnd}
+                onMouseLeave={handlePressEnd}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  handlePressStart();
+                }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  handlePressEnd();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === " " || e.key === "Enter") {
+                    e.preventDefault();
+                    handlePressStart();
+                  }
+                }}
+                onKeyUp={(e) => {
+                  if (e.key === " " || e.key === "Enter") {
+                    e.preventDefault();
+                    handlePressEnd();
+                  }
+                }}
+                onBlur={handlePressEnd}
+                aria-pressed={isPressed}
+                className="min-h-[3.5rem] min-w-[12rem] text-lg"
+              >
                 Hold to record 5s
               </Button>
               <label className="cursor-pointer text-sm text-white/60 underline">

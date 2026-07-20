@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useCreateReview, type Product } from "../../hooks/useCreateReview";
 import { ProductSearch } from "./ProductSearch";
@@ -33,7 +33,7 @@ export function CreateReview() {
     setStep("record");
   }
 
-  function handleRecorded(blob: Blob) {
+  const handleRecorded = useCallback((blob: Blob) => {
     if (previewUrlRef.current) {
       URL.revokeObjectURL(previewUrlRef.current);
     }
@@ -41,7 +41,7 @@ export function CreateReview() {
     previewUrlRef.current = URL.createObjectURL(blob);
     setUploadError(null);
     setStep("finalize");
-  }
+  }, []);
 
   function handleBackToRecord() {
     setUploadError(null);
