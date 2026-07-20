@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api } from "../../lib/api";
 import { Button } from "../ui/Button";
 
 export interface Product {
   id: string;
   name: string;
-  brand: string | null;
+  brand?: string | null;
   category: string;
 }
 
@@ -25,13 +25,20 @@ const CATEGORIES = [
   "Automotive",
   "Books",
   "Health",
+  "Other",
 ];
 
 export function ProductSearch({ selected, onSelect }: ProductSearchProps) {
   const [query, setQuery] = useState("");
   const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
-  const [newProduct, setNewProduct] = useState({ name: "", brand: "", category: "" });
+  const [newProduct, setNewProduct] = useState({ name: "", brand: "", category: "Other" });
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -39,42 +46,59 @@ export function ProductSearch({ selected, onSelect }: ProductSearchProps) {
         setProducts([]);
         return;
       }
+      setLoading(true);
       try {
         const { data } = await api.get(`/api/products/search?q=${encodeURIComponent(query)}`);
         setProducts((data.products ?? []) as Product[]);
       } catch {
         setProducts([]);
+      } finally {
+        setLoading(false);
       }
-    }, 200);
+    }, 150);
     return () => clearTimeout(timer);
   }, [query]);
 
   async function handleAddProduct(e: React.FormEvent) {
     e.preventDefault();
+    const name = newProduct.name.trim();
+    const category = newProduct.category || "Other";
+    if (!name) return;
+
     try {
-      const { data } = await api.post("/api/products", newProduct);
+      const { data } = await api.post("/api/products", { ...newProduct, name, category });
       onSelect(data.product as Product);
       setShowAdd(false);
-      setNewProduct({ name: "", brand: "", category: "" });
+      setNewProduct({ name: "", brand: "", category: "Other" });
+      setQuery("");
+      setProducts([]);
     } catch {
-      alert("Could not add product");
+      alert("Could not add product. Try again.");
     }
   }
 
   if (selected) {
     return (
       <div className="flex items-center justify-between rounded-xl bg-white/10 px-4 py-3">
-        <span>{selected.name}</span>
-        <button onClick={() => onSelect(null as unknown as Product)} className="text-sm text-white/50">
+        <div>
+          <p className="font-medium">{selected.name}</p>
+          <p className="text-sm text-white/50">
+            {selected.brand} • {selected.category}
+          </p>
+        </div>
+        <button onClick={() => onSelect(null as unknown as Product)} className="text-sm text-brand-500">
           Change
         </button>
       </div>
     );
   }
 
+  const noResults = !loading && query.trim().length > 0 && products.length === 0;
+
   return (
     <div className="space-y-3">
       <input
+        ref={inputRef}
         type="text"
         placeholder="Search products..."
         value={query}
@@ -93,6 +117,12 @@ export function ProductSearch({ selected, onSelect }: ProductSearchProps) {
           </button>
         ))}
       </div>
+
+      {loading && (
+        <div className="flex justify-center py-4">
+          <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+        </div>
+      )}
 
       {products.length > 0 && (
         <div className="max-h-48 overflow-auto rounded-xl bg-white/5">
@@ -115,11 +145,19 @@ export function ProductSearch({ selected, onSelect }: ProductSearchProps) {
         </div>
       )}
 
-      {!showAdd ? (
+      {noResults && !showAdd && (
+        <button onClick={() => setShowAdd(true)} className="text-sm text-brand-500">
+          + Add &quot;{query.trim()}&quot; as a new product
+        </button>
+      )}
+
+      {!showAdd && !noResults && (
         <button onClick={() => setShowAdd(true)} className="text-sm text-brand-500">
           + Add new product
         </button>
-      ) : (
+      )}
+
+      {showAdd && (
         <form onSubmit={handleAddProduct} className="space-y-2 rounded-xl bg-white/5 p-3">
           <input
             placeholder="Product name"
@@ -128,7 +166,7 @@ export function ProductSearch({ selected, onSelect }: ProductSearchProps) {
             className="w-full rounded-xl bg-white/10 px-4 py-2 text-white placeholder-white/40"
           />
           <input
-            placeholder="Brand"
+            placeholder="Brand (optional)"
             value={newProduct.brand}
             onChange={(e) => setNewProduct((p) => ({ ...p, brand: e.target.value }))}
             className="w-full rounded-xl bg-white/10 px-4 py-2 text-white placeholder-white/40"
@@ -138,14 +176,13 @@ export function ProductSearch({ selected, onSelect }: ProductSearchProps) {
             onChange={(e) => setNewProduct((p) => ({ ...p, category: e.target.value }))}
             className="w-full rounded-xl bg-white/10 px-4 py-2 text-white"
           >
-            <option value="">Select category</option>
             {CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
               </option>
             ))}
           </select>
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full" disabled={!newProduct.name.trim()}>
             Add Product
           </Button>
         </form>

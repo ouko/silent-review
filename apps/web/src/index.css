@@ -20,3 +20,33 @@ body,
 .snap-start {
   scroll-snap-align: start;
 }
+
+.rating-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  outline: none;
+}
+
+.rating-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background: #f43f5e;
+  cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.3);
+}
+
+.rating-slider::-moz-range-thumb {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: none;
+  border-radius: 9999px;
+  background: #f43f5e;
+  cursor: pointer;
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.3);
+}

@@ -15,7 +15,7 @@ export interface FeedReview {
   counts?: { likes: number; comments: number; guesses: number };
 }
 
-interface FeedResponse {
+export interface FeedResponse {
   reviews: FeedReview[];
   nextCursor?: string;
 }
