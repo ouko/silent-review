@@ -1,18 +1,17 @@
-version: "3.9"
 services:
   postgres:
     image: postgres:15-alpine
     container_name: silent-review-postgres
     environment:
-      POSTGRES_USER: silentreview
-      POSTGRES_PASSWORD: silentreview
-      POSTGRES_DB: silentreview
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: silent_review
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U silentreview -d silentreview"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d silent_review"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -21,9 +20,7 @@ services:
     image: redis:7-alpine
     container_name: silent-review-redis
     ports:
-      - "6380:6379"
-    volumes:
-      - redis_data:/data
+      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -32,4 +29,3 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
