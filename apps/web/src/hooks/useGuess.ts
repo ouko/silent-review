@@ -47,7 +47,7 @@ export function useGuess(reviewId: string) {
       const { data } = await api.post(`/api/guesses/${reviewId}`, { guessedRating });
       return data;
     },
-    onMutate: async (guessedRating) => {
+    onMutate: async (_guessedRating) => {
       await queryClient.cancelQueries({ queryKey: ["review", reviewId] });
       await queryClient.cancelQueries({ queryKey: ["feed"] });
 
@@ -63,7 +63,6 @@ export function useGuess(reviewId: string) {
             : {};
         return {
           ...review,
-          viewerGuess: { guessedRating },
           counts: {
             ...counts,
             guesses: ((counts.guesses as number | undefined) ?? 0) + 1,
@@ -74,6 +73,7 @@ export function useGuess(reviewId: string) {
       queryClient.setQueriesData({ queryKey: ["feed"] }, (old: unknown) => {
         if (!old || typeof old !== "object") return old;
         const feed = old as FeedPages;
+        if (!Array.isArray(feed.pages)) return old;
         return {
           ...feed,
           pages: feed.pages.map((page) => ({

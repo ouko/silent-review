@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 
 interface GuessFeedbackProps {
@@ -40,26 +41,48 @@ export function GuessFeedback({ userGuess, actualRating, score }: GuessFeedbackP
   );
 }
 
+interface Particle {
+  id: number;
+  color: string;
+  left: number;
+  yEnd: number;
+  xStart: number;
+  xEnd: number;
+}
+
 function Confetti() {
+  const particles = useMemo<Particle[]>(
+    () =>
+      Array.from({ length: 24 }, (_, i) => ({
+        id: i,
+        color: ["#f43f5e", "#22c55e", "#eab308", "#3b82f6"][i % 4],
+        left: Math.random() * 100,
+        yEnd: 200 + Math.random() * 150,
+        xStart: (Math.random() - 0.5) * 100,
+        xEnd: (Math.random() - 0.5) * 250,
+      })),
+    []
+  );
+
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {Array.from({ length: 24 }).map((_, i) => (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      {particles.map((p) => (
         <motion.div
-          key={i}
+          key={p.id}
           className="absolute h-2 w-2 rounded-sm"
           style={{
-            backgroundColor: ["#f43f5e", "#22c55e", "#eab308", "#3b82f6"][i % 4],
-            left: `${Math.random() * 100}%`,
+            backgroundColor: p.color,
+            left: `${p.left}%`,
             top: -10,
           }}
           initial={{ y: 0, opacity: 1 }}
           animate={{
-            y: [0, 200 + Math.random() * 150],
-            x: [(Math.random() - 0.5) * 100, (Math.random() - 0.5) * 250],
+            y: [0, p.yEnd],
+            x: [p.xStart, p.xEnd],
             rotate: [0, 720],
             opacity: [1, 0],
           }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
+          transition={{ duration: 0.45, ease: "easeOut" }}
         />
       ))}
     </div>

@@ -48,13 +48,19 @@ export function RevealScreen({
       <div className="flex w-full max-w-sm gap-2">
         <button
           type="button"
-          className="flex-1 rounded-xl bg-white/10 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/20"
+          disabled
+          aria-disabled="true"
+          aria-label="Share coming soon"
+          className="flex-1 rounded-xl bg-white/10 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Share
         </button>
         <button
           type="button"
-          className="flex-1 rounded-xl bg-white/10 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/20"
+          disabled
+          aria-disabled="true"
+          aria-label="Copy link coming soon"
+          className="flex-1 rounded-xl bg-white/10 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Copy link
         </button>
