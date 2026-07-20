@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { CreateReviewSchema, SubmitGuessSchema } from "./reviews.validation.js";
-import { createReview, getReviewById, submitGuess } from "./reviews.service.js";
+import { CreateReviewSchema } from "./reviews.validation.js";
+import { createReview, getReviewById } from "./reviews.service.js";
 import { prisma } from "../prisma.js";
 import { requireAuth, optionalAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 
@@ -43,16 +43,6 @@ reviewsRouter.get("/:id", optionalAuth, async (req: AuthenticatedRequest, res, n
       counts: review._count,
       viewerGuess,
     });
-  } catch (err) {
-    next(err);
-  }
-});
-
-reviewsRouter.post("/:id/guess", requireAuth, async (req: AuthenticatedRequest, res, next) => {
-  try {
-    const data = SubmitGuessSchema.parse(req.body);
-    const { guess } = await submitGuess(req.user!.id, req.params.id, data);
-    res.json({ guess: { ...guess, createdAt: guess.createdAt.toISOString() } });
   } catch (err) {
     next(err);
   }

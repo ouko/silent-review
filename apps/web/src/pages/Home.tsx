@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useFeed, type FeedType } from "../hooks/useFeed";
 import { VideoCard } from "../components/VideoCard";
-import { api } from "../lib/api";
 
 const TABS: { id: FeedType; label: string }[] = [
   { id: "for-you", label: "For You" },
@@ -12,7 +11,6 @@ const TABS: { id: FeedType; label: string }[] = [
 export function Home() {
   const [activeTab, setActiveTab] = useState<FeedType>("for-you");
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } = useFeed(activeTab);
-  const [revealed, setRevealed] = useState<Set<string>>(new Set());
   const loaderRef = useRef<HTMLDivElement>(null);
 
   const reviews = data?.pages.flatMap((page) => page.reviews) ?? [];
@@ -29,17 +27,6 @@ export function Home() {
     if (loaderRef.current) observer.observe(loaderRef.current);
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  async function handleReveal(reviewId: string, guess?: number) {
-    if (guess !== undefined) {
-      try {
-        await api.post(`/api/reviews/${reviewId}/guess`, { guessedRating: guess });
-      } catch {
-        // ignore guess errors; still reveal
-      }
-    }
-    setRevealed((prev) => new Set(prev).add(reviewId));
-  }
 
   return (
     <div className="flex h-full flex-col">
@@ -73,9 +60,7 @@ export function Home() {
                 productTag={review.productTag}
                 username={review.user.username}
                 avatarUrl={review.user.avatarUrl}
-                revealed={revealed.has(review.id)}
                 rating={review.rating}
-                onReveal={(guess) => handleReveal(review.id, guess)}
               />
             ))}
             <div ref={loaderRef} className="flex h-20 items-center justify-center">

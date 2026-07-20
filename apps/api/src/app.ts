@@ -8,6 +8,7 @@ import { authRouter } from "./routes/auth.js";
 import { feedRouter } from "./feed/feed.routes.js";
 import { productsRouter } from "./products/products.routes.js";
 import { reviewsRouter } from "./reviews/reviews.routes.js";
+import { guessesRouter } from "./guesses/guesses.routes.js";
 import { uploadRouter, UPLOAD_BASE_URL, UPLOAD_DIR } from "./routes/upload.js";
 import { usersRouter } from "./routes/users.js";
 
@@ -35,6 +36,7 @@ export function createApp() {
   app.use("/api/feed", feedRouter);
   app.use("/api/products", productsRouter);
   app.use("/api/reviews", reviewsRouter);
+  app.use("/api/guesses", guessesRouter);
   app.use("/api/upload", uploadRouter);
   app.use("/api/users", usersRouter);
 

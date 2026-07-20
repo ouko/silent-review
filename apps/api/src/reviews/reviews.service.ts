@@ -1,6 +1,6 @@
 import { prisma } from "../prisma.js";
 import { notifyFollowersOfReview } from "../socket/index.js";
-import type { CreateReviewInput, SubmitGuessInput } from "./reviews.validation.js";
+import type { CreateReviewInput } from "./reviews.validation.js";
 
 export async function createReview(userId: string, input: CreateReviewInput) {
   // Duplicate detection: one review per user per product.
@@ -70,48 +70,4 @@ export async function getReviewById(reviewId: string) {
       _count: { select: { likes: true, comments: true, guesses: true } },
     },
   });
-}
-
-export async function submitGuess(userId: string, reviewId: string, input: SubmitGuessInput) {
-  const review = await prisma.review.findUnique({
-    where: { id: reviewId, deletedAt: null },
-  });
-  if (!review) {
-    throw new Error("Review not found");
-  }
-  if (review.userId === userId) {
-    throw new Error("Cannot guess your own review");
-  }
-
-  const distance = Math.abs(review.rating - input.guessedRating);
-  const score = distance === 0 ? 10 : distance === 1 ? 5 : distance === 2 ? 2 : 0;
-  const isCorrect = distance === 0;
-
-  const guess = await prisma.guess.upsert({
-    where: { userId_reviewId: { userId, reviewId } },
-    update: { guessedRating: input.guessedRating, score, isCorrect },
-    create: {
-      userId,
-      reviewId,
-      guessedRating: input.guessedRating,
-      score,
-      isCorrect,
-    },
-  });
-
-  // Update denormalized review engagement metrics.
-  await prisma.review.update({
-    where: { id: reviewId },
-    data: {
-      guessCount: { increment: 1 },
-      exactGuessCount: isCorrect ? { increment: 1 } : undefined,
-    },
-  });
-
-  await prisma.user.update({
-    where: { id: userId },
-    data: { totalGuesses: { increment: 1 }, totalPoints: { increment: score } },
-  });
-
-  return { guess, review };
 }

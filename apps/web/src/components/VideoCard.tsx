@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { useGuess } from "../hooks/useGuess";
+import { GuessButtons } from "./guess/GuessButtons";
+import { RevealScreen } from "./guess/RevealScreen";
 
 interface VideoCardProps {
   id: string;
@@ -7,13 +10,58 @@ interface VideoCardProps {
   productTag?: string | null;
   username: string;
   avatarUrl?: string | null;
-  onReveal?: (guess: number) => void | Promise<void>;
   revealed?: boolean;
   rating?: number;
 }
 
 export function VideoCard(props: VideoCardProps) {
-  const [guess, setGuess] = useState<number | null>(null);
+  const [revealed, setRevealed] = useState(props.revealed ?? false);
+  const [revealData, setRevealData] = useState<{
+    rating: number;
+    score: number;
+    totalGuesses: number;
+    distribution: number[];
+  } | null>(null);
+
+  const { selectedRating, setSelectedRating, submit, isSubmitting, reveal } = useGuess(props.id);
+
+  async function handleReveal() {
+    if (selectedRating == null) return;
+    try {
+      const result = await submit(selectedRating);
+      const revealResult = await reveal();
+      setRevealData({
+        rating: revealResult.rating,
+        score: result.guess.score,
+        totalGuesses: revealResult.totalGuesses,
+        distribution: revealResult.distribution,
+      });
+      setRevealed(true);
+    } catch {
+      // error surfaced by hook if needed
+    }
+  }
+
+  function handlePlayAgain() {
+    setRevealed(false);
+    setSelectedRating(null);
+    setRevealData(null);
+  }
+
+  if (revealed && revealData) {
+    return (
+      <div className="relative h-full w-full snap-start overflow-hidden bg-black">
+        <RevealScreen
+          rating={revealData.rating}
+          userGuess={selectedRating}
+          score={revealData.score}
+          totalGuesses={revealData.totalGuesses}
+          distribution={revealData.distribution}
+          onPlayAgain={handlePlayAgain}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-full w-full snap-start overflow-hidden bg-black">
@@ -40,40 +88,21 @@ export function VideoCard(props: VideoCardProps) {
           </div>
         </div>
 
-        {!props.revealed && (
-          <div className="mt-4">
-            <p className="mb-2 text-sm font-medium">Guess the rating (1–10)</p>
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                <button
-                  key={n}
-                  onClick={() => setGuess(n)}
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 font-bold ${
-                    guess === n
-                      ? "border-brand-500 bg-brand-500 text-white"
-                      : "border-white/40 text-white"
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => guess && props.onReveal?.(guess)}
-              disabled={!guess}
-              className="mt-3 w-full rounded-xl bg-white py-3 font-bold text-black disabled:opacity-40"
-            >
-              Reveal
-            </button>
-          </div>
-        )}
-
-        {props.revealed && typeof props.rating === "number" && (
-          <div className="mt-4 rounded-xl bg-white/10 p-3 text-center">
-            <p className="text-sm text-white/70">Actual rating</p>
-            <p className="text-4xl font-bold text-brand-500">{props.rating}/10</p>
-          </div>
-        )}
+        <div className="mt-4 space-y-3">
+          <p className="text-center text-sm font-medium">Guess the rating</p>
+          <GuessButtons
+            selected={selectedRating}
+            onSelect={setSelectedRating}
+            disabled={isSubmitting}
+          />
+          <button
+            onClick={handleReveal}
+            disabled={selectedRating == null || isSubmitting}
+            className="w-full rounded-xl bg-white py-3 font-bold text-black disabled:opacity-40"
+          >
+            {isSubmitting ? "Checking..." : "Reveal"}
+          </button>
+        </div>
       </div>
     </div>
   );

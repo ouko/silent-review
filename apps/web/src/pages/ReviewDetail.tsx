@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { io } from "socket.io-client";
 import { api } from "../lib/api";
 import { VideoCard } from "../components/VideoCard";
 
@@ -18,23 +17,10 @@ interface ReviewDetailData {
 export function ReviewDetail() {
   const { id } = useParams<{ id: string }>();
   const [review, setReview] = useState<ReviewDetailData | null>(null);
-  const [revealed, setRevealed] = useState(false);
-  const socketRef = useRef<ReturnType<typeof io> | null>(null);
 
   useEffect(() => {
     if (!id) return;
     api.get(`/api/reviews/${id}`).then((res) => setReview(res.data));
-
-    const socket = io(import.meta.env.VITE_API_URL ?? "");
-    socketRef.current = socket;
-    socket.emit("review:join", id);
-    socket.on("review:revealed", () => setRevealed(true));
-
-    return () => {
-      socket.emit("review:leave", id);
-      socket.disconnect();
-      socketRef.current = null;
-    };
   }, [id]);
 
   if (!review || !id) {
@@ -53,16 +39,8 @@ export function ReviewDetail() {
       productTag={review.productTag}
       username={review.user.username}
       avatarUrl={review.user.avatarUrl}
-      revealed={revealed || !!review.viewerGuess}
+      revealed={!!review.viewerGuess}
       rating={review.rating}
-      onReveal={async (guess) => {
-        try {
-          await api.post(`/api/reviews/${id}/guess`, { guessedRating: guess });
-        } catch {
-          // ignore guess errors; still reveal
-        }
-        socketRef.current?.emit("review:reveal", id);
-      }}
     />
   );
 }
