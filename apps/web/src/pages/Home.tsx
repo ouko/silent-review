@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import { useFeed, type FeedType } from "../hooks/useFeed";
-import { VideoCard } from "../components/VideoCard";
+import { Feed } from "../components/feed/Feed";
+import { api } from "../lib/api";
 
 const TABS: { id: FeedType; label: string }[] = [
   { id: "for-you", label: "For You" },
@@ -10,23 +11,43 @@ const TABS: { id: FeedType; label: string }[] = [
 
 export function Home() {
   const [activeTab, setActiveTab] = useState<FeedType>("for-you");
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } = useFeed(activeTab);
-  const loaderRef = useRef<HTMLDivElement>(null);
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status, refetch } =
+    useFeed(activeTab);
+  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  const [revealData, setRevealData] = useState<
+    Map<string, { rating: number; score: number; totalGuesses: number; distribution: number[] }>
+  >(new Map());
 
   const reviews = data?.pages.flatMap((page) => page.reviews) ?? [];
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && hasNextPage && !isFetchingNextPage) {
-          fetchNextPage();
-        }
-      },
-      { threshold: 0.1 }
-    );
-    if (loaderRef.current) observer.observe(loaderRef.current);
-    return () => observer.disconnect();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  async function handleReveal(reviewId: string, guess?: number) {
+    try {
+      if (guess !== undefined) {
+        const guessRes = await api.post(`/api/guesses/${reviewId}`, { guessedRating: guess });
+        const revealRes = await api.get(`/api/guesses/${reviewId}/reveal`);
+        setRevealData((prev) =>
+          new Map(prev).set(reviewId, {
+            rating: revealRes.data.rating,
+            score: guessRes.data.guess.score,
+            totalGuesses: revealRes.data.totalGuesses,
+            distribution: revealRes.data.distribution,
+          })
+        );
+      }
+    } catch {
+      // ignore
+    } finally {
+      setRevealed((prev) => new Set(prev).add(reviewId));
+    }
+  }
+
+  function handlePlayAgain(reviewId: string) {
+    setRevealed((prev) => {
+      const next = new Set(prev);
+      next.delete(reviewId);
+      return next;
+    });
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -44,41 +65,22 @@ export function Home() {
         ))}
       </div>
 
-      <div className="snap-y h-full overflow-y-scroll">
-        {status === "pending" ? (
-          <div className="flex h-full items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
-          </div>
-        ) : (
-          <>
-            {reviews.map((review) => (
-              <VideoCard
-                key={review.id}
-                id={review.id}
-                videoUrl={review.videoUrl}
-                caption={review.caption}
-                productTag={review.productTag}
-                username={review.user.username}
-                avatarUrl={review.user.avatarUrl}
-                rating={review.rating}
-              />
-            ))}
-            <div ref={loaderRef} className="flex h-20 items-center justify-center">
-              {isFetchingNextPage && (
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              )}
-            </div>
-            {reviews.length === 0 && (
-              <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-                <p className="text-lg text-white/70">No reviews yet.</p>
-                <a href="/record" className="text-brand-500 underline">
-                  Be the first to review
-                </a>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+      {status === "pending" ? (
+        <div className="flex h-full items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
+        </div>
+      ) : (
+        <Feed
+          reviews={reviews}
+          onReveal={handleReveal}
+          revealed={revealed}
+          revealData={revealData}
+          onLoadMore={() => hasNextPage && fetchNextPage()}
+          isLoadingMore={isFetchingNextPage}
+          onRefresh={() => refetch()}
+          onPlayAgain={handlePlayAgain}
+        />
+      )}
     </div>
   );
 }
