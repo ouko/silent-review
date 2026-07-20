@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { useUpload } from "../hooks/useUpload";
 import { ProductSearch, type Product } from "../components/create/ProductSearch";
@@ -10,6 +10,8 @@ type Step = "product" | "record" | "finalize";
 
 export function Record() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const duetOfId = searchParams.get("duet");
   const [step, setStep] = useState<Step>("product");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
@@ -46,6 +48,7 @@ export function Record() {
         rating: input.rating,
         caption: input.caption,
         productTag: selectedProduct.category,
+        duetOfId,
       });
 
       navigate("/");

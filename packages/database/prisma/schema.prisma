@@ -43,6 +43,10 @@ model User {
   oauthAccounts OAuthAccount[]
   achievements  UserAchievement[]
   notifications Notification[]
+  invitesSent   Invite[]       @relation("InvitesSent")
+  invitesAccepted Invite[]     @relation("InvitesAccepted")
+  challengesCreated Challenge[] @relation("ChallengesCreated")
+  challengeParticipations ChallengeParticipant[]
 
   @@index([deletedAt])
   @@index([role])
@@ -141,6 +145,11 @@ model Review {
   shareCount      Int @default(0)
   exactGuessCount Int @default(0)
 
+  // Duet reference: this review is a reaction to another review.
+  duetOfId String?
+  duetOf   Review?  @relation("ReviewDuet", fields: [duetOfId], references: [id], onDelete: SetNull)
+  duets    Review[] @relation("ReviewDuet")
+
   status    ReviewStatus @default(PUBLISHED)
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
@@ -155,6 +164,7 @@ model Review {
   @@index([status, deletedAt])
   @@index([createdAt])
   @@index([likeCount, createdAt])
+  @@index([duetOfId])
 }
 
 enum ReviewStatus {
@@ -281,4 +291,55 @@ model FeatureFlag {
   rules       Json?    @default("{}")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Invite {
+  id         String    @id @default(uuid())
+  code       String    @unique
+  inviterId  String
+  inviter    User      @relation("InvitesSent", fields: [inviterId], references: [id], onDelete: Cascade)
+  inviteeId  String?
+  invitee    User?     @relation("InvitesAccepted", fields: [inviteeId], references: [id], onDelete: SetNull)
+  clicks     Int       @default(0)
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([code])
+  @@index([inviterId])
+  @@index([inviteeId])
+}
+
+model Challenge {
+  id          String                @id @default(uuid())
+  creatorId   String
+  creator     User                  @relation("ChallengesCreated", fields: [creatorId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  expiresAt   DateTime
+  status      ChallengeStatus       @default(ACTIVE)
+  createdAt   DateTime              @default(now())
+  participants ChallengeParticipant[]
+
+  @@index([creatorId])
+  @@index([status, expiresAt])
+}
+
+model ChallengeParticipant {
+  id          String    @id @default(uuid())
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score       Int       @default(0)
+  joinedAt    DateTime  @default(now())
+
+  @@unique([challengeId, userId])
+  @@index([challengeId, score])
+  @@index([userId])
+}
+
+enum ChallengeStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
 }

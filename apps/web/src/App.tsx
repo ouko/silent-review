@@ -6,12 +6,15 @@ import { Register } from "./pages/Register";
 import { Record } from "./pages/Record";
 import { ReviewDetail } from "./pages/ReviewDetail";
 import { Profile } from "./pages/Profile";
+import { Viral } from "./pages/Viral";
+import { InviteLanding } from "./pages/InviteLanding";
 
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/invite/:code" element={<InviteLanding />} />
       <Route
         path="/"
         element={
@@ -25,6 +28,14 @@ function App() {
         element={
           <AuthGuard>
             <Record />
+          </AuthGuard>
+        }
+      />
+      <Route
+        path="/viral"
+        element={
+          <AuthGuard>
+            <Viral />
           </AuthGuard>
         }
       />
