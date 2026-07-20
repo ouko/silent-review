@@ -44,18 +44,14 @@ export function Record() {
     if (!blob) return;
     setUploading(true);
     try {
-      const { data } = await api.post("/api/upload/presigned", {
-        contentType: "video/webm",
-        size: blob.size,
+      const formData = new FormData();
+      formData.append("file", blob, "review.webm");
+      const { data } = await api.post("/api/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
-      const formData = new FormData();
-      Object.entries(data.fields).forEach(([k, v]) => formData.append(k, v as string));
-      formData.append("file", blob);
-      await fetch(data.url, { method: "POST", body: formData });
-
       await api.post("/api/reviews", {
-        videoUrl: data.cloudFrontUrl,
+        videoUrl: data.url,
         rating,
         caption,
         productTag,

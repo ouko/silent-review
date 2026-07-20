@@ -7,7 +7,7 @@ import { healthRouter } from "./routes/health.js";
 import { authRouter } from "./routes/auth.js";
 import { feedRouter } from "./routes/feed.js";
 import { reviewsRouter } from "./routes/reviews.js";
-import { uploadRouter } from "./routes/upload.js";
+import { uploadRouter, UPLOAD_BASE_URL, UPLOAD_DIR } from "./routes/upload.js";
 import { usersRouter } from "./routes/users.js";
 
 export function createApp() {
@@ -21,6 +21,9 @@ export function createApp() {
   );
   app.use(express.json());
   app.use(cookieParser());
+
+  // Serve uploaded videos locally
+  app.use(UPLOAD_BASE_URL, express.static(UPLOAD_DIR));
 
   app.get("/health", (_req, res) => {
     res.json({ status: "ok", service: "silent-review-api" });

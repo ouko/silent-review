@@ -99,7 +99,13 @@ All secrets are injectable via environment variables. See `.env.example` for the
 - `JWT_SECRET` (min 32 characters; `.env.example` provides a dev default)
 - `JWT_REFRESH_SECRET` (min 32 characters; `.env.example` provides a dev default)
 
-Optional variables enable additional features (OAuth, upload) and can be left empty for local foundation development.
+### Local uploads (no AWS required)
+
+By default, uploaded 5-second review videos are stored on disk in the `uploads/` directory and served by the API at `/uploads/<filename>`. No AWS credentials are needed for local development.
+
+If you want to use S3/CloudFront in production, set the AWS variables in `.env.example` and replace the local upload service at `apps/api/src/services/localUpload.ts` with your S3 implementation.
+
+Optional variables enable additional features (OAuth, production upload) and can be left empty for local foundation development.
 
 ## License
 

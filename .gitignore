@@ -33,3 +33,4 @@ Thumbs.db
 # Turbo (no longer used)
 .turbo
 .tools/
+uploads/
