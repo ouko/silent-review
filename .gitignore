@@ -30,3 +30,6 @@ Thumbs.db
 
 # Prisma
 packages/shared/prisma/migrations/*/migration.sql
+
+# Turbo (no longer used)
+.turbo
