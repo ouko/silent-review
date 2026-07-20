@@ -17,14 +17,12 @@
     "generate": "prisma generate",
     "migrate": "prisma migrate dev",
     "deploy": "prisma migrate deploy",
-    "seed": "tsx prisma/seed.ts",
     "studio": "prisma studio",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@prisma/client": "^5.16.0",
-    "@silent-review/shared": "workspace:*"
+    "@prisma/client": "^5.16.0"
   },
   "devDependencies": {
     "prisma": "^5.16.0",

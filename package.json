@@ -15,11 +15,9 @@
     "dev:infra": "docker compose up -d",
     "build": "pnpm --filter shared build && pnpm --filter database build && pnpm --filter api build && pnpm --filter web build",
     "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
     "db:generate": "dotenv -e .env -- pnpm --filter database generate",
     "db:migrate": "dotenv -e .env -- pnpm --filter database migrate",
     "db:deploy": "dotenv -e .env -- pnpm --filter database deploy",
-    "db:seed": "dotenv -e .env -- pnpm --filter database seed",
     "db:studio": "dotenv -e .env -- pnpm --filter database studio",
     "clean": "pnpm -r clean && rm -rf node_modules"
   },
