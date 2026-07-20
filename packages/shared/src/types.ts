@@ -1,13 +1,27 @@
-import type { User, Review, Guess, Like, Comment, Follow } from "@prisma/client";
+export interface User {
+  id: string;
+  email: string;
+  username: string;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  passwordHash?: string | null;
+  emailVerified: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
-export type {
-  User,
-  Review,
-  Guess,
-  Like,
-  Comment,
-  Follow,
-};
+export interface Review {
+  id: string;
+  userId: string;
+  videoUrl: string;
+  thumbnailUrl?: string | null;
+  rating: number;
+  caption?: string | null;
+  productTag?: string | null;
+  viewCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export type SafeUser = Pick<
   User,
