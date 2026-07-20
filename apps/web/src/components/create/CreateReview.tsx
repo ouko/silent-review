@@ -23,6 +23,15 @@ export function CreateReview() {
   });
 
   useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+        previewUrlRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (error) {
       setUploadError("Upload failed. You can retry without re-recording.");
     }
