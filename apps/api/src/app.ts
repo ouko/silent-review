@@ -5,7 +5,7 @@ import { env } from "./config/index.js";
 import { errorHandler } from "./middleware/error.js";
 import { healthRouter } from "./routes/health.js";
 import { authRouter } from "./routes/auth.js";
-import { feedRouter } from "./routes/feed.js";
+import { feedRouter } from "./feed/feed.routes.js";
 import { productsRouter } from "./products/products.routes.js";
 import { reviewsRouter } from "./reviews/reviews.routes.js";
 import { uploadRouter, UPLOAD_BASE_URL, UPLOAD_DIR } from "./routes/upload.js";

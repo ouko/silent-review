@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@silent-review/shared": "workspace:*",
+    "@tanstack/react-query": "^5.101.3",
     "axios": "^1.7.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
