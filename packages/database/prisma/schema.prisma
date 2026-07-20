@@ -15,17 +15,47 @@ model User {
   avatarUrl     String?
   passwordHash  String?
   emailVerified Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  role          UserRole  @default(USER)
+
+  // Stats
+  totalReviews  Int   @default(0)
+  totalGuesses  Int   @default(0)
+  totalPoints   Int   @default(0)
+  totalLikes    Int   @default(0)
+  streakDays    Int   @default(0)
+  longestStreak Int   @default(0)
+  lastActiveAt  DateTime?
+
+  // Preferences stored as JSONB for flexibility
+  preferences Json? @default("{}")
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   reviews       Review[]
   guesses       Guess[]
   likes         Like[]
   comments      Comment[]
-  followers     Follow[]  @relation("following")
-  following     Follow[]  @relation("follower")
+  followers     Follow[]       @relation("following")
+  following     Follow[]       @relation("follower")
   refreshTokens RefreshToken[]
   oauthAccounts OAuthAccount[]
+  achievements  UserAchievement[]
+  notifications Notification[]
+
+  @@index([deletedAt])
+  @@index([role])
+  @@index([totalPoints])
+  @@index([streakDays])
+  @@index([lastActiveAt])
+}
+
+enum UserRole {
+  USER
+  CREATOR
+  MODERATOR
+  ADMIN
 }
 
 model OAuthAccount {
@@ -53,25 +83,76 @@ model RefreshToken {
   @@index([userId])
 }
 
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  brand       String?
+  category    String
+  description String?
+  imageUrl    String?
+  affiliateUrl String?
+  tags        String[]
+  metadata    Json?    @default("{}")
+
+  // Full-text search vector maintained by application layer or trigger
+  searchVector String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  reviews Review[]
+
+  @@index([category])
+  @@index([brand])
+  @@index([deletedAt])
+  @@index([searchVector])
+  @@index([tags])
+}
+
 model Review {
-  id           String   @id @default(uuid())
+  id           String       @id @default(uuid())
   userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
   videoUrl     String
   thumbnailUrl String?
+  duration     Float // in seconds
+  format       String // e.g. "video/webm", "video/mp4"
   rating       Int
   caption      String?
   productTag   String?
-  viewCount    Int      @default(0)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+
+  // Engagement metrics (denormalized for fast feed queries)
+  viewCount       Int @default(0)
+  likeCount       Int @default(0)
+  guessCount      Int @default(0)
+  commentCount    Int @default(0)
+  shareCount      Int @default(0)
+  exactGuessCount Int @default(0)
+
+  status    ReviewStatus @default(PUBLISHED)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
 
   guesses  Guess[]
   likes    Like[]
   comments Comment[]
 
   @@index([userId])
+  @@index([productId])
+  @@index([status, deletedAt])
   @@index([createdAt])
+  @@index([likeCount, createdAt])
+}
+
+enum ReviewStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+  UNDER_REVIEW
 }
 
 model Guess {
@@ -103,17 +184,21 @@ model Like {
 }
 
 model Comment {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviewId  String
-  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  review    Review    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  parentId  String?
   text      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 
   @@index([reviewId])
   @@index([userId])
+  @@index([parentId])
+  @@index([deletedAt])
 }
 
 model Follow {
@@ -127,4 +212,64 @@ model Follow {
   @@unique([followerId, followingId])
   @@index([followingId])
   @@index([followerId])
+}
+
+model Achievement {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  name        String
+  description String
+  iconUrl     String?
+  points      Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  users UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  unlockedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@index([achievementId])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?            @default("{}")
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt])
+  @@index([createdAt])
+}
+
+enum NotificationType {
+  LIKE
+  COMMENT
+  FOLLOW
+  GUESS
+  ACHIEVEMENT
+  CHALLENGE
+  SYSTEM
+}
+
+model FeatureFlag {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  enabled     Boolean  @default(false)
+  description String?
+  rules       Json?    @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
