@@ -1,5 +1,8 @@
 import { prisma } from "../prisma.js";
 import { notifyFollowersOfReview } from "../socket/index.js";
+import { updateStreak } from "../gamification/streaks.service.js";
+import { checkAchievements } from "../gamification/achievements.service.js";
+import { addPoints } from "../gamification/points.service.js";
 import type { CreateReviewInput } from "./reviews.validation.js";
 
 export async function createReview(userId: string, input: CreateReviewInput) {
@@ -44,6 +47,12 @@ export async function createReview(userId: string, input: CreateReviewInput) {
     where: { id: userId },
     data: { totalReviews: { increment: 1 } },
   });
+
+  // Gamification updates (fire-and-forget)
+  updateStreak(userId)
+    .then(() => addPoints(userId, 10))
+    .then(() => checkAchievements(userId))
+    .catch(() => {});
 
   // Fire-and-forget real-time follower notifications.
   notifyFollowersOfReview({

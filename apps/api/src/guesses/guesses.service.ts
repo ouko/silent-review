@@ -1,4 +1,6 @@
 import { prisma } from "../prisma.js";
+import { updateStreak } from "../gamification/streaks.service.js";
+import { checkAchievements } from "../gamification/achievements.service.js";
 import type { SubmitGuessInput } from "./guesses.validation.js";
 
 export function calculateGuessScore(actual: number, guessed: number): number {
@@ -52,6 +54,11 @@ export async function submitGuess(userId: string, reviewId: string, input: Submi
     where: { id: userId },
     data: { totalGuesses: { increment: 1 }, totalPoints: { increment: score } },
   });
+
+  // Gamification updates (fire-and-forget)
+  updateStreak(userId)
+    .then(() => checkAchievements(userId))
+    .catch(() => {});
 
   return { guess, review };
 }

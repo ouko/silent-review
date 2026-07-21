@@ -16,6 +16,7 @@ import { usersRouter } from "./routes/users.js";
 import { followsRouter } from "./follows/follows.routes.js";
 import { commentsRouter } from "./comments/comments.routes.js";
 import { notificationsRouter } from "./notifications/notifications.routes.js";
+import { gamificationRouter } from "./gamification/gamification.routes.js";
 
 export function createApp() {
   const app = express();
@@ -49,6 +50,7 @@ export function createApp() {
   app.use("/api/follows", followsRouter);
   app.use("/api/comments", commentsRouter);
   app.use("/api/notifications", notificationsRouter);
+  app.use("/api/gamification", gamificationRouter);
 
   app.use(errorHandler);
 

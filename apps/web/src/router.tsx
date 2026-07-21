@@ -12,6 +12,7 @@ const Record = lazy(() => import("./pages/Record").then((m) => ({ default: m.Rec
 const Profile = lazy(() => import("./pages/Profile").then((m) => ({ default: m.Profile })));
 const Viral = lazy(() => import("./pages/Viral").then((m) => ({ default: m.Viral })));
 const InviteLanding = lazy(() => import("./pages/InviteLanding").then((m) => ({ default: m.InviteLanding })));
+const LeaderboardPage = lazy(() => import("./pages/LeaderboardPage").then((m) => ({ default: m.LeaderboardPage })));
 
 function LazyWrapper({ children }: { children: React.ReactNode }) {
   return <Suspense fallback={<Loading />}>{children}</Suspense>;
@@ -41,6 +42,7 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
           { path: "/", element: <Home /> },
           { path: "/record", element: <LazyWrapper><Record /></LazyWrapper> },
           { path: "/viral", element: <LazyWrapper><Viral /></LazyWrapper> },
+          { path: "/leaderboard", element: <LazyWrapper><LeaderboardPage /></LazyWrapper> },
           { path: "/profile/:id", element: <LazyWrapper><Profile /></LazyWrapper> },
         ],
       },
