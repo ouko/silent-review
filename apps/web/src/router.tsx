@@ -1,4 +1,4 @@
-import { createBrowserRouter, Outlet } from "react-router-dom";
+import { createBrowserRouter, Outlet, useParams, Navigate } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { MainLayout } from "./components/layout/MainLayout";
 import { AuthGuard } from "./components/AuthGuard";
@@ -21,6 +21,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <AuthGuard>{children}</AuthGuard>;
 }
 
+function DeepLinkRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/review/${id}`} replace />;
+}
+
 export const router: ReturnType<typeof createBrowserRouter> = createBrowserRouter([
   {
     element: <MainLayout />,
@@ -29,6 +34,7 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
       { path: "/register", element: <Register /> },
       { path: "/invite/:code", element: <LazyWrapper><InviteLanding /></LazyWrapper> },
       { path: "/review/:id", element: <ReviewDetail /> },
+      { path: "/s/:id", element: <DeepLinkRedirect /> },
       {
         element: <ProtectedRoute><Outlet /></ProtectedRoute>,
         children: [
