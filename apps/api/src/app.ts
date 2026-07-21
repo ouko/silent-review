@@ -13,6 +13,9 @@ import { invitesRouter } from "./invites/invites.routes.js";
 import { challengesRouter } from "./challenges/challenges.routes.js";
 import { uploadRouter, UPLOAD_BASE_URL, UPLOAD_DIR } from "./routes/upload.js";
 import { usersRouter } from "./routes/users.js";
+import { followsRouter } from "./follows/follows.routes.js";
+import { commentsRouter } from "./comments/comments.routes.js";
+import { notificationsRouter } from "./notifications/notifications.routes.js";
 
 export function createApp() {
   const app = express();
@@ -43,6 +46,9 @@ export function createApp() {
   app.use("/api/challenges", challengesRouter);
   app.use("/api/upload", uploadRouter);
   app.use("/api/users", usersRouter);
+  app.use("/api/follows", followsRouter);
+  app.use("/api/comments", commentsRouter);
+  app.use("/api/notifications", notificationsRouter);
 
   app.use(errorHandler);
 

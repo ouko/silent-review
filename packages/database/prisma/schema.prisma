@@ -12,6 +12,7 @@ model User {
   email         String    @unique
   username      String    @unique
   displayName   String?
+  bio           String?
   avatarUrl     String?
   passwordHash  String?
   emailVerified Boolean   @default(false)
@@ -209,6 +210,8 @@ model Comment {
   reviewId  String
   review    Review    @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   parentId  String?
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies   Comment[] @relation("CommentReplies")
   text      String
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
