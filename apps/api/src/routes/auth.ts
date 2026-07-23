@@ -46,10 +46,12 @@ authService.register(new AppleProvider());
 authService.register(new TikTokProvider());
 authService.register(new InstagramProvider());
 
-// Rate limit: 5 login attempts per IP per minute.
+// Rate limit: 5 login attempts per IP per minute in production.
+// Relaxed in development to avoid blocking local tests and rapid iteration.
+const isDev = process.env.NODE_ENV !== "production";
 const loginLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 5,
+  max: isDev ? 100 : 5,
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: false,
