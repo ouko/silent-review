@@ -18,6 +18,10 @@ import { commentsRouter } from "./comments/comments.routes.js";
 import { notificationsRouter } from "./notifications/notifications.routes.js";
 import { gamificationRouter } from "./gamification/gamification.routes.js";
 import { revenueRouter } from "./revenue/revenue.routes.js";
+import { featuresRouter } from "./features/features.routes.js";
+import { exportRouter } from "./export/export.routes.js";
+import { regionalMiddleware } from "./regional/regional.middleware.js";
+import { featuresMiddleware } from "./features/features.middleware.js";
 
 export function createApp() {
   const app = express();
@@ -30,12 +34,18 @@ export function createApp() {
   );
   app.use(express.json());
   app.use(cookieParser());
+  app.use(regionalMiddleware);
+  app.use(featuresMiddleware);
 
   // Serve uploaded videos locally
   app.use(UPLOAD_BASE_URL, express.static(UPLOAD_DIR));
 
   app.get("/health", (_req, res) => {
-    res.json({ status: "ok", service: "silent-review-api" });
+    res.json({
+      status: "ok",
+      service: "silent-review-api",
+      timestamp: new Date().toISOString(),
+    });
   });
 
   app.use("/api/health", healthRouter);
@@ -53,6 +63,8 @@ export function createApp() {
   app.use("/api/notifications", notificationsRouter);
   app.use("/api/gamification", gamificationRouter);
   app.use("/api/revenue", revenueRouter);
+  app.use("/api/features", featuresRouter);
+  app.use("/api/export", exportRouter);
 
   app.use(errorHandler);
 

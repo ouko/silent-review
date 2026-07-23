@@ -6,6 +6,7 @@ import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { ReviewDetail } from "./pages/ReviewDetail";
+import { Status } from "./pages/Status";
 import { Loading } from "./components/common/Loading";
 
 const Record = lazy(() => import("./pages/Record").then((m) => ({ default: m.Record })));
@@ -33,6 +34,7 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
     children: [
       { path: "/login", element: <Login /> },
       { path: "/register", element: <Register /> },
+      { path: "/status", element: <Status /> },
       { path: "/invite/:code", element: <LazyWrapper><InviteLanding /></LazyWrapper> },
       { path: "/review/:id", element: <ReviewDetail /> },
       { path: "/s/:id", element: <DeepLinkRedirect /> },
