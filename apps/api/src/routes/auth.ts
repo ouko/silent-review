@@ -68,6 +68,28 @@ async function issueTokens(
   return { accessToken, refreshToken };
 }
 
+/**
+ * @openapi
+ * /api/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email: { type: string }
+ *               username: { type: string }
+ *               password: { type: string }
+ *               displayName: { type: string }
+ *     responses:
+ *       201:
+ *         description: User created
+ *       409:
+ *         description: Email or username already taken
+ */
 authRouter.post("/register", loginLimiter, async (req, res, next) => {
   try {
     const data = RegisterSchema.parse(req.body);
@@ -96,6 +118,26 @@ authRouter.post("/register", loginLimiter, async (req, res, next) => {
   }
 });
 
+/**
+ * @openapi
+ * /api/auth/login:
+ *   post:
+ *     summary: Log in with email and password
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               email: { type: string }
+ *               password: { type: string }
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       401:
+ *         description: Invalid credentials
+ */
 authRouter.post("/login", loginLimiter, async (req, res, next) => {
   try {
     const data = LoginSchema.parse(req.body);

@@ -22,6 +22,7 @@ import { featuresRouter } from "./features/features.routes.js";
 import { exportRouter } from "./export/export.routes.js";
 import { regionalMiddleware } from "./regional/regional.middleware.js";
 import { featuresMiddleware } from "./features/features.middleware.js";
+import { docsRouter } from "./docs/swagger.js";
 
 export function createApp() {
   const app = express();
@@ -65,6 +66,7 @@ export function createApp() {
   app.use("/api/revenue", revenueRouter);
   app.use("/api/features", featuresRouter);
   app.use("/api/export", exportRouter);
+  app.use("/api/docs", docsRouter);
 
   app.use(errorHandler);
 

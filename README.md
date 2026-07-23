@@ -58,8 +58,8 @@ The seed script creates demo accounts you can use to try the app:
 | Email | Password |
 |-------|----------|
 | `demo@silentreview.app` | `DemoPass123!` |
-| `alice@silentreview.app` | `AlicePass123!` |
-| `bob@silentreview.app` | `BobPass123!` |
+| `alice@silentreview.app` | `DemoPass123!` |
+| `bob@silentreview.app` | `DemoPass123!` |
 
 ## Useful Scripts
 
@@ -71,8 +71,12 @@ The seed script creates demo accounts you can use to try the app:
 | `pnpm dev:infra` | Start PostgreSQL + Redis |
 | `pnpm build` | Build all packages and apps |
 | `pnpm typecheck` | Type-check all packages and apps |
+| `pnpm --filter api test` | Run API unit/integration tests |
+| `pnpm --filter web test` | Run web component tests |
+| `pnpm test:e2e` | Run Playwright E2E tests |
 | `pnpm db:migrate` | Run Prisma migrations |
 | `pnpm db:studio` | Open Prisma Studio |
+| `pnpm deploy` | Deploy to production server |
 
 ## Project Structure
 
