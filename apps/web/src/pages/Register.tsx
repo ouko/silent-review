@@ -1,16 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { register, oauthLogin, type AuthProvider, type OAuthProvider } from "../lib/auth";
 import { useAuthStore } from "../stores/authStore";
-import { Button } from "../components/ui/Button";
-
-const PROVIDER_LABELS: Record<AuthProvider, string> = {
-  email: "Email",
-  google: "Google",
-  apple: "Apple",
-  tiktok: "TikTok",
-  instagram: "Instagram",
-};
+import { AuthLayout } from "../components/auth/AuthLayout";
+import { AuthInput } from "../components/auth/AuthInput";
+import { AuthButton } from "../components/auth/AuthButton";
+import { SocialButton } from "../components/auth/SocialButton";
 
 export function Register() {
   const navigate = useNavigate();
@@ -22,6 +18,7 @@ export function Register() {
     displayName: "",
   });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [providers, setProviders] = useState<AuthProvider[]>(["email"]);
 
   useEffect(() => {
@@ -39,6 +36,7 @@ export function Register() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
     try {
       const { user, accessToken } = await register(form);
       setUser(user);
@@ -46,6 +44,7 @@ export function Register() {
       setLoading(false);
       navigate("/");
     } catch {
+      setIsLoading(false);
       setError("Could not create account. Email or username may be taken.");
     }
   }
@@ -62,69 +61,72 @@ export function Register() {
       setLoading(false);
       navigate("/");
     } catch {
-      setError(`${PROVIDER_LABELS[provider]} login is not available.`);
+      setError(`${provider} login is not available.`);
     }
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center p-6">
-      <h1 className="mb-2 text-3xl font-bold">Create account</h1>
-      <p className="mb-8 text-white/60">Join Silent Review and start guessing.</p>
-
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
-        <input
+    <AuthLayout title="Create account" subtitle="Join Silent Review and start guessing.">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <AuthInput
           type="email"
           placeholder="Email"
           value={form.email}
           onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-          className="w-full rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:ring-2 focus:ring-brand-500"
+          required
         />
-        <input
+        <AuthInput
           type="text"
           placeholder="Username"
           value={form.username}
           onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
-          className="w-full rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:ring-2 focus:ring-brand-500"
+          required
         />
-        <input
+        <AuthInput
           type="text"
           placeholder="Display name (optional)"
           value={form.displayName}
           onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
-          className="w-full rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:ring-2 focus:ring-brand-500"
         />
-        <input
+        <AuthInput
           type="password"
           placeholder="Password"
           value={form.password}
           onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-          className="w-full rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:ring-2 focus:ring-brand-500"
+          required
         />
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <Button type="submit" className="w-full">
+
+        {error && (
+          <motion.p
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: [0, -6, 6, -6, 6, 0] }}
+            transition={{ duration: 0.4 }}
+            className="text-center text-sm text-red-400"
+          >
+            {error}
+          </motion.p>
+        )}
+
+        <AuthButton type="submit" loading={isLoading}>
           Sign up with Email
-        </Button>
+        </AuthButton>
       </form>
 
-      <div className="mt-6 flex w-full max-w-sm flex-col gap-3">
-        {oauthProviders.map((provider) => (
-            <Button
-              key={provider}
-              variant="secondary"
-              onClick={() => handleOAuth(provider)}
-              className="w-full"
-            >
-              Continue with {PROVIDER_LABELS[provider]}
-            </Button>
+      {oauthProviders.length > 0 && (
+        <div className="mt-6 space-y-3">
+          <p className="text-center text-xs font-medium uppercase tracking-wide text-white/40">or</p>
+          {oauthProviders.map((provider) => (
+            <SocialButton key={provider} provider={provider} onClick={() => handleOAuth(provider)} />
           ))}
-      </div>
+        </div>
+      )}
 
-      <p className="mt-8 text-sm text-white/50">
+      <p className="mt-8 text-center text-sm text-white/50">
         Already have an account?{" "}
-        <a href="/login" className="text-brand-500">
+        <a href="/login" className="font-semibold text-rose-400 hover:text-rose-300">
           Log in
         </a>
       </p>
-    </div>
+    </AuthLayout>
   );
 }
