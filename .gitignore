@@ -18,6 +18,12 @@ build
 *.log
 logs
 
+# Testing
+test-results/
+playwright-report/
+blob-report/
+coverage/
+
 # OS
 .DS_Store
 Thumbs.db

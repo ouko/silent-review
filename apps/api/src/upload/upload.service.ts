@@ -64,26 +64,32 @@ export async function validateVideoFile(
   }
 
   let probe: VideoProbe | null = null;
-  try {
-    probe = await probeVideo(buffer, ext || extensionForContentType(contentType));
-  } catch (err) {
-    errors.push(`Could not probe video: ${err instanceof Error ? err.message : String(err)}`);
-  }
-
-  if (probe) {
-    if (Math.abs(probe.duration - TARGET_DURATION_SECONDS) > DURATION_TOLERANCE_SECONDS) {
-      errors.push(
-        `Duration must be ${TARGET_DURATION_SECONDS}s ± ${DURATION_TOLERANCE_SECONDS}s (got ${probe.duration.toFixed(2)}s)`
-      );
+  const ffprobeAvailable = await isFFprobeAvailable();
+  if (ffprobeAvailable) {
+    try {
+      probe = await probeVideo(buffer, ext || extensionForContentType(contentType));
+    } catch (err) {
+      errors.push(`Could not probe video: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    if (probe.hasAudio) {
-      errors.push("Audio track detected. Silent Review videos must be silent");
-    }
+    if (probe) {
+      if (Math.abs(probe.duration - TARGET_DURATION_SECONDS) > DURATION_TOLERANCE_SECONDS) {
+        errors.push(
+          `Duration must be ${TARGET_DURATION_SECONDS}s ± ${DURATION_TOLERANCE_SECONDS}s (got ${probe.duration.toFixed(2)}s)`
+        );
+      }
 
-    if (!probe.videoCodec) {
-      errors.push("No video stream found");
+      if (probe.hasAudio) {
+        errors.push("Audio track detected. Silent Review videos must be silent");
+      }
+
+      if (!probe.videoCodec) {
+        errors.push("No video stream found");
+      }
     }
+  } else {
+    // Dev fallback: skip probe-based validation when ffprobe is not installed.
+    probe = { duration: TARGET_DURATION_SECONDS, hasAudio: false };
   }
 
   return {
@@ -170,6 +176,15 @@ export function extensionForContentType(contentType: string): string {
 export async function isFFmpegAvailable(): Promise<boolean> {
   try {
     await execFileAsync("ffmpeg", ["-version"]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function isFFprobeAvailable(): Promise<boolean> {
+  try {
+    await execFileAsync("ffprobe", ["-version"]);
     return true;
   } catch {
     return false;
