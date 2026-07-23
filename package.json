@@ -21,9 +21,12 @@
     "db:deploy": "dotenv -e .env -- pnpm --filter database run deploy",
     "db:seed": "dotenv -e .env -- pnpm --filter database seed",
     "db:studio": "dotenv -e .env -- pnpm --filter database studio",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "clean": "pnpm -r clean && rm -rf node_modules"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "concurrently": "^8.2.2",
     "dotenv-cli": "^7.4.2",
     "typescript": "^5.5.0"
