@@ -1,16 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { login, oauthLogin, type AuthProvider, type OAuthProvider } from "../lib/auth";
 import { useAuthStore } from "../stores/authStore";
-import { Button } from "../components/ui/Button";
-
-const PROVIDER_LABELS: Record<AuthProvider, string> = {
-  email: "Email",
-  google: "Google",
-  apple: "Apple",
-  tiktok: "TikTok",
-  instagram: "Instagram",
-};
+import { AuthLayout } from "../components/auth/AuthLayout";
+import { AuthInput } from "../components/auth/AuthInput";
+import { AuthButton } from "../components/auth/AuthButton";
+import { SocialButton } from "../components/auth/SocialButton";
 
 export function Login() {
   const navigate = useNavigate();
@@ -18,6 +14,7 @@ export function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setIsLoading] = useState(false);
   const [providers, setProviders] = useState<AuthProvider[]>(["email"]);
 
   useEffect(() => {
@@ -25,7 +22,6 @@ export function Login() {
       .then((res) => res.json())
       .then((data) => {
         const ids = (data.providers ?? []).map((p: { id: string }) => p.id as AuthProvider);
-        // Email is always primary and equally prominent.
         setProviders(["email", ...ids.filter((id: AuthProvider) => id !== "email")]);
       })
       .catch(() => setProviders(["email"]));
@@ -36,6 +32,7 @@ export function Login() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+    setIsLoading(true);
     try {
       const { user, accessToken } = await login(email, password);
       setUser(user);
@@ -43,6 +40,7 @@ export function Login() {
       setLoading(false);
       navigate("/");
     } catch {
+      setIsLoading(false);
       setError("Invalid email or password");
     }
   }
@@ -50,10 +48,6 @@ export function Login() {
   async function handleOAuth(provider: OAuthProvider) {
     setError("");
     try {
-      // Server-side OAuth code flow: open provider auth in same window,
-      // then POST the resulting code to /api/auth/oauth/:provider.
-      // For local development without configured OAuth apps, this gracefully
-      // shows a not-configured notice.
       const { user, accessToken } = await oauthLogin(provider, {
         code: "demo-code",
         redirectUri: window.location.origin + "/oauth/callback",
@@ -62,56 +56,60 @@ export function Login() {
       setAccessToken(accessToken);
       setLoading(false);
       navigate("/");
-    } catch (err) {
-      setError(`${PROVIDER_LABELS[provider]} login is not available.`);
+    } catch {
+      setError(`${provider} login is not available.`);
     }
   }
 
   return (
-    <div className="flex h-full flex-col items-center justify-center p-6">
-      <h1 className="mb-2 text-3xl font-bold">Silent Review</h1>
-      <p className="mb-8 text-white/60">Guess the rating before the reveal.</p>
-
-      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4">
-        <input
+    <AuthLayout title="Silent Review" subtitle="Guess the rating before the reveal.">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <AuthInput
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:ring-2 focus:ring-brand-500"
+          required
         />
-        <input
+        <AuthInput
           type="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-xl bg-white/10 px-4 py-3 text-white placeholder-white/40 outline-none focus:ring-2 focus:ring-brand-500"
+          required
         />
-        {error && <p className="text-sm text-red-400">{error}</p>}
-        <Button type="submit" className="w-full">
+
+        {error && (
+          <motion.p
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: [0, -6, 6, -6, 6, 0] }}
+            transition={{ duration: 0.4 }}
+            className="text-center text-sm text-red-400"
+          >
+            {error}
+          </motion.p>
+        )}
+
+        <AuthButton type="submit" loading={loading}>
           Log in with Email
-        </Button>
+        </AuthButton>
       </form>
 
-      <div className="mt-6 flex w-full max-w-sm flex-col gap-3">
-        {oauthProviders.map((provider) => (
-            <Button
-              key={provider}
-              variant="secondary"
-              onClick={() => handleOAuth(provider)}
-              className="w-full"
-            >
-              Continue with {PROVIDER_LABELS[provider]}
-            </Button>
+      {oauthProviders.length > 0 && (
+        <div className="mt-6 space-y-3">
+          <p className="text-center text-xs font-medium uppercase tracking-wide text-white/40">or</p>
+          {oauthProviders.map((provider) => (
+            <SocialButton key={provider} provider={provider} onClick={() => handleOAuth(provider)} />
           ))}
-      </div>
+        </div>
+      )}
 
-      <p className="mt-8 text-sm text-white/50">
+      <p className="mt-8 text-center text-sm text-white/50">
         Don&apos;t have an account?{" "}
-        <a href="/register" className="text-brand-500">
+        <a href="/register" className="font-semibold text-rose-400 hover:text-rose-300">
           Sign up
         </a>
       </p>
-    </div>
+    </AuthLayout>
   );
 }
