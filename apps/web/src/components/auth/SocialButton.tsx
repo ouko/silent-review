@@ -41,7 +41,7 @@ const PROVIDER_ICONS = {
   instagram: InstagramIcon,
 };
 
-const PROVIDER_LABELS = {
+export const PROVIDER_LABELS = {
   google: "Google",
   apple: "Apple",
   tiktok: "TikTok",

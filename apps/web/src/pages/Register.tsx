@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { register, oauthLogin, type AuthProvider, type OAuthProvider } from "../lib/auth";
 import { useAuthStore } from "../stores/authStore";
 import { AuthLayout } from "../components/auth/AuthLayout";
 import { AuthInput } from "../components/auth/AuthInput";
 import { AuthButton } from "../components/auth/AuthButton";
-import { SocialButton } from "../components/auth/SocialButton";
+import { SocialButton, PROVIDER_LABELS } from "../components/auth/SocialButton";
 
 export function Register() {
   const navigate = useNavigate();
@@ -20,6 +20,7 @@ export function Register() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [providers, setProviders] = useState<AuthProvider[]>(["email"]);
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     fetch("/api/auth/providers")
@@ -44,8 +45,9 @@ export function Register() {
       setLoading(false);
       navigate("/");
     } catch {
-      setIsLoading(false);
       setError("Could not create account. Email or username may be taken.");
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -61,7 +63,7 @@ export function Register() {
       setLoading(false);
       navigate("/");
     } catch {
-      setError(`${provider} login is not available.`);
+      setError(`${PROVIDER_LABELS[provider]} login is not available.`);
     }
   }
 
@@ -73,14 +75,12 @@ export function Register() {
           placeholder="Email"
           value={form.email}
           onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-          required
         />
         <AuthInput
           type="text"
           placeholder="Username"
           value={form.username}
           onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
-          required
         />
         <AuthInput
           type="text"
@@ -93,14 +93,13 @@ export function Register() {
           placeholder="Password"
           value={form.password}
           onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
-          required
         />
 
         {error && (
           <motion.p
-            initial={{ opacity: 0, x: -8 }}
-            animate={{ opacity: 1, x: [0, -6, 6, -6, 6, 0] }}
-            transition={{ duration: 0.4 }}
+            initial={{ opacity: 0, x: reducedMotion ? 0 : -8 }}
+            animate={{ opacity: 1, x: reducedMotion ? 0 : [0, -6, 6, -6, 6, 0] }}
+            transition={{ duration: reducedMotion ? 0.2 : 0.35 }}
             className="text-center text-sm text-red-400"
           >
             {error}
