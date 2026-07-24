@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { Eye } from "lucide-react";
 import { useVideoFeed } from "../../hooks/useVideoFeed";
 import { VideoPlayer } from "./VideoPlayer";
 import { VideoInfo } from "./VideoInfo";
@@ -170,17 +171,25 @@ function FeedGuessOverlay({ onGuess }: { onGuess: (guess: number) => void }) {
       transition={{ delay: 0.1, duration: 0.35 }}
       className="mt-5 space-y-4"
     >
-      <p className="text-center text-xs font-bold uppercase tracking-widest text-white/50">
-        Guess the rating
-      </p>
+      <div className="flex items-center justify-center gap-2">
+        <Eye className="h-3.5 w-3.5 text-rose-400" />
+        <p className="text-center text-xs font-black uppercase tracking-[0.2em] text-white/60">
+          Guess the rating
+        </p>
+      </div>
       <RatingBar selected={selected} onSelect={setSelected} />
       <motion.button
-        whileTap={{ scale: 0.97 }}
+        whileTap={selected ? { scale: 0.97 } : {}}
         onClick={() => selected && onGuess(selected)}
         disabled={!selected}
-        className="w-full rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-3.5 font-bold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        className={[
+          "w-full rounded-2xl py-3.5 font-bold text-white shadow-lg transition-all",
+          selected
+            ? "bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 shadow-rose-500/25 hover:shadow-rose-500/40 hover:brightness-110"
+            : "cursor-not-allowed bg-white/10 text-white/40 shadow-none ring-1 ring-white/10",
+        ].join(" ")}
       >
-        Reveal
+        {selected ? "Reveal rating" : "Pick a rating first"}
       </motion.button>
     </motion.div>
   );
