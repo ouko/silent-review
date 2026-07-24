@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { useGuess } from "../hooks/useGuess";
-import { GuessButtons } from "./guess/GuessButtons";
+import { VideoInfo } from "./feed/VideoInfo";
+import { RatingBar } from "./guess/RatingBar";
 import { RevealScreen } from "./guess/RevealScreen";
 
 interface VideoCardProps {
@@ -73,36 +75,37 @@ export function VideoCard(props: VideoCardProps) {
         playsInline
         autoPlay
       />
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 pb-8">
-        <div className="flex items-center gap-3">
-          {props.avatarUrl ? (
-            <img src={props.avatarUrl} alt="" className="h-10 w-10 rounded-full object-cover" />
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-sm font-bold">
-              {props.username[0]?.toUpperCase()}
-            </div>
-          )}
-          <div>
-            <p className="font-semibold">@{props.username}</p>
-            <p className="text-sm text-white/80">{props.caption}</p>
-          </div>
-        </div>
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/60 to-transparent p-5 pb-10">
+        <VideoInfo
+          username={props.username}
+          avatarUrl={props.avatarUrl}
+          caption={props.caption}
+          productTag={props.productTag}
+        />
 
-        <div className="mt-4 space-y-3">
-          <p className="text-center text-sm font-medium">Guess the rating</p>
-          <GuessButtons
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1, duration: 0.35 }}
+          className="mt-5 space-y-4"
+        >
+          <p className="text-center text-xs font-bold uppercase tracking-widest text-white/50">
+            Guess the rating
+          </p>
+          <RatingBar
             selected={selectedRating}
             onSelect={setSelectedRating}
             disabled={isSubmitting}
           />
-          <button
+          <motion.button
+            whileTap={{ scale: 0.97 }}
             onClick={handleReveal}
             disabled={selectedRating == null || isSubmitting}
-            className="w-full rounded-xl bg-white py-3 font-bold text-black disabled:opacity-40"
+            className="w-full rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-3.5 font-bold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {isSubmitting ? "Checking..." : "Reveal"}
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
       </div>
     </div>
   );
