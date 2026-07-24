@@ -69,5 +69,15 @@ export function useVideoPlayer({ src, shouldPlay, preload = false }: UseVideoPla
     }
   }, []);
 
-  return { videoRef, isPlaying, isBuffering, error, togglePlay };
+  const reload = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    setError(null);
+    video.load();
+    if (shouldPlay) {
+      video.play().catch(() => {});
+    }
+  }, [shouldPlay]);
+
+  return { videoRef, isPlaying, isBuffering, error, togglePlay, reload };
 }
