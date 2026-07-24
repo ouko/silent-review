@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { QrCode } from "lucide-react";
 
 interface QRGeneratorProps {
   productId?: string;
@@ -12,7 +13,8 @@ export function QRGenerator({ productId, productName }: QRGeneratorProps) {
     : window.location.origin;
 
   // Simple SVG-based QR placeholder. In production, use a QR library.
-  const qrSvg = `
+  const qrSvg = useMemo(
+    () => `
     <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 100 100">
       <rect width="100" height="100" fill="white"/>
       <rect x="10" y="10" width="25" height="25" fill="black"/>
@@ -24,16 +26,37 @@ export function QRGenerator({ productId, productName }: QRGeneratorProps) {
       <rect x="45" y="70" width="10" height="10" fill="black"/>
       <rect x="75" y="75" width="10" height="10" fill="black"/>
     </svg>
-  `;
+  `,
+    [size]
+  );
 
-  const blob = new Blob([qrSvg], { type: "image/svg+xml" });
-  const src = URL.createObjectURL(blob);
+  const src = useMemo(() => {
+    const blob = new Blob([qrSvg], { type: "image/svg+xml" });
+    return URL.createObjectURL(blob);
+  }, [qrSvg]);
 
   return (
-    <div className="flex flex-col items-center gap-3 p-4">
-      <h3 className="font-bold">{productName ? `QR for ${productName}` : "Share Silent Review"}</h3>
-      <img src={src} alt="QR code" className="rounded-xl bg-white p-2" width={size} height={size} />
-      <p className="text-center text-xs text-white/50">{url}</p>
-    </div>
+    <section className="rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500">
+          <QrCode className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h3 className="font-bold text-white">
+            {productName ? `QR for ${productName}` : "Share Silent Review"}
+          </h3>
+          <p className="text-xs text-white/50">Scan to open the app</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col items-center gap-3">
+        <div className="rounded-2xl bg-white p-3 shadow-[0_0_24px_rgba(139,92,246,0.25)]">
+          <img src={src} alt="QR code" width={size} height={size} />
+        </div>
+        <p className="max-w-[260px] break-all text-center text-[10px] font-medium uppercase tracking-wider text-white/40">
+          {url}
+        </p>
+      </div>
+    </section>
   );
 }
