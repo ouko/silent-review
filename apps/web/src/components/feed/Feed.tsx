@@ -137,6 +137,9 @@ export function Feed({
                         totalGuesses={data.totalGuesses}
                         distribution={data.distribution}
                         onPlayAgain={() => onPlayAgain?.(review.id)}
+                        reviewId={review.id}
+                        videoUrl={review.videoUrl}
+                        productName={review.productTag ?? review.caption}
                       />
                     );
                   })()}

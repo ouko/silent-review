@@ -36,7 +36,6 @@ export function RatingBar({ selected, onSelect, disabled }: RatingBarProps) {
             key={rating}
             role="radio"
             aria-checked={isSelected}
-            aria-label={`Rate ${rating} out of 10`}
             disabled={disabled}
             whileTap={disabled || reducedMotion ? {} : { scale: 0.95 }}
             onClick={() => {

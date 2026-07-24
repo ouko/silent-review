@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { Trophy, RotateCcw } from "lucide-react";
+import { Trophy, RotateCcw, Share2 } from "lucide-react";
 import { StatsChart } from "../stats/StatsChart";
 import { GuessFeedback } from "./GuessFeedback";
 
@@ -10,6 +10,9 @@ interface RevealScreenProps {
   totalGuesses: number;
   distribution: number[];
   onPlayAgain: () => void;
+  reviewId?: string;
+  videoUrl?: string;
+  productName?: string | null;
 }
 
 export function RevealScreen({
@@ -19,8 +22,26 @@ export function RevealScreen({
   totalGuesses,
   distribution,
   onPlayAgain,
+  reviewId,
+  productName,
 }: RevealScreenProps) {
   const reducedMotion = useReducedMotion();
+
+  const canNativeShare = typeof navigator !== "undefined" && "share" in navigator;
+
+  async function handleShare() {
+    if (!canNativeShare) return;
+    const url = reviewId ? `${window.location.origin}/review/${reviewId}` : window.location.href;
+    try {
+      await navigator.share({
+        title: "Silent Review",
+        text: `Can you guess the rating for ${productName || "this review"}?`,
+        url,
+      });
+    } catch {
+      // User cancelled or share failed; ignore.
+    }
+  }
 
   const containerVariants = {
     hidden: reducedMotion ? {} : { opacity: 0 },
@@ -80,6 +101,17 @@ export function RevealScreen({
           Share your guess with friends. Sharing coming soon!
         </p>
       </motion.div>
+
+      <motion.button
+        variants={itemVariants}
+        whileTap={canNativeShare ? { scale: 0.96 } : {}}
+        onClick={handleShare}
+        disabled={!canNativeShare}
+        className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-white/10 py-3.5 font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+      >
+        <Share2 className="h-4 w-4" />
+        Share
+      </motion.button>
 
       <motion.button
         variants={itemVariants}

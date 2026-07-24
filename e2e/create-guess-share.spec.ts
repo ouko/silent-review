@@ -23,7 +23,7 @@ test.describe("guess and reveal journey", () => {
     await expect(page.getByText(/My take on the/i).first()).toBeVisible();
 
     // Select a rating and reveal.
-    await page.getByRole("button", { name: "7" }).first().click();
+    await page.getByRole("radio", { name: "7" }).first().click();
     await page.getByRole("button", { name: /Reveal/i }).first().click();
 
     // After reveal, the actual rating and share actions are visible.
@@ -36,7 +36,7 @@ test.describe("guess and reveal journey", () => {
     const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
     await registerFreshUser(page, suffix);
 
-    await page.getByRole("button", { name: "5" }).first().click();
+    await page.getByRole("radio", { name: "5" }).first().click();
     await page.getByRole("button", { name: /Reveal/i }).first().click();
 
     await expect(page.getByText(/The actual rating was/i).first()).toBeVisible({ timeout: 10000 });
