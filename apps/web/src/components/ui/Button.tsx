@@ -5,11 +5,12 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export function Button({ variant = "primary", className = "", children, ...props }: ButtonProps) {
-  const base = "inline-flex items-center justify-center rounded-xl px-4 py-3 font-semibold transition";
+  const base = "inline-flex items-center justify-center rounded-2xl px-5 py-3 text-sm font-bold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-50";
   const styles = {
-    primary: "bg-brand-500 text-white active:bg-brand-600 disabled:opacity-50",
-    secondary: "bg-white text-black active:bg-gray-200",
-    ghost: "bg-transparent text-white border border-white/20 active:bg-white/10",
+    primary:
+      "bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 text-white shadow-lg shadow-rose-500/20 hover:opacity-90",
+    secondary: "bg-white text-black hover:bg-white/90",
+    ghost: "border border-white/20 bg-white/5 text-white hover:bg-white/10",
   };
   return (
     <button className={`${base} ${styles[variant]} ${className}`} {...props}>
