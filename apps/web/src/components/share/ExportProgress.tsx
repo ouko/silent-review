@@ -21,7 +21,7 @@ export function ExportProgress({ progress }: ExportProgressProps) {
       </div>
       <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
         <div
-          className="h-full rounded-full bg-brand-500 transition-all"
+          className="h-full rounded-full bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 transition-all"
           style={{ width: `${progress.progress}%` }}
         />
       </div>

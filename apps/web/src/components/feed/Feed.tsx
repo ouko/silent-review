@@ -122,7 +122,7 @@ export function Feed({
                       return (
                         <div className="text-center">
                           <p className="text-sm text-white/60">Actual rating</p>
-                          <p className="text-6xl font-black tracking-tighter text-brand-500">
+                          <p className="text-6xl font-black tracking-tighter gradient-text">
                             {review.rating}
                             <span className="text-2xl text-white/40">/10</span>
                           </p>

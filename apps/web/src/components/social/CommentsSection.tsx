@@ -60,13 +60,13 @@ export function CommentsSection({ reviewId }: CommentsSectionProps) {
               value={text}
               onChange={(e) => setText(e.target.value.slice(0, MAX_COMMENT_LENGTH))}
               placeholder="Add a comment..."
-              className="flex-1 rounded-full bg-white/10 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-brand-500"
+              className="flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white outline-none transition-colors placeholder-white/40 focus:border-white/20 focus:bg-white/10"
               maxLength={MAX_COMMENT_LENGTH}
             />
             <button
               type="submit"
               disabled={!text.trim() || post.isPending}
-              className="rounded-full bg-brand-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="rounded-full bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {post.isPending ? "..." : "Post"}
             </button>
@@ -101,7 +101,7 @@ function CommentItem({
           <p className="mt-0.5 text-sm text-white/90">{comment.text}</p>
           <button
             onClick={onReply}
-            className={`mt-1 text-xs ${isReplying ? "text-brand-500" : "text-white/50"}`}
+            className={`mt-1 text-xs font-semibold ${isReplying ? "text-rose-400" : "text-white/50 hover:text-white/80"}`}
           >
             Reply
           </button>
@@ -130,7 +130,7 @@ function Avatar({ user, size = "md" }: { user: { username: string; avatarUrl: st
   return user.avatarUrl ? (
     <img src={user.avatarUrl} alt="" className={`${sizeClass} rounded-full object-cover`} />
   ) : (
-    <div className={`${sizeClass} flex items-center justify-center rounded-full bg-brand-500 font-bold`}>
+    <div className={`${sizeClass} flex items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-violet-500 font-bold text-white`}>
       {user.username[0]?.toUpperCase()}
     </div>
   );

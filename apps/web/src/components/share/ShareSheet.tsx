@@ -49,7 +49,9 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
               key={p.id}
               onClick={() => setSelectedPlatform(p.id)}
               className={`rounded-xl px-2 py-3 text-xs font-semibold transition-colors ${
-                selectedPlatform === p.id ? "bg-brand-500 text-white" : "bg-white/10 text-white/70"
+                selectedPlatform === p.id
+                  ? "bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 text-white"
+                  : "bg-white/10 text-white/70 hover:bg-white/15"
               }`}
             >
               {p.name.split(" ")[0]}
@@ -68,7 +70,7 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
           <button
             onClick={handleExport}
             disabled={exportApi.progress.status === "encoding"}
-            className="flex items-center justify-center gap-2 rounded-xl bg-brand-500 py-3 font-semibold text-white disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-3 font-semibold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Share2 className="h-4 w-4" />
             {exportApi.blobUrl ? "Regenerate" : "Export video"}
