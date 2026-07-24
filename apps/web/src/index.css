@@ -63,3 +63,45 @@ body,
   background-size: 200% 200%;
   animation: mesh 12s ease infinite;
 }
+
+:root {
+  --sr-rose: 244 63 94;
+  --sr-pink: 236 72 153;
+  --sr-violet: 139 92 246;
+  --sr-accent-gradient: linear-gradient(135deg, rgb(var(--sr-rose)), rgb(var(--sr-pink)), rgb(var(--sr-violet)));
+}
+
+.gradient-text {
+  background: var(--sr-accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.glow-border {
+  position: relative;
+}
+.glow-border::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--sr-accent-gradient);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.05) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
