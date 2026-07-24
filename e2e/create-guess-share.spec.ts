@@ -20,7 +20,7 @@ test.describe("guess and reveal journey", () => {
 
     // Seeded demo reviews should appear in the for-you feed.
     await expect(page.getByText("For You")).toBeVisible();
-    await expect(page.getByText(/My take on the/i).first()).toBeVisible();
+    await expect(page.getByText(/Guess the rating/i).first()).toBeVisible();
 
     // Select a rating and reveal.
     await page.getByRole("radio", { name: "7" }).first().click();
