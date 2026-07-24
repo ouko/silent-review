@@ -54,7 +54,7 @@ export function InviteFriends() {
               className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5"
             >
               <div className="min-w-0 flex-1 truncate text-sm font-medium text-white/80">
-                {invite.link.replace(/^https?:\/\//, "")}
+                {invite.link?.replace(/^https?:\/\//, "") ?? invite.code}
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-white/60">
@@ -67,7 +67,7 @@ export function InviteFriends() {
                   </span>
                 ) : (
                   <button
-                    onClick={() => navigator.clipboard.writeText(invite.link)}
+                    onClick={() => navigator.clipboard.writeText(invite.link ?? invite.code)}
                     className="rounded-full bg-white/10 p-1.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
                     aria-label="Copy invite link"
                   >

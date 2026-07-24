@@ -9,6 +9,9 @@ export function MainLayout() {
   const location = useLocation();
   const reducedMotion = useReducedMotion();
 
+  const hideNavOnAuth = location.pathname === "/login" || location.pathname === "/register";
+  const shouldShowNav = showBottomNav && !hideNavOnAuth;
+
   return (
     <div className="flex h-screen flex-col bg-black text-white">
       <main className="relative flex-1 overflow-hidden">
@@ -25,7 +28,7 @@ export function MainLayout() {
           </motion.div>
         </AnimatePresence>
       </main>
-      {showBottomNav && <BottomNav />}
+      {shouldShowNav && <BottomNav />}
       <ToastContainer />
     </div>
   );

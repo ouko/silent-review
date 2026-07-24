@@ -26,11 +26,9 @@ export function ProfileReviews({ reviews }: ProfileReviewsProps) {
                 className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <span className="text-2xl font-black tracking-tighter gradient-text">
-                  {review.rating}
-                  <span className="text-sm text-white/30">/10</span>
-                </span>
+              <div className="flex h-full w-full flex-col items-center justify-center">
+                <span className="text-3xl font-black tracking-tighter gradient-text">{review.rating}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-white/30">/10</span>
               </div>
             )}
             <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/80 via-black/40 to-transparent px-2 pb-2 pt-6 text-[10px] font-bold text-white/90">

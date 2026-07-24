@@ -11,6 +11,13 @@ interface StatusData {
   features?: Record<string, boolean>;
 }
 
+function formatTimestamp(value: string | undefined) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
+
 export function Status() {
   const [status, setStatus] = useState<StatusData | null>(null);
   const [error, setError] = useState(false);
@@ -86,7 +93,7 @@ export function Status() {
             </div>
 
             <p className="text-center text-xs text-white/40">
-              Last checked: {new Date(status.timestamp).toLocaleString()}
+              Last checked: {formatTimestamp(status.timestamp)}
             </p>
           </motion.div>
         ) : (
