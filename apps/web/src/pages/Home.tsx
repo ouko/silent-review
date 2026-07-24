@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useFeed, type FeedType } from "../hooks/useFeed";
 import { Feed } from "../components/feed/Feed";
+import { FeedTabs } from "../components/feed/FeedTabs";
 import { BrandSpinner } from "../components/ui/BrandSpinner";
 import { api } from "../lib/api";
 
@@ -52,19 +53,11 @@ export function Home() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-center gap-4 border-b border-white/10 p-3">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`text-sm font-semibold ${
-              activeTab === tab.id ? "text-white" : "text-white/50"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <FeedTabs
+        tabs={TABS}
+        activeId={activeTab}
+        onSelect={(id) => setActiveTab(id as FeedType)}
+      />
 
       {status === "pending" ? (
         <div className="flex h-full flex-col items-center justify-center gap-3">
