@@ -163,26 +163,41 @@ async function main() {
   const alice = users[1];
   const bob = users[2];
 
+  const VIDEO_FILES = [
+    "/uploads/placeholder-review.webm",
+    "/uploads/review-2.webm",
+    "/uploads/review-3.webm",
+  ];
+
+  const CAPTIONS = [
+    "My take on the",
+    "Quick review:",
+    "Honest thoughts on",
+    "First impressions of",
+    "Would you buy the",
+    "Rating the",
+  ];
+
   const reviews = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 12; i++) {
     const product = sample(createdProducts);
     const review = await prisma.review.create({
       data: {
-        userId: demoUser.id,
+        userId: sample([demoUser, alice, bob]).id,
         productId: product.id,
-        videoUrl: "/uploads/placeholder-review.webm",
+        videoUrl: VIDEO_FILES[i % VIDEO_FILES.length],
         thumbnailUrl: null,
         duration: 5.0,
         format: "video/webm",
         rating: Math.floor(Math.random() * 10) + 1,
-        caption: `My take on the ${product.name}`,
+        caption: `${sample(CAPTIONS)} ${product.name}`,
         productTag: product.category,
         status: "PUBLISHED",
-        viewCount: Math.floor(Math.random() * 500),
-        likeCount: Math.floor(Math.random() * 50),
-        guessCount: 2,
-        commentCount: 0,
-        shareCount: Math.floor(Math.random() * 10),
+        viewCount: Math.floor(Math.random() * 2000),
+        likeCount: Math.floor(Math.random() * 200),
+        guessCount: Math.floor(Math.random() * 50),
+        commentCount: Math.floor(Math.random() * 15),
+        shareCount: Math.floor(Math.random() * 30),
       },
     });
     reviews.push(review);
