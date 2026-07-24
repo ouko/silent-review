@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useFeed, type FeedType } from "../hooks/useFeed";
 import { Feed } from "../components/feed/Feed";
+import { BrandSpinner } from "../components/ui/BrandSpinner";
 import { api } from "../lib/api";
 
 const TABS: { id: FeedType; label: string }[] = [
@@ -66,8 +67,9 @@ export function Home() {
       </div>
 
       {status === "pending" ? (
-        <div className="flex h-full items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
+        <div className="flex h-full flex-col items-center justify-center gap-3">
+          <BrandSpinner size="lg" />
+          <p className="text-sm font-medium text-white/50">Loading reviews...</p>
         </div>
       ) : (
         <Feed
