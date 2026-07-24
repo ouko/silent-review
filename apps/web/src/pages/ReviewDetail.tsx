@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { VideoCard } from "../components/VideoCard";
+import { Loading } from "../components/common/Loading";
 
 interface ReviewDetailData {
   id: string;
@@ -24,11 +25,7 @@ export function ReviewDetail() {
   }, [id]);
 
   if (!review || !id) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
-      </div>
-    );
+    return <Loading />;
   }
 
   return (
