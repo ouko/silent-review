@@ -101,7 +101,7 @@ jobs:
       - name: Start API and Web
         run: |
           pnpm --filter api start &
-          pnpm --filter web preview --port 5173 &
+          pnpm --filter web run preview --port 5173 &
           sleep 10
 
       - name: Run E2E tests
