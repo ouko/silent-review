@@ -40,3 +40,7 @@ Thumbs.db
 .turbo
 .tools/
 uploads/
+
+# Temporary verification artifacts
+tmp-verify/
+tmp-verify-screenshots.cjs
