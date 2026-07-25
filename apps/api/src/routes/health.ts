@@ -19,7 +19,19 @@ export const healthRouter = Router();
  *                   type: string
  *                 service:
  *                   type: string
+ *                 timestamp:
+ *                   type: string
+ *                 region:
+ *                   type: string
+ *                 features:
+ *                   type: object
  */
-healthRouter.get("/", (_req, res) => {
-  res.json({ status: "ok", service: "silent-review-api" });
+healthRouter.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    service: "silent-review-api",
+    timestamp: new Date().toISOString(),
+    region: req.region ?? "DEFAULT",
+    features: req.features ?? {},
+  });
 });

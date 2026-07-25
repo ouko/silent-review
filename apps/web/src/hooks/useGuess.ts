@@ -80,13 +80,7 @@ export function useGuess(reviewId: string) {
             ...page,
             reviews: page.reviews.map((review) =>
               review.id === reviewId
-                ? {
-                    ...review,
-                    counts: {
-                      ...review.counts,
-                      guesses: (review.counts?.guesses ?? 0) + 1,
-                    },
-                  }
+                ? { ...review, guessCount: review.guessCount + 1 }
                 : review
             ),
           })),

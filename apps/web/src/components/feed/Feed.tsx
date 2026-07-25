@@ -1,7 +1,8 @@
 import { useRef, useState, useCallback } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Eye } from "lucide-react";
+import { Eye, MessageCircle, Share2 } from "lucide-react";
 import { useVideoFeed } from "../../hooks/useVideoFeed";
+import { LikeButton } from "../social/LikeButton";
 import { VideoPlayer } from "./VideoPlayer";
 import { VideoInfo } from "./VideoInfo";
 import { RatingBar } from "../guess/RatingBar";
@@ -113,6 +114,27 @@ export function Feed({
                 productTag={review.productTag}
               />
 
+              <div className="mb-3 mt-3 flex items-center gap-5">
+                <LikeButton reviewId={review.id} />
+                <FeedActionButton
+                  icon={<MessageCircle className="h-5 w-5" />}
+                  count={review.commentCount}
+                  onClick={() => window.location.href = `/review/${review.id}`}
+                />
+                <FeedActionButton
+                  icon={<Share2 className="h-5 w-5" />}
+                  count={review.shareCount}
+                  onClick={async () => {
+                    const url = `${window.location.origin}/review/${review.id}`;
+                    if (navigator.share) {
+                      try { await navigator.share({ title: "Silent Review", url }); } catch {}
+                    } else {
+                      await navigator.clipboard.writeText(url);
+                    }
+                  }}
+                />
+              </div>
+
               {!revealed.has(review.id) ? (
                 <FeedGuessOverlay onGuess={(guess) => onReveal(review.id, guess)} />
               ) : (
@@ -158,6 +180,29 @@ export function Feed({
         </div>
       )}
     </div>
+  );
+}
+
+function FeedActionButton({
+  icon,
+  count,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  count: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick();
+      }}
+      className="flex items-center gap-1.5 text-sm font-bold text-white/80 transition-colors hover:text-white"
+    >
+      {icon}
+      <span>{count}</span>
+    </button>
   );
 }
 

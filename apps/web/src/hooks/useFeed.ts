@@ -12,7 +12,10 @@ export interface FeedReview {
   createdAt: string;
   user: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
   product: { id: string; name: string; category: string };
-  counts?: { likes: number; comments: number; guesses: number };
+  likeCount: number;
+  guessCount: number;
+  commentCount: number;
+  shareCount: number;
 }
 
 export interface FeedResponse {

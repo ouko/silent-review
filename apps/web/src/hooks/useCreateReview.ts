@@ -84,7 +84,10 @@ export function useCreateReview(options?: { onSuccess?: () => void }) {
             name: review.product.name,
             category: review.product.category,
           },
-          counts: { likes: 0, comments: 0, guesses: 0 },
+          likeCount: 0,
+          guessCount: 0,
+          commentCount: 0,
+          shareCount: 0,
         };
 
         queryClient.setQueryData<InfiniteData<FeedResponse>>(FEED_QUERY_KEY, (old) => {

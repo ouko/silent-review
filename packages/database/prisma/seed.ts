@@ -270,7 +270,7 @@ async function main() {
     flags.push(
       await prisma.featureFlag.upsert({
         where: { key },
-        update: {},
+        update: { enabled, description },
         create: { key, enabled, description },
       })
     );
