@@ -102,7 +102,15 @@ jobs:
         run: |
           pnpm --filter api start &
           pnpm --filter web run preview --port 5173 &
-          sleep 10
+          for i in {1..60}; do
+            if curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health | grep -q "200" && \
+               curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/login | grep -q "200"; then
+              echo "Servers are ready"
+              break
+            fi
+            echo "Waiting for servers... ($i)"
+            sleep 2
+          done
 
       - name: Run E2E tests
         run: pnpm test:e2e
