@@ -73,6 +73,8 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/silent_review
       REDIS_URL: redis://localhost:6379
       NODE_ENV: test
+      JWT_SECRET: test-jwt-secret-that-is-at-least-32-characters-long
+      JWT_REFRESH_SECRET: test-refresh-secret-that-is-at-least-32-characters-long
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v3
