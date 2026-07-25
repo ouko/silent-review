@@ -19,7 +19,7 @@
     "deploy": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
     "studio": "prisma studio",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "prisma generate && tsc --noEmit",
     "clean": "rm -rf dist"
   },
   "dependencies": {
@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20.14.0",
     "bcryptjs": "^2.4.3",
     "prisma": "^5.16.0",
     "tsx": "^4.16.0",
