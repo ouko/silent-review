@@ -9,9 +9,14 @@ import { presenceService } from "./presence.service.js";
 let io: Server | null = null;
 
 export function initSocketServer(httpServer: HttpServer): Server {
+  const allowedOrigins =
+    env.NODE_ENV === "development"
+      ? [env.WEB_APP_URL, "http://localhost:5173"]
+      : env.WEB_APP_URL;
+
   io = new Server(httpServer, {
     cors: {
-      origin: env.WEB_APP_URL,
+      origin: allowedOrigins,
       credentials: true,
     },
   });

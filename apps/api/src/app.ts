@@ -34,9 +34,17 @@ export function createApp() {
   app.set("trust proxy", env.TRUSTED_PROXIES ? env.TRUSTED_PROXIES.split(",") : 1);
 
   app.use(helmet());
+
+  // In development, allow both the configured WEB_APP_URL (e.g. a LAN IP for
+  // phone testing) and localhost so laptop/browser tests still work.
+  const allowedOrigins =
+    env.NODE_ENV === "development"
+      ? [env.WEB_APP_URL, "http://localhost:5173"]
+      : env.WEB_APP_URL;
+
   app.use(
     cors({
-      origin: env.WEB_APP_URL,
+      origin: allowedOrigins,
       credentials: true,
     })
   );
