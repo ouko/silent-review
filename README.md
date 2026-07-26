@@ -59,6 +59,17 @@ bash scripts/dev-lan.sh
 
 The script prints a LAN URL (e.g. `http://192.168.1.42:5173`). Open that URL in Safari on your iPhone. Both devices must be on the same network.
 
+**Keep it running in the background**
+
+If the server stops when you close the terminal, use the daemon instead:
+
+```bash
+bash scripts/dev-lan-daemon.sh start   # start in background
+bash scripts/dev-lan-daemon.sh status  # show status + LAN URL
+bash scripts/dev-lan-daemon.sh logs    # tail the log
+bash scripts/dev-lan-daemon.sh stop    # stop the daemon
+```
+
 If the page does not load on your iPhone, run the diagnostic script:
 
 ```bash
@@ -91,6 +102,8 @@ The seed script creates demo accounts you can use to try the app:
 | Script | Description |
 |--------|-------------|
 | `bash scripts/dev-lan.sh` | Start dev stack reachable from iPhone on same Wi-Fi |
+| `bash scripts/dev-lan-daemon.sh start` | Start the LAN dev stack as a background daemon |
+| `bash scripts/dev-lan-daemon.sh stop` | Stop the background LAN dev stack |
 | `bash scripts/diagnose-lan.sh` | Diagnose iPhone-to-Mac LAN connectivity |
 | `pnpm dev` | Run API and web concurrently |
 | `pnpm dev:api` | Run API only |
