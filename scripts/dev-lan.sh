@@ -17,6 +17,18 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 cd "${PROJECT_ROOT}"
 
+# --- sanity checks ---
+if [ ! -f ".env" ]; then
+  error "No .env file found. Run 'cp .env.example .env' first and fill in JWT_SECRET / JWT_REFRESH_SECRET."
+  exit 1
+fi
+
+if ! grep -qE '^JWT_SECRET=.{32,}' .env 2>/dev/null; then
+  warn "JWT_SECRET is missing or too short in .env."
+  warn "Generate secrets with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+  warn "Then paste them into .env as JWT_SECRET and JWT_REFRESH_SECRET."
+fi
+
 BLUE='\033[0;34m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -84,9 +96,9 @@ trap cleanup INT TERM EXIT
 API_URL="http://${LAN_IP}:3001/health"
 WEB_URL="http://${LAN_IP}:5173/login"
 
-log "Waiting for servers to accept connections..."
+log "Waiting for servers to accept connections (this can take 20–40s)..."
 READY=false
-for i in {1..60}; do
+for i in $(seq 1 120); do
   API_OK=false
   WEB_OK=false
   if curl -s -o /dev/null -w "%{http_code}" "${API_URL}" 2>/dev/null | grep -q "200"; then
@@ -99,12 +111,18 @@ for i in {1..60}; do
     READY=true
     break
   fi
+  # Print a progress dot every 10 seconds so the terminal does not look frozen.
+  if [ $((i % 10)) -eq 0 ]; then
+    echo -n "."
+  fi
   sleep 1
 done
 
 if [ "${READY}" = false ]; then
-  error "Servers did not become reachable on the LAN IP within 60 seconds."
-  error "Common causes: macOS Firewall, a VPN, or the phone not being on the same network."
+  echo ""
+  error "Servers did not become reachable on the LAN IP within 2 minutes."
+  error "Common causes: macOS Firewall, a VPN, missing JWT secrets, or the phone not being on the same network."
+  error "Run 'bash scripts/diagnose-lan.sh' for details."
   exit 1
 fi
 
