@@ -429,4 +429,34 @@ The following items were identified but not resolved in this pass due to scope/t
 
 ---
 
+## 7. Verification & Closure
+
+### 7.1 Final Test Run (local)
+
+After all fixes were applied, the full workflow was run locally:
+
+- `pnpm typecheck` — passed across all workspace packages.
+- `pnpm --filter api test` — 5 suites, 27 tests passed.
+- `pnpm --filter web test` — 1 test passed.
+- `bash scripts/run-ci-e2e-local.sh` — 5/5 Mobile Chrome e2e tests passed (ran twice consecutively).
+
+### 7.2 Commit
+
+All changes were committed as `b82e51d`:
+
+```
+audit: apply security/hardening fixes and stabilize e2e
+```
+
+### 7.3 GitHub CI
+
+The `Test` workflow on `main` completed successfully for commit `b82e51d`.
+
+- Workflow run: `completed success`
+- URL: https://github.com/ouko/silent-review/actions/workflows/test.yml
+
+### 7.4 Notable follow-up work
+
+While critical/high issues were resolved and the CI is green, the medium/low items in sections 1.8–6.5 remain recommended follow-up work and are not blockers for the current release.
+
 *End of audit report.*
