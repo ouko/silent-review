@@ -1,13 +1,19 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useEffect } from "react";
 import { BottomNav } from "./BottomNav";
 import { ToastContainer } from "../common/Toast";
 import { useUIStore } from "../../stores/uiStore";
 
 export function MainLayout() {
   const showBottomNav = useUIStore((s) => s.showBottomNav);
+  const setShowBottomNav = useUIStore((s) => s.setShowBottomNav);
   const location = useLocation();
   const reducedMotion = useReducedMotion();
+
+  useEffect(() => {
+    setShowBottomNav(true);
+  }, [location.pathname, setShowBottomNav]);
 
   const hideNavOnAuth = location.pathname === "/login" || location.pathname === "/register";
   const shouldShowNav = showBottomNav && !hideNavOnAuth;
@@ -28,7 +34,17 @@ export function MainLayout() {
           </motion.div>
         </AnimatePresence>
       </main>
-      {shouldShowNav && <BottomNav />}
+      <motion.div
+        initial={false}
+        animate={{
+          y: shouldShowNav ? 0 : "100%",
+          opacity: shouldShowNav ? 1 : 0,
+        }}
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        className="z-50 will-change-transform"
+      >
+        <BottomNav />
+      </motion.div>
       <ToastContainer />
     </div>
   );

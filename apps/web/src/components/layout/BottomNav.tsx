@@ -11,7 +11,10 @@ const LINKS = [
 
 export function BottomNav() {
   return (
-    <nav className="flex h-18 items-center justify-around border-t border-white/10 bg-black/60 px-2 pb-2 pt-1 backdrop-blur-xl">
+    <nav
+      className="flex items-center justify-around border-t border-white/10 bg-black/60 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur-xl"
+      style={{ minHeight: "calc(4.5rem + env(safe-area-inset-bottom))" }}
+    >
       {LINKS.map((link) => (
         <NavLink
           key={link.to}

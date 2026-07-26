@@ -21,6 +21,7 @@ interface FeedProps {
   isLoadingMore?: boolean;
   onRefresh?: () => void;
   onPlayAgain?: (reviewId: string) => void;
+  onScrollDirection?: (direction: "up" | "down") => void;
 }
 
 export function Feed({
@@ -34,6 +35,7 @@ export function Feed({
   isLoadingMore,
   onRefresh,
   onPlayAgain,
+  onScrollDirection,
 }: FeedProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pullStartY, setPullStartY] = useState<number | null>(null);
@@ -64,13 +66,24 @@ export function Feed({
     setPullDistance(0);
   }, [pullDistance, onRefresh]);
 
+  const lastScrollY = useRef(0);
+
   const handleScroll = useCallback(() => {
-    if (!containerRef.current || !onLoadMore || isLoadingMore) return;
+    if (!containerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
-    if (scrollHeight - scrollTop - clientHeight < 200) {
+
+    if (onScrollDirection) {
+      const diff = scrollTop - lastScrollY.current;
+      if (Math.abs(diff) > 10) {
+        onScrollDirection(diff > 0 ? "down" : "up");
+        lastScrollY.current = scrollTop;
+      }
+    }
+
+    if (onLoadMore && !isLoadingMore && scrollHeight - scrollTop - clientHeight < 200) {
       onLoadMore();
     }
-  }, [onLoadMore, isLoadingMore]);
+  }, [onLoadMore, isLoadingMore, onScrollDirection]);
 
   return (
     <div

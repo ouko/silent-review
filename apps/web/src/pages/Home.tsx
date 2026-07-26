@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useFeed, type FeedType } from "../hooks/useFeed";
 import { Feed } from "../components/feed/Feed";
 import { FeedTabs } from "../components/feed/FeedTabs";
 import { BrandSpinner } from "../components/ui/BrandSpinner";
+import { useUIStore } from "../stores/uiStore";
 import { api } from "../lib/api";
 
 const TABS: { id: FeedType; label: string }[] = [
@@ -22,6 +23,14 @@ export function Home() {
   const [selectedRatings, setSelectedRatings] = useState<Map<string, number>>(new Map());
 
   const reviews = data?.pages.flatMap((page) => page.reviews) ?? [];
+  const setShowBottomNav = useUIStore((s) => s.setShowBottomNav);
+
+  const handleScrollDirection = useCallback(
+    (direction: "up" | "down") => {
+      setShowBottomNav(direction === "up");
+    },
+    [setShowBottomNav]
+  );
 
   function selectRating(reviewId: string, rating: number) {
     setSelectedRatings((prev) => new Map(prev).set(reviewId, rating));
@@ -87,6 +96,7 @@ export function Home() {
           isLoadingMore={isFetchingNextPage}
           onRefresh={() => refetch()}
           onPlayAgain={handlePlayAgain}
+          onScrollDirection={handleScrollDirection}
         />
       )}
     </div>
