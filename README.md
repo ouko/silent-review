@@ -59,7 +59,15 @@ bash scripts/dev-lan.sh
 
 The script prints a LAN URL (e.g. `http://192.168.1.42:5173`). Open that URL in Safari on your iPhone. Both devices must be on the same network.
 
-If the page does not load on your iPhone:
+If the page does not load on your iPhone, run the diagnostic script:
+
+```bash
+bash scripts/diagnose-lan.sh
+```
+
+It prints your Mac's LAN IP, checks whether the servers are listening, tests reachability from the Mac itself, and flags VPN/firewall issues.
+
+Common fixes:
 
 1. **Same Wi-Fi only** — cellular or a guest network will not work.
 2. **Disable VPN on the Mac** — an active VPN (check for `utun` interfaces) often blocks inbound LAN traffic.
@@ -82,6 +90,8 @@ The seed script creates demo accounts you can use to try the app:
 
 | Script | Description |
 |--------|-------------|
+| `bash scripts/dev-lan.sh` | Start dev stack reachable from iPhone on same Wi-Fi |
+| `bash scripts/diagnose-lan.sh` | Diagnose iPhone-to-Mac LAN connectivity |
 | `pnpm dev` | Run API and web concurrently |
 | `pnpm dev:api` | Run API only |
 | `pnpm dev:web` | Run web only |

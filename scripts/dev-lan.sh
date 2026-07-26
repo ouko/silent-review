@@ -29,11 +29,22 @@ warn() { echo -e "${YELLOW}[dev-lan]${NC} $1"; }
 error() { echo -e "${RED}[dev-lan]${NC} $1"; }
 
 # --- detect LAN IP ---
+# Prefer the interface used for the default route (the one that reaches the
+# internet), since that is almost always the same network the iPhone is on.
+DEFAULT_IFACE="$(route -n get default 2>/dev/null | awk '/interface:/{print $2}' | head -n1 || true)"
+
 LAN_IP=""
-for iface in en0 en1 en2 en3 eth0 wlan0; do
-  LAN_IP="$(ipconfig getifaddr "${iface}" 2>/dev/null || true)"
-  [ -n "${LAN_IP}" ] && break
-done
+if [ -n "${DEFAULT_IFACE}" ]; then
+  LAN_IP="$(ipconfig getifaddr "${DEFAULT_IFACE}" 2>/dev/null || true)"
+fi
+
+# Fall back to scanning common interfaces if the default route didn't give us one.
+if [ -z "${LAN_IP}" ]; then
+  for iface in en0 en1 en2 en3 eth0 wlan0; do
+    LAN_IP="$(ipconfig getifaddr "${iface}" 2>/dev/null || true)"
+    [ -n "${LAN_IP}" ] && break
+  done
+fi
 
 if [ -z "${LAN_IP}" ]; then
   error "Could not detect a LAN IP address. Make sure you are connected to a network."
@@ -41,6 +52,9 @@ if [ -z "${LAN_IP}" ]; then
 fi
 
 success "Detected LAN IP: ${LAN_IP}"
+if [ -n "${DEFAULT_IFACE}" ]; then
+  log "(using default-route interface: ${DEFAULT_IFACE})"
+fi
 
 # --- environment overrides ---
 # WEB_APP_URL controls the API CORS origin and Socket.IO origin.
