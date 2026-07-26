@@ -51,13 +51,6 @@ export VITE_API_URL="http://${LAN_IP}:3001"
 # --- start ---
 log "Starting API and web dev servers..."
 echo ""
-echo -e "${GREEN}Local:${NC}  http://localhost:5173"
-echo -e "${GREEN}LAN:${NC}   http://${LAN_IP}:5173"
-echo -e "${GREEN}API:${NC}   http://${LAN_IP}:3001"
-echo ""
-echo "Open the LAN URL on your iPhone. Both devices must be on the same Wi-Fi."
-echo "Press Ctrl+C to stop the dev servers."
-echo ""
 
 pnpm exec concurrently \
   "pnpm dev:api" \
@@ -72,5 +65,46 @@ cleanup() {
   wait "${CONCURRENTLY_PID}" 2>/dev/null || true
 }
 trap cleanup INT TERM EXIT
+
+# --- wait for readiness ---
+API_URL="http://${LAN_IP}:3001/health"
+WEB_URL="http://${LAN_IP}:5173/login"
+
+log "Waiting for servers to accept connections..."
+READY=false
+for i in {1..60}; do
+  API_OK=false
+  WEB_OK=false
+  if curl -s -o /dev/null -w "%{http_code}" "${API_URL}" 2>/dev/null | grep -q "200"; then
+    API_OK=true
+  fi
+  if curl -s -o /dev/null -w "%{http_code}" "${WEB_URL}" 2>/dev/null | grep -q "200"; then
+    WEB_OK=true
+  fi
+  if [ "${API_OK}" = true ] && [ "${WEB_OK}" = true ]; then
+    READY=true
+    break
+  fi
+  sleep 1
+done
+
+if [ "${READY}" = false ]; then
+  error "Servers did not become reachable on the LAN IP within 60 seconds."
+  error "Common causes: macOS Firewall, a VPN, or the phone not being on the same network."
+  exit 1
+fi
+
+success "Servers are reachable from the local network."
+echo ""
+echo -e "${GREEN}Local:${NC}  http://localhost:5173"
+echo -e "${GREEN}LAN:${NC}   http://${LAN_IP}:5173"
+echo -e "${GREEN}API:${NC}   http://${LAN_IP}:3001"
+echo ""
+echo "Open the LAN URL on your iPhone. Both devices must be on the same Wi-Fi."
+echo "If the page does not load, check System Settings > Privacy & Security >"
+echo "Firewall and temporarily disable any VPN on this Mac."
+echo ""
+echo "Press Ctrl+C to stop the dev servers."
+echo ""
 
 wait

@@ -59,6 +59,15 @@ bash scripts/dev-lan.sh
 
 The script prints a LAN URL (e.g. `http://192.168.1.42:5173`). Open that URL in Safari on your iPhone. Both devices must be on the same network.
 
+If the page does not load on your iPhone:
+
+1. **Same Wi-Fi only** — cellular or a guest network will not work.
+2. **Disable VPN on the Mac** — an active VPN (check for `utun` interfaces) often blocks inbound LAN traffic.
+3. **Allow the app through macOS Firewall** — go to **System Settings > Privacy & Security > Firewall**, turn it off temporarily, or click **Options** and allow `node`, `tsx`, and `vite` if prompted.
+4. **Check router AP isolation** — some routers block devices from talking to each other. Turn off "Client/AP isolation" if enabled.
+5. **Disable iCloud Private Relay on the iPhone** — it can interfere with loading local HTTP addresses.
+6. **Use the IP the script prints** — `localhost` only works on the Mac itself.
+
 ### Demo credentials
 
 The seed script creates demo accounts you can use to try the app:
