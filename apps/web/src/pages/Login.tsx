@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { login, oauthLogin, type AuthProvider, type OAuthProvider } from "../lib/auth";
+import { login, type AuthProvider, type OAuthProvider } from "../lib/auth";
 import { useAuthStore } from "../stores/authStore";
 import { AuthLayout } from "../components/auth/AuthLayout";
 import { AuthInput } from "../components/auth/AuthInput";
@@ -47,18 +47,10 @@ export function Login() {
 
   async function handleOAuth(provider: OAuthProvider) {
     setError("");
-    try {
-      const { user, accessToken } = await oauthLogin(provider, {
-        code: "demo-code",
-        redirectUri: window.location.origin + "/oauth/callback",
-      });
-      setUser(user);
-      setAccessToken(accessToken);
-      setLoading(false);
-      navigate("/");
-    } catch {
-      setError(`${provider} login is not available.`);
-    }
+    // OAuth providers require a full redirect flow. The backend must initiate
+    // the provider authorization URL and the frontend needs a callback handler.
+    // Until that flow is wired end-to-end, show a clear unavailable message.
+    setError(`${provider} login is not available in this build.`);
   }
 
   return (
@@ -67,6 +59,7 @@ export function Login() {
         <AuthInput
           type="email"
           placeholder="Email"
+          aria-label="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -74,6 +67,7 @@ export function Login() {
         <AuthInput
           type="password"
           placeholder="Password"
+          aria-label="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required

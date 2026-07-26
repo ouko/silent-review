@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useExport } from "../../hooks/useExport";
 import { ExportProgress } from "./ExportProgress";
 import { QRCode } from "./QRCode";
@@ -18,6 +18,52 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
   const exportApi = useExport();
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformId>("tiktok");
   const [showQR, setShowQR] = useState(false);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    previousFocusRef.current = document.activeElement as HTMLElement;
+    const sheet = sheetRef.current;
+    if (!sheet) return;
+
+    // Focus the first focusable element inside the sheet.
+    const focusable = sheet.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    focusable[0]?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== "Tab") return;
+
+      const elements = Array.from(focusable).filter(
+        (el) => !(el as HTMLButtonElement | HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement).disabled
+      );
+      if (elements.length === 0) return;
+
+      const first = elements[0];
+      const last = elements[elements.length - 1];
+
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [onClose]);
 
   async function handleExport() {
     await exportApi.generate({ videoUrl, platform: selectedPlatform, productName, rating });
@@ -29,17 +75,33 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
         title: "Silent Review",
         text: `Can you guess the rating for ${productName}?`,
         url: deepLinkUrl,
-      });
+      }).catch(() => {});
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-zinc-900 p-5 text-white">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-4"
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={sheetRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="share-title"
+        className="w-full max-w-md rounded-2xl bg-zinc-900 p-5 text-white"
+      >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold">Share review</h2>
-          <button onClick={onClose} className="rounded-full p-1 hover:bg-white/10">
-            <X className="h-5 w-5" />
+          <h2 id="share-title" className="text-lg font-bold">Share review</h2>
+          <button
+            onClick={onClose}
+            aria-label="Close share sheet"
+            className="rounded-full p-1 hover:bg-white/10"
+          >
+            <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
 

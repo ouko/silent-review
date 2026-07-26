@@ -4,10 +4,17 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 export NODE_ENV=test
+export CI=true
 export DATABASE_URL=postgresql://postgres:postgres@localhost:5432/silent_review
 export REDIS_URL=redis://localhost:6379
 export JWT_SECRET=test-jwt-secret-that-is-at-least-32-characters-long
 export JWT_REFRESH_SECRET=test-refresh-secret-that-is-at-least-32-characters-long
+
+# Make sure no stale dev servers are bound to the expected ports.
+pkill -f 'node dist/server.js' 2>/dev/null || true
+pkill -f 'vite preview' 2>/dev/null || true
+pkill -f 'vite.js preview' 2>/dev/null || true
+sleep 1
 
 echo "Building packages..."
 pnpm --filter shared build

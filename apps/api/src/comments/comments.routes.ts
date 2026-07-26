@@ -5,6 +5,8 @@ import { z } from "zod";
 
 const MAX_COMMENT_LENGTH = 280;
 
+const LimitSchema = z.coerce.number().int().min(1).max(50).default(10);
+
 const CreateCommentSchema = z.object({
   text: z.string().min(1).max(MAX_COMMENT_LENGTH),
   parentId: z.string().uuid().optional(),
@@ -15,7 +17,7 @@ export const commentsRouter = Router();
 commentsRouter.get("/reviews/:reviewId/comments", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const reviewId = req.params.reviewId;
-    const limit = Math.min(Number(req.query.limit ?? 50), 100);
+    const limit = LimitSchema.parse(req.query.limit);
 
     const comments = await prisma.comment.findMany({
       where: { reviewId, parentId: null, deletedAt: null },
@@ -71,12 +73,13 @@ commentsRouter.post("/reviews/:reviewId/comments", requireAuth, async (req: Auth
     await prisma.review.update({ where: { id: reviewId }, data: { commentCount: { increment: 1 } } });
 
     if (review.userId !== req.user!.id) {
+      const actorName = req.user!.displayName || req.user!.username || "Someone";
       await prisma.notification.create({
         data: {
           userId: review.userId,
           type: "COMMENT",
           title: "New comment",
-          body: `${req.user!.email} commented on your review`,
+          body: `${actorName} commented on your review`,
           data: { reviewId, commentId: comment.id },
         },
       });
@@ -94,27 +97,42 @@ commentsRouter.post("/reviews/:reviewId/comments", requireAuth, async (req: Auth
 
 commentsRouter.delete("/:id", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
-    const comment = await prisma.comment.findUnique({ where: { id: req.params.id } });
-    if (!comment) {
-      res.status(404).json({ error: "Comment not found" });
-      return;
-    }
-    if (comment.userId !== req.user!.id) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
-    }
+    const result = await prisma.$transaction(async (tx) => {
+      const comment = await tx.comment.findUnique({ where: { id: req.params.id } });
+      if (!comment) {
+        return { status: 404, body: { error: "Comment not found" } };
+      }
+      if (comment.userId !== req.user!.id) {
+        return { status: 403, body: { error: "Forbidden" } };
+      }
+      if (comment.deletedAt) {
+        return { status: 204, body: null };
+      }
 
-    await prisma.comment.update({
-      where: { id: req.params.id },
-      data: { deletedAt: new Date(), text: "[deleted]" },
+      await tx.comment.update({
+        where: { id: req.params.id },
+        data: { deletedAt: new Date(), text: "[deleted]" },
+      });
+
+      // Soft-delete nested replies so they no longer appear.
+      await tx.comment.updateMany({
+        where: { parentId: comment.id, deletedAt: null },
+        data: { deletedAt: new Date(), text: "[deleted]" },
+      });
+
+      const replyCount = await tx.comment.count({
+        where: { parentId: comment.id },
+      });
+
+      await tx.review.update({
+        where: { id: comment.reviewId },
+        data: { commentCount: { decrement: 1 + replyCount } },
+      });
+
+      return { status: 204, body: null };
     });
 
-    await prisma.review.update({
-      where: { id: comment.reviewId },
-      data: { commentCount: { decrement: 1 } },
-    });
-
-    res.status(204).send();
+    res.status(result.status).send(result.body);
   } catch (err) {
     next(err);
   }

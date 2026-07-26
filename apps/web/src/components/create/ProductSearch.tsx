@@ -113,6 +113,7 @@ export function ProductSearch({ selected, onSelect }: ProductSearchProps) {
           ref={inputRef}
           type="text"
           placeholder="Search products..."
+          aria-label="Search products"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           className="w-full rounded-2xl border border-white/10 bg-white/5 py-3 pl-10 pr-4 text-white placeholder-white/40 outline-none transition-colors focus:border-white/20 focus:bg-white/10"

@@ -13,6 +13,8 @@ export function FollowButton({ userId, isFollowing = false, size = "md" }: Follo
     <button
       onClick={() => follow.mutate(isFollowing)}
       disabled={!userId || follow.isPending}
+      aria-pressed={isFollowing}
+      aria-label={isFollowing ? "Unfollow user" : "Follow user"}
       className={`rounded-full font-semibold transition-colors disabled:opacity-50 ${
         isFollowing
           ? "border border-white/30 bg-transparent text-white hover:bg-white/10"

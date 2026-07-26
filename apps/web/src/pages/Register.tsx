@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { register, oauthLogin, type AuthProvider, type OAuthProvider } from "../lib/auth";
+import { register, type AuthProvider, type OAuthProvider } from "../lib/auth";
 import { useAuthStore } from "../stores/authStore";
 import { AuthLayout } from "../components/auth/AuthLayout";
 import { AuthInput } from "../components/auth/AuthInput";
@@ -53,18 +53,10 @@ export function Register() {
 
   async function handleOAuth(provider: OAuthProvider) {
     setError("");
-    try {
-      const { user, accessToken } = await oauthLogin(provider, {
-        code: "demo-code",
-        redirectUri: window.location.origin + "/oauth/callback",
-      });
-      setUser(user);
-      setAccessToken(accessToken);
-      setLoading(false);
-      navigate("/");
-    } catch {
-      setError(`${PROVIDER_LABELS[provider]} login is not available.`);
-    }
+    // OAuth providers require a full redirect flow. The backend must initiate
+    // the provider authorization URL and the frontend needs a callback handler.
+    // Until that flow is wired end-to-end, show a clear unavailable message.
+    setError(`${PROVIDER_LABELS[provider]} login is not available in this build.`);
   }
 
   return (
@@ -73,24 +65,28 @@ export function Register() {
         <AuthInput
           type="email"
           placeholder="Email"
+          aria-label="Email"
           value={form.email}
           onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
         />
         <AuthInput
           type="text"
           placeholder="Username"
+          aria-label="Username"
           value={form.username}
           onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
         />
         <AuthInput
           type="text"
           placeholder="Display name (optional)"
+          aria-label="Display name (optional)"
           value={form.displayName}
           onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
         />
         <AuthInput
           type="password"
           placeholder="Password"
+          aria-label="Password"
           value={form.password}
           onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
         />

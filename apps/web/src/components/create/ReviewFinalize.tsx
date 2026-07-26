@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { RatingBar } from "../guess/RatingBar";
 import { Sparkles, Send, RotateCcw } from "lucide-react";
@@ -38,9 +38,7 @@ export function ReviewFinalize({
   const [tag, setTag] = useState("");
   const tagInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    tagInputRef.current?.focus();
-  }, []);
+
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -70,6 +68,7 @@ export function ReviewFinalize({
       <div className="space-y-1">
         <input
           placeholder="Caption (optional)"
+          aria-label="Caption (optional)"
           value={caption}
           maxLength={280}
           onChange={(e) => setCaption(e.target.value)}
@@ -82,6 +81,7 @@ export function ReviewFinalize({
         <input
           ref={tagInputRef}
           placeholder="Tag (optional)"
+          aria-label="Tag (optional)"
           value={tag}
           maxLength={30}
           onChange={(e) => setTag(e.target.value)}

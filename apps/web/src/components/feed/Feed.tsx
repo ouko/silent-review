@@ -12,7 +12,9 @@ import type { FeedReview } from "../../hooks/useFeed";
 
 interface FeedProps {
   reviews: FeedReview[];
-  onReveal: (reviewId: string, guess?: number) => void;
+  selectedRatings: Map<string, number>;
+  onSelectRating: (reviewId: string, rating: number) => void;
+  onReveal: (reviewId: string) => void;
   revealed: Set<string>;
   revealData: Map<string, { rating: number; score: number; totalGuesses: number; distribution: number[] }>;
   onLoadMore?: () => void;
@@ -23,6 +25,8 @@ interface FeedProps {
 
 export function Feed({
   reviews,
+  selectedRatings,
+  onSelectRating,
   onReveal,
   revealed,
   revealData,
@@ -119,7 +123,7 @@ export function Feed({
                 <FeedActionButton
                   icon={<MessageCircle className="h-5 w-5" />}
                   count={review.commentCount}
-                  onClick={() => window.location.href = `/review/${review.id}`}
+                  onClick={() => (window.location.href = `/review/${review.id}`)}
                 />
                 <FeedActionButton
                   icon={<Share2 className="h-5 w-5" />}
@@ -127,7 +131,9 @@ export function Feed({
                   onClick={async () => {
                     const url = `${window.location.origin}/review/${review.id}`;
                     if (navigator.share) {
-                      try { await navigator.share({ title: "Silent Review", url }); } catch {}
+                      try {
+                        await navigator.share({ title: "Silent Review", url });
+                      } catch {}
                     } else {
                       await navigator.clipboard.writeText(url);
                     }
@@ -136,7 +142,11 @@ export function Feed({
               </div>
 
               {!revealed.has(review.id) ? (
-                <FeedGuessOverlay onGuess={(guess) => onReveal(review.id, guess)} />
+                <FeedGuessOverlay
+                  selected={selectedRatings.get(review.id) ?? null}
+                  onSelect={(rating) => onSelectRating(review.id, rating)}
+                  onReveal={() => onReveal(review.id)}
+                />
               ) : (
                 <div className="mt-4 max-h-[60vh] overflow-auto rounded-3xl border border-white/10 bg-black/50 p-4 backdrop-blur-xl">
                   {(() => {
@@ -206,9 +216,15 @@ function FeedActionButton({
   );
 }
 
-function FeedGuessOverlay({ onGuess }: { onGuess: (guess: number) => void }) {
-  const [selected, setSelected] = useState<number | null>(null);
-
+function FeedGuessOverlay({
+  selected,
+  onSelect,
+  onReveal,
+}: {
+  selected: number | null;
+  onSelect: (rating: number) => void;
+  onReveal: () => void;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -222,10 +238,10 @@ function FeedGuessOverlay({ onGuess }: { onGuess: (guess: number) => void }) {
           Guess the rating
         </p>
       </div>
-      <RatingBar selected={selected} onSelect={setSelected} />
+      <RatingBar selected={selected} onSelect={onSelect} />
       <motion.button
         whileTap={selected ? { scale: 0.97 } : {}}
-        onClick={() => selected && onGuess(selected)}
+        onClick={() => selected && onReveal()}
         disabled={!selected}
         className={[
           "w-full rounded-2xl py-3.5 font-bold text-white shadow-lg transition-all",

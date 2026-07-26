@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { env } from "./config/index.js";
 import { errorHandler } from "./middleware/error.js";
@@ -28,13 +29,18 @@ import { docsRouter } from "./docs/swagger.js";
 export function createApp() {
   const app = express();
 
+  // Trust proxies only when explicitly configured. In production this should
+  // be a comma-separated list of trusted proxy IPs/CIDRs.
+  app.set("trust proxy", env.TRUSTED_PROXIES ? env.TRUSTED_PROXIES.split(",") : 1);
+
+  app.use(helmet());
   app.use(
     cors({
       origin: env.WEB_APP_URL,
       credentials: true,
     })
   );
-  app.use(express.json());
+  app.use(express.json({ limit: "100kb" }));
   app.use(cookieParser());
   app.use(regionalMiddleware);
   app.use(featuresMiddleware);

@@ -40,6 +40,7 @@ export function CommentsSection({ reviewId }: CommentsSectionProps) {
             onChange={(e) => setText(e.target.value)}
             maxLength={280}
             placeholder="Add a comment..."
+            aria-label="Add a comment"
             className="flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-rose-400/50 focus:bg-white/10 focus:outline-none"
           />
           <button

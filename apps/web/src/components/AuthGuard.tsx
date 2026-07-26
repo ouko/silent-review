@@ -1,26 +1,38 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../stores/authStore";
 import { fetchMe } from "../lib/auth";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
-  const { user, accessToken, isLoading, setUser, setLoading, logout } = useAuthStore();
+  const { user, isLoading, setUser, setLoading, logout } = useAuthStore();
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    if (!accessToken) {
-      setLoading(false);
-      navigate("/login");
-      return;
-    }
-    fetchMe()
-      .then(setUser)
-      .catch(() => {
-        logout();
-        navigate("/login");
+    mountedRef.current = true;
+    const controller = new AbortController();
+    setLoading(true);
+
+    fetchMe(controller.signal)
+      .then((user) => {
+        if (mountedRef.current) setUser(user);
       })
-      .finally(() => setLoading(false));
-  }, [navigate, accessToken, setUser, setLoading, logout]);
+      .catch(() => {
+        if (controller.signal.aborted) return;
+        if (mountedRef.current) {
+          logout();
+          navigate("/login");
+        }
+      })
+      .finally(() => {
+        if (mountedRef.current) setLoading(false);
+      });
+
+    return () => {
+      mountedRef.current = false;
+      controller.abort();
+    };
+  }, [navigate, setUser, setLoading, logout]);
 
   if (isLoading) {
     return (

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import { updateStreak } from "./streaks.service.js";
 import { checkAchievements } from "./achievements.service.js";
@@ -6,6 +7,9 @@ import { getLeaderboard, type LeaderboardType } from "./leaderboards.service.js"
 import { prisma } from "../prisma.js";
 
 export const gamificationRouter = Router();
+
+const LeaderboardLimitSchema = z.coerce.number().int().min(1).max(100).default(50);
+const LeaderboardTypeSchema = z.enum(["global", "weekly", "friends"]).default("global");
 
 gamificationRouter.get("/me", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
@@ -55,8 +59,8 @@ gamificationRouter.post("/activity", requireAuth, async (req: AuthenticatedReque
 
 gamificationRouter.get("/leaderboard", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
-    const type = (req.query.type as LeaderboardType) || "global";
-    const limit = Math.min(Number(req.query.limit ?? 50), 100);
+    const type = LeaderboardTypeSchema.parse(req.query.type) as LeaderboardType;
+    const limit = LeaderboardLimitSchema.parse(req.query.limit);
     const board = await getLeaderboard(type, req.user!.id, limit);
     res.json({ leaderboard: board });
   } catch (err) {

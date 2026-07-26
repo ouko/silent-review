@@ -98,7 +98,6 @@ export function useGuess(reviewId: string) {
       });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["feed"] });
       queryClient.invalidateQueries({ queryKey: ["review", reviewId] });
     },
   });

@@ -63,20 +63,21 @@ export function ActivityFeed() {
         {!isLoading && data?.notifications.length === 0 && (
           <p className="py-12 text-center text-sm text-white/50">No activity yet.</p>
         )}
-        <ul className="divide-y divide-white/5">
+        <ul className="divide-y divide-white/5" role="list">
           {data?.notifications.map((n) => (
-            <li
-              key={n.id}
-              onClick={() => !n.readAt && markRead.mutate(n.id)}
-              className={`cursor-pointer p-4 transition-colors ${
-                n.readAt ? "opacity-60" : "bg-white/5"
-              }`}
-            >
-              <p className="text-sm font-semibold">{n.title}</p>
-              <p className="text-sm text-white/70">{n.body}</p>
-              <p className="mt-1 text-xs text-white/40">
-                {new Date(n.createdAt).toLocaleString()}
-              </p>
+            <li key={n.id} className={`${n.readAt ? "opacity-60" : "bg-white/5"}`}>
+              <button
+                onClick={() => !n.readAt && markRead.mutate(n.id)}
+                disabled={!!n.readAt}
+                aria-label={n.readAt ? `Read notification: ${n.title}` : `Mark notification as read: ${n.title}`}
+                className="w-full cursor-pointer p-4 text-left transition-colors disabled:cursor-default"
+              >
+                <p className="text-sm font-semibold">{n.title}</p>
+                <p className="text-sm text-white/70">{n.body}</p>
+                <p className="mt-1 text-xs text-white/40">
+                  {new Date(n.createdAt).toLocaleString()}
+                </p>
+              </button>
             </li>
           ))}
         </ul>

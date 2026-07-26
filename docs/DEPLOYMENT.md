@@ -97,7 +97,7 @@ Daily database backups to S3 are handled by `scripts/backup.sh`. Add it to cron:
 Required environment variables in `.env.prod`:
 
 ```env
-DATABASE_URL=postgresql://postgres:<password>@localhost:5432/silent_review
+DATABASE_URL=postgresql://postgres:<password>@postgres:5432/silent_review
 S3_BUCKET_NAME=silent-review-backups
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=...

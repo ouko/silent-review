@@ -39,6 +39,12 @@ const REFRESH_COOKIE_OPTIONS = {
   maxAge: 30 * 24 * 60 * 60 * 1000,
 };
 
+const CLEAR_REFRESH_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: env.NODE_ENV === "production",
+  sameSite: "lax" as const,
+};
+
 const authService = new AuthService();
 authService.register(new EmailProvider());
 authService.register(new GoogleProvider());
@@ -165,7 +171,7 @@ authRouter.post("/refresh", async (req, res, next) => {
     }
     const userId = await verifyRefreshToken(token);
     if (!userId) {
-      res.clearCookie(REFRESH_COOKIE_NAME, REFRESH_COOKIE_OPTIONS);
+      res.clearCookie(REFRESH_COOKIE_NAME, CLEAR_REFRESH_COOKIE_OPTIONS);
       res.status(401).json({ error: "Invalid refresh token" });
       return;
     }
@@ -186,7 +192,7 @@ authRouter.post("/logout", requireAuth, async (req: AuthenticatedRequest, res, n
   try {
     const token = req.cookies[REFRESH_COOKIE_NAME] as string | undefined;
     if (token) await revokeRefreshToken(token);
-    res.clearCookie(REFRESH_COOKIE_NAME, REFRESH_COOKIE_OPTIONS);
+    res.clearCookie(REFRESH_COOKIE_NAME, CLEAR_REFRESH_COOKIE_OPTIONS);
     res.json({ status: "ok" });
   } catch (err) {
     next(err);

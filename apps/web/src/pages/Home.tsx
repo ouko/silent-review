@@ -19,10 +19,16 @@ export function Home() {
   const [revealData, setRevealData] = useState<
     Map<string, { rating: number; score: number; totalGuesses: number; distribution: number[] }>
   >(new Map());
+  const [selectedRatings, setSelectedRatings] = useState<Map<string, number>>(new Map());
 
   const reviews = data?.pages.flatMap((page) => page.reviews) ?? [];
 
-  async function handleReveal(reviewId: string, guess?: number) {
+  function selectRating(reviewId: string, rating: number) {
+    setSelectedRatings((prev) => new Map(prev).set(reviewId, rating));
+  }
+
+  async function handleReveal(reviewId: string) {
+    const guess = selectedRatings.get(reviewId);
     try {
       if (guess !== undefined) {
         const guessRes = await api.post(`/api/guesses/${reviewId}`, { guessedRating: guess });
@@ -49,6 +55,11 @@ export function Home() {
       next.delete(reviewId);
       return next;
     });
+    setSelectedRatings((prev) => {
+      const next = new Map(prev);
+      next.delete(reviewId);
+      return next;
+    });
   }
 
   return (
@@ -67,6 +78,8 @@ export function Home() {
       ) : (
         <Feed
           reviews={reviews}
+          selectedRatings={selectedRatings}
+          onSelectRating={selectRating}
           onReveal={handleReveal}
           revealed={revealed}
           revealData={revealData}

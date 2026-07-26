@@ -49,8 +49,19 @@ command -v pnpm >/dev/null 2>&1 || { error "pnpm is required but not installed";
 # --- environment ---
 if [ ! -f ".env" ]; then
   if [ -f ".env.example" ]; then
-    log "Creating .env from .env.example"
+    log "Creating .env from .env.example with generated secrets"
     cp .env.example .env
+    node -e "
+const fs = require('fs');
+const crypto = require('crypto');
+const envPath = '.env';
+let env = fs.readFileSync(envPath, 'utf8');
+const secret = crypto.randomBytes(32).toString('hex');
+const refreshSecret = crypto.randomBytes(32).toString('hex');
+env = env.replace(/^JWT_SECRET=.*$/m, 'JWT_SECRET=' + secret);
+env = env.replace(/^JWT_REFRESH_SECRET=.*$/m, 'JWT_REFRESH_SECRET=' + refreshSecret);
+fs.writeFileSync(envPath, env);
+"
   else
     error ".env.example not found. Cannot create .env"
     exit 1

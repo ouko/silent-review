@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 
 export interface User {
   id: string;
@@ -21,20 +20,12 @@ interface AuthState {
   logout: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      accessToken: null,
-      isLoading: true,
-      setUser: (user) => set({ user }),
-      setAccessToken: (accessToken) => set({ accessToken }),
-      setLoading: (isLoading) => set({ isLoading }),
-      logout: () => set({ user: null, accessToken: null }),
-    }),
-    {
-      name: "silent-review-auth",
-      partialize: (state) => ({ user: state.user, accessToken: state.accessToken }),
-    }
-  )
-);
+export const useAuthStore = create<AuthState>()((set) => ({
+  user: null,
+  accessToken: null,
+  isLoading: true,
+  setUser: (user) => set({ user }),
+  setAccessToken: (accessToken) => set({ accessToken }),
+  setLoading: (isLoading) => set({ isLoading }),
+  logout: () => set({ user: null, accessToken: null }),
+}));

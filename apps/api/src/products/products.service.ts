@@ -22,6 +22,24 @@ export async function searchProducts(input: SearchProductsInput) {
   const searchTerm = q.trim().toLowerCase().replace(/[^a-z0-9 ]/g, "");
   const tsQuery = searchTerm.split(/\s+/).filter(Boolean).join(" & ");
 
+  // If the cleaned search term contains no searchable tokens, fall back to
+  // an ILIKE-only search to avoid passing an empty tsquery to PostgreSQL.
+  if (!tsQuery) {
+    return prisma.product.findMany({
+      where: {
+        deletedAt: null,
+        moderationStatus: { in: ["APPROVED", "PENDING"] },
+        ...(category ? { category } : {}),
+        OR: [
+          { name: { contains: searchTerm, mode: "insensitive" } },
+          { brand: { contains: searchTerm, mode: "insensitive" } },
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+  }
+
   const categoryClause = category ? `AND category = $4` : "";
   const params: (string | number)[] = [tsQuery, `%${searchTerm}%`, `%${searchTerm}%`, limit];
   if (category) params.splice(3, 0, category);

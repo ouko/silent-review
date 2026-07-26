@@ -113,6 +113,11 @@ jobs:
             echo "Waiting for servers... ($i)"
             sleep 2
           done
+          if ! curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health | grep -q "200" || \
+             ! curl -s -o /dev/null -w "%{http_code}" http://localhost:5173/login | grep -q "200"; then
+            echo "Servers did not become ready in time"
+            exit 1
+          fi
 
       - name: Run E2E tests
         run: pnpm test:e2e

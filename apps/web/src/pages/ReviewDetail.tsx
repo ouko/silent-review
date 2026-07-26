@@ -23,14 +23,50 @@ export function ReviewDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [review, setReview] = useState<ReviewDetailData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadReview = async () => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get(`/api/reviews/${id}`);
+      setReview(res.data);
+    } catch {
+      setError("Could not load this review. It may have been removed or the link is invalid.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!id) return;
-    api.get(`/api/reviews/${id}`).then((res) => setReview(res.data));
+    loadReview();
   }, [id]);
 
-  if (!review || !id) {
+  if (!id) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center p-4 text-center text-white">
+        <p className="text-lg font-bold">Review not found</p>
+        <button onClick={() => navigate(-1)} className="mt-4 text-rose-400">Go back</button>
+      </div>
+    );
+  }
+
+  if (loading) {
     return <Loading />;
+  }
+
+  if (error || !review) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center p-4 text-center text-white">
+        <p className="text-lg font-bold">{error || "Review not found"}</p>
+        <div className="mt-4 flex gap-3">
+          <button onClick={loadReview} className="text-rose-400">Retry</button>
+          <button onClick={() => navigate(-1)} className="text-white/70">Go back</button>
+        </div>
+      </div>
+    );
   }
 
   const displayName = review.user.displayName || review.user.username;

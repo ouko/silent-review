@@ -1,8 +1,11 @@
 import { Router } from "express";
+import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { optionalAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 
 export const usersRouter = Router();
+
+const LimitSchema = z.coerce.number().int().min(1).max(50).default(10);
 
 usersRouter.get("/:id", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
@@ -68,7 +71,7 @@ usersRouter.get("/:id/achievements", optionalAuth, async (req: AuthenticatedRequ
 usersRouter.get("/:id/reviews", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const cursor = req.query.cursor as string | undefined;
-    const limit = Math.min(Number(req.query.limit ?? 10), 50);
+    const limit = LimitSchema.parse(req.query.limit);
     const reviews = await prisma.review.findMany({
       where: { userId: req.params.id },
       take: limit,

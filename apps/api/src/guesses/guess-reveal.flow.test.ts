@@ -9,6 +9,7 @@ const mockPrisma: any = {
     upsert: jest.fn(),
     count: jest.fn(),
     findMany: jest.fn(),
+    findUnique: jest.fn(),
   },
   user: {
     update: jest.fn(),

@@ -6,7 +6,13 @@ import { prisma } from "../prisma.js";
 export type UserRole = "USER" | "CREATOR" | "MODERATOR" | "ADMIN";
 
 export interface AuthenticatedRequest extends Request {
-  user?: { id: string; email: string; role: UserRole };
+  user?: {
+    id: string;
+    email: string;
+    username?: string;
+    displayName?: string | null;
+    role: UserRole;
+  };
 }
 
 export function requireAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
@@ -18,17 +24,40 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
     return;
   }
 
+  let payload: { userId: string; email: string; role: UserRole };
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET) as {
+    payload = jwt.verify(token, env.JWT_SECRET) as {
       userId: string;
       email: string;
       role: UserRole;
     };
-    req.user = { id: payload.userId, email: payload.email, role: payload.role };
-    next();
   } catch {
     res.status(401).json({ error: "Invalid token" });
+    return;
   }
+
+  // Verify the user still exists and is not soft-deleted. This also loads the
+  // username/displayName needed by notification routes.
+  prisma.user
+    .findUnique({
+      where: { id: payload.userId },
+      select: { deletedAt: true, username: true, displayName: true },
+    })
+    .then((user) => {
+      if (user?.deletedAt) {
+        res.status(401).json({ error: "Account deactivated" });
+        return;
+      }
+      req.user = {
+        id: payload.userId,
+        email: payload.email,
+        role: payload.role,
+        username: user?.username,
+        displayName: user?.displayName,
+      };
+      next();
+    })
+    .catch((err) => next(err));
 }
 
 export function optionalAuth(req: AuthenticatedRequest, _res: Response, next: NextFunction): void {

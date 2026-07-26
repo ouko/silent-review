@@ -27,15 +27,6 @@ export async function register(input: {
   return data;
 }
 
-export async function oauthLogin(
-  provider: Exclude<AuthProvider, "email">,
-  payload: Record<string, unknown>
-): Promise<AuthResponse> {
-  const { data } = await api.post<AuthResponse>(`/api/auth/oauth/${provider}`, payload);
-  setAuth(data);
-  return data;
-}
-
 export async function logout(): Promise<void> {
   try {
     await api.post("/api/auth/logout");
@@ -45,8 +36,8 @@ export async function logout(): Promise<void> {
   }
 }
 
-export async function fetchMe(): Promise<User> {
-  const { data } = await api.get("/api/auth/me");
+export async function fetchMe(signal?: AbortSignal): Promise<User> {
+  const { data } = await api.get("/api/auth/me", { signal });
   return data.user as User;
 }
 

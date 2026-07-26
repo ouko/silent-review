@@ -9,6 +9,29 @@ async function registerFreshUser(page, suffix: string) {
   await page.getByPlaceholder("Password").fill(DEMO_PASSWORD);
   await page.getByRole("button", { name: /sign up with email/i }).click();
   await expect(page).toHaveURL("/", { timeout: 10000 });
+  // Wait for the for-you feed to hydrate before interacting.
+  await expect(page.getByText("For You")).toBeVisible();
+  await expect(page.getByText(/Guess the rating/i).first()).toBeVisible();
+
+  // Disable scroll snapping and motion so Playwright clicks land predictably on the first card.
+  await page.addStyleTag({
+    content:
+      'html, body, * { scroll-snap-type: none !important; scroll-snap-align: none !important; transition: none !important; animation: none !important; }',
+  });
+  // Give the feed a moment to settle after hydration and style injection.
+  await page.waitForTimeout(500);
+}
+
+async function revealFirstReview(page, rating: string) {
+  const radio = page.getByRole("radio", { name: rating }).first();
+  await expect(radio).toBeVisible();
+  await radio.click();
+
+  const revealButton = page.getByRole("button", { name: /Reveal/i }).first();
+  await expect(revealButton).toBeEnabled();
+  await revealButton.click();
+
+  await expect(page.getByText(/The actual rating was/i).first()).toBeVisible({ timeout: 10000 });
 }
 
 test.describe.configure({ mode: "serial" });
@@ -18,16 +41,8 @@ test.describe("guess and reveal journey", () => {
     const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
     await registerFreshUser(page, suffix);
 
-    // Seeded demo reviews should appear in the for-you feed.
-    await expect(page.getByText("For You")).toBeVisible();
-    await expect(page.getByText(/Guess the rating/i).first()).toBeVisible();
+    await revealFirstReview(page, "7");
 
-    // Select a rating and reveal.
-    await page.getByRole("radio", { name: "7" }).first().click();
-    await page.getByRole("button", { name: /Reveal/i }).first().click();
-
-    // After reveal, the actual rating and share actions are visible.
-    await expect(page.getByText(/The actual rating was/i).first()).toBeVisible({ timeout: 10000 });
     await expect(page.getByRole("button", { name: /Share/i }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: /Play again/i }).first()).toBeVisible();
   });
@@ -36,10 +51,7 @@ test.describe("guess and reveal journey", () => {
     const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
     await registerFreshUser(page, suffix);
 
-    await page.getByRole("radio", { name: "5" }).first().click();
-    await page.getByRole("button", { name: /Reveal/i }).first().click();
-
-    await expect(page.getByText(/The actual rating was/i).first()).toBeVisible({ timeout: 10000 });
+    await revealFirstReview(page, "5");
 
     await page.getByRole("button", { name: /Play again/i }).first().click();
     await expect(page.getByText(/Guess the rating/i).first()).toBeVisible();

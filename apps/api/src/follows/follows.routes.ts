@@ -13,21 +13,31 @@ followsRouter.post("/:userId", requireAuth, async (req: AuthenticatedRequest, re
       return;
     }
 
-    await prisma.follow.upsert({
-      where: { followerId_followingId: { followerId, followingId } },
-      create: { followerId, followingId },
-      update: {},
+    const { isNewFollow } = await prisma.$transaction(async (tx) => {
+      const existing = await tx.follow.findUnique({
+        where: { followerId_followingId: { followerId, followingId } },
+      });
+
+      if (existing) {
+        return { isNewFollow: false };
+      }
+
+      await tx.follow.create({ data: { followerId, followingId } });
+      return { isNewFollow: true };
     });
 
-    await prisma.notification.create({
-      data: {
-        userId: followingId,
-        type: "FOLLOW",
-        title: "New follower",
-        body: `${req.user!.email} started following you`,
-        data: { followerId },
-      },
-    });
+    if (isNewFollow) {
+      const actorName = req.user!.displayName || req.user!.username || "Someone";
+      await prisma.notification.create({
+        data: {
+          userId: followingId,
+          type: "FOLLOW",
+          title: "New follower",
+          body: `${actorName} started following you`,
+          data: { followerId },
+        },
+      });
+    }
 
     res.status(201).json({ following: true });
   } catch (err) {

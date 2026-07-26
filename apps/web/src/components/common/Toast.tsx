@@ -7,7 +7,11 @@ export function ToastContainer() {
   const { toasts, removeToast } = useUIStore();
 
   return (
-    <div className="pointer-events-none fixed bottom-24 left-1/2 z-50 flex w-full max-w-sm -translate-x-1/2 flex-col gap-2 px-4">
+    <div
+      className="pointer-events-none fixed bottom-24 left-1/2 z-50 flex w-full max-w-sm -translate-x-1/2 flex-col gap-2 px-4"
+      aria-live="polite"
+      aria-atomic="true"
+    >
       <AnimatePresence>
         {toasts.map((toast) => (
           <ToastItem key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
@@ -38,14 +42,17 @@ function ToastItem({
 
   const Icon = toast.type === "success" ? CheckCircle2 : toast.type === "error" ? XCircle : Info;
 
+  const role = toast.type === "error" ? "alert" : "status";
+
   return (
     <motion.div
+      role={role}
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 10, scale: 0.95 }}
       className={`pointer-events-auto flex items-center justify-center gap-2 rounded-2xl border bg-gradient-to-r ${styles} px-4 py-3 text-center text-sm font-bold shadow-lg backdrop-blur-md`}
     >
-      <Icon className="h-4 w-4 shrink-0" />
+      <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
       {toast.message}
     </motion.div>
   );

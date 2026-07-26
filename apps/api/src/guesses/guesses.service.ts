@@ -25,6 +25,13 @@ export async function submitGuess(userId: string, reviewId: string, input: Submi
   const score = calculateGuessScore(review.rating, input.guessedRating);
   const isCorrect = score === 10;
 
+  // Determine whether this is a new guess before upserting so we don't
+  // inflate denormalized counts when a user updates their guess.
+  const existingGuess = await prisma.guess.findUnique({
+    where: { userId_reviewId: { userId, reviewId } },
+  });
+  const isNewGuess = !existingGuess;
+
   const guess = await prisma.guess.upsert({
     where: { userId_reviewId: { userId, reviewId } },
     update: { guessedRating: input.guessedRating, score, isCorrect },
@@ -37,23 +44,32 @@ export async function submitGuess(userId: string, reviewId: string, input: Submi
     },
   });
 
-  // Update denormalized review engagement metrics.
-  const previousExactCount = await prisma.guess.count({
-    where: { reviewId, isCorrect: true },
-  });
+  if (isNewGuess) {
+    // Update denormalized review engagement metrics only for new guesses.
+    const exactGuessCount = await prisma.guess.count({
+      where: { reviewId, isCorrect: true },
+    });
 
-  await prisma.review.update({
-    where: { id: reviewId },
-    data: {
-      guessCount: { increment: 1 },
-      exactGuessCount: previousExactCount,
-    },
-  });
+    await prisma.review.update({
+      where: { id: reviewId },
+      data: {
+        guessCount: { increment: 1 },
+        exactGuessCount: exactGuessCount,
+      },
+    });
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: { totalGuesses: { increment: 1 }, totalPoints: { increment: score } },
-  });
+    await prisma.user.update({
+      where: { id: userId },
+      data: { totalGuesses: { increment: 1 }, totalPoints: { increment: score } },
+    });
+  } else if (existingGuess.score !== score) {
+    // Adjust the user's points by the delta when an existing guess changes.
+    const scoreDelta = score - existingGuess.score;
+    await prisma.user.update({
+      where: { id: userId },
+      data: { totalPoints: { increment: scoreDelta } },
+    });
+  }
 
   // Gamification updates (fire-and-forget)
   updateStreak(userId)

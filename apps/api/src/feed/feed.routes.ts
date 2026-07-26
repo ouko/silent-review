@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import { optionalAuth, requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import {
   getForYouFeed,
@@ -9,10 +10,12 @@ import {
 
 export const feedRouter = Router();
 
+const LimitSchema = z.coerce.number().int().min(1).max(50).default(10);
+
 feedRouter.get("/", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const cursor = req.query.cursor as string | undefined;
-    const limit = Math.min(Number(req.query.limit ?? 10), 50);
+    const limit = LimitSchema.parse(req.query.limit);
     const feed = await getForYouFeed(req.user?.id, cursor, limit);
     res.json(feed);
   } catch (err) {
@@ -23,7 +26,7 @@ feedRouter.get("/", optionalAuth, async (req: AuthenticatedRequest, res, next) =
 feedRouter.get("/following", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const cursor = req.query.cursor as string | undefined;
-    const limit = Math.min(Number(req.query.limit ?? 10), 50);
+    const limit = LimitSchema.parse(req.query.limit);
     const feed = await getFollowingFeed(req.user!.id, cursor, limit);
     res.json(feed);
   } catch (err) {
@@ -34,7 +37,7 @@ feedRouter.get("/following", requireAuth, async (req: AuthenticatedRequest, res,
 feedRouter.get("/trending", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const cursor = req.query.cursor as string | undefined;
-    const limit = Math.min(Number(req.query.limit ?? 10), 50);
+    const limit = LimitSchema.parse(req.query.limit);
     const feed = await getTrendingFeed(cursor, limit);
     res.json(feed);
   } catch (err) {
@@ -45,7 +48,7 @@ feedRouter.get("/trending", optionalAuth, async (req: AuthenticatedRequest, res,
 feedRouter.get("/category/:category", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const cursor = req.query.cursor as string | undefined;
-    const limit = Math.min(Number(req.query.limit ?? 10), 50);
+    const limit = LimitSchema.parse(req.query.limit);
     const feed = await getCategoryFeed(req.params.category, cursor, limit);
     res.json(feed);
   } catch (err) {

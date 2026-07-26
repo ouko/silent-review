@@ -29,33 +29,39 @@ likesRouter.post("/reviews/:reviewId", requireAuth, async (req: AuthenticatedReq
       return;
     }
 
-    const existing = await prisma.like.findUnique({
-      where: { userId_reviewId: { userId, reviewId } },
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await tx.like.findUnique({
+        where: { userId_reviewId: { userId, reviewId } },
+      });
+
+      if (existing) {
+        await tx.like.delete({ where: { id: existing.id } });
+        await tx.review.update({ where: { id: reviewId }, data: { likeCount: { decrement: 1 } } });
+        const count = await tx.like.count({ where: { reviewId } });
+        return { liked: false, count, createdNotification: false };
+      }
+
+      await tx.like.create({ data: { userId, reviewId } });
+      await tx.review.update({ where: { id: reviewId }, data: { likeCount: { increment: 1 } } });
+      const count = await tx.like.count({ where: { reviewId } });
+      return { liked: true, count, createdNotification: true };
     });
 
-    if (existing) {
-      await prisma.like.delete({ where: { id: existing.id } });
-      await prisma.review.update({ where: { id: reviewId }, data: { likeCount: { decrement: 1 } } });
-      res.json({ liked: false, count: await prisma.like.count({ where: { reviewId } }) });
-      return;
-    }
-
-    await prisma.like.create({ data: { userId, reviewId } });
-    await prisma.review.update({ where: { id: reviewId }, data: { likeCount: { increment: 1 } } });
-
-    if (review.userId !== userId) {
+    if (result.liked && review.userId !== userId) {
+      const actorName = req.user!.displayName || req.user!.username || "Someone";
       await prisma.notification.create({
         data: {
           userId: review.userId,
           type: "LIKE",
           title: "New like",
-          body: `${req.user!.email} liked your review`,
+          body: `${actorName} liked your review`,
           data: { reviewId, userId },
         },
       });
     }
 
-    res.status(201).json({ liked: true, count: await prisma.like.count({ where: { reviewId } }) });
+    const status = result.liked ? 201 : 200;
+    res.status(status).json({ liked: result.liked, count: result.count });
   } catch (err) {
     next(err);
   }

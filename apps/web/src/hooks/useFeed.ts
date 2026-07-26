@@ -28,6 +28,9 @@ export type FeedType = "for-you" | "following" | "trending";
 export function useFeed(feedType: FeedType = "for-you", category?: string) {
   return useInfiniteQuery<FeedResponse>({
     queryKey: ["feed", feedType, category],
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams();
       if (pageParam) params.set("cursor", String(pageParam));
