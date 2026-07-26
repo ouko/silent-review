@@ -17,6 +17,21 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 cd "${PROJECT_ROOT}"
 
+BLUE='\033[0;34m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+log() { echo -e "${BLUE}[dev-lan]${NC} $1"; }
+success() { echo -e "${GREEN}[dev-lan]${NC} $1"; }
+warn() { echo -e "${YELLOW}[dev-lan]${NC} $1"; }
+error() { echo -e "${RED}[dev-lan]${NC} $1"; }
+
+# Ignore SIGHUP so this script (and its children) survive when the parent
+# terminal closes, e.g. when run via scripts/dev-lan-daemon.sh.
+trap '' HUP
+
 # --- sanity checks ---
 if [ ! -f ".env" ]; then
   error "No .env file found. Run 'cp .env.example .env' first and fill in JWT_SECRET / JWT_REFRESH_SECRET."
@@ -28,17 +43,6 @@ if ! grep -qE '^JWT_SECRET=.{32,}' .env 2>/dev/null; then
   warn "Generate secrets with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
   warn "Then paste them into .env as JWT_SECRET and JWT_REFRESH_SECRET."
 fi
-
-BLUE='\033[0;34m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
-
-log() { echo -e "${BLUE}[dev-lan]${NC} $1"; }
-success() { echo -e "${GREEN}[dev-lan]${NC} $1"; }
-warn() { echo -e "${YELLOW}[dev-lan]${NC} $1"; }
-error() { echo -e "${RED}[dev-lan]${NC} $1"; }
 
 # --- detect LAN IP ---
 # Prefer the interface used for the default route (the one that reaches the

@@ -72,12 +72,18 @@ start_daemon() {
   fi
 
   cleanup_stray
-  rm -f "${PID_FILE}" "${LOG_FILE}"
+  rm -f "${PID_FILE}"
 
   log "Starting LAN dev stack in the background..."
   log "Log file: ${LOG_FILE}"
 
-  nohup bash "${PROJECT_ROOT}/scripts/dev-lan.sh" > "${LOG_FILE}" 2>&1 &
+  {
+    echo ""
+    echo "===== dev-lan-daemon session started $(date '+%Y-%m-%d %H:%M:%S') ====="
+    echo ""
+  } >> "${LOG_FILE}"
+
+  nohup bash "${PROJECT_ROOT}/scripts/dev-lan.sh" >> "${LOG_FILE}" 2>&1 &
   local pid=$!
   echo "${pid}" > "${PID_FILE}"
 
