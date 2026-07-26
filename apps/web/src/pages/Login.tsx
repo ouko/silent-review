@@ -39,9 +39,22 @@ export function Login() {
       setAccessToken(accessToken);
       setLoading(false);
       navigate("/");
-    } catch {
+    } catch (err) {
       setIsLoading(false);
-      setError("Invalid email or password");
+      const axiosError = err as { message?: string; response?: { status?: number; data?: { message?: string } } };
+      const message = axiosError.message ?? String(err);
+      const status = axiosError.response?.status;
+      const serverMessage = axiosError.response?.data?.message;
+
+      if (!status && (message.includes("Network Error") || message.includes("ECONNREFUSED"))) {
+        setError("Cannot reach the API server. Make sure the dev stack is running and try again.");
+      } else if (status === 401 || status === 403 || serverMessage?.toLowerCase().includes("invalid")) {
+        setError("Invalid email or password");
+      } else if (serverMessage) {
+        setError(serverMessage);
+      } else {
+        setError(message || "Something went wrong. Please try again.");
+      }
     }
   }
 
