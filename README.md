@@ -51,6 +51,14 @@ pnpm dev
 - API: http://localhost:3001
 - API health check: http://localhost:3001/health
 
+### Access from an iPhone on the same Wi-Fi
+
+```bash
+bash scripts/dev-lan.sh
+```
+
+The script prints a LAN URL (e.g. `http://192.168.1.42:5173`). Open that URL in Safari on your iPhone. Both devices must be on the same network.
+
 ### Demo credentials
 
 The seed script creates demo accounts you can use to try the app:

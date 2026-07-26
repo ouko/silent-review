@@ -19,6 +19,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Bind to all interfaces so the app can be reached from other devices on
+    // the same network (e.g. an iPhone during local mobile testing).
+    host: true,
     proxy: {
       "/api": {
         target: process.env.VITE_API_URL || "http://localhost:3001",
