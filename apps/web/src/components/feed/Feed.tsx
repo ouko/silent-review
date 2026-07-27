@@ -166,6 +166,7 @@ export function Feed({
                   icon={<Share2 className="h-5 w-5" />}
                   count={review.shareCount}
                   onClick={() => setShareReview(review)}
+                  aria-label="Share review"
                 />
               </div>
 
@@ -237,13 +238,16 @@ function FeedActionButton({
   icon,
   count,
   onClick,
+  "aria-label": ariaLabel,
 }: {
   icon: React.ReactNode;
   count: number;
   onClick: () => void;
+  "aria-label"?: string;
 }) {
   return (
     <button
+      aria-label={ariaLabel}
       onClick={(e) => {
         e.stopPropagation();
         onClick();

@@ -91,3 +91,36 @@ test.describe("guess and reveal journey", () => {
     await expect(page.getByText(/Guess the rating/i).first()).toBeVisible();
   });
 });
+
+test.describe("share sheet scrollability", () => {
+  test.use({ viewport: { width: 375, height: 550 } });
+
+  test("share sheet scrolls to reveal bottom actions on a small viewport", async ({ page }) => {
+    await registerFreshUser(page);
+    await prepareFeedForTesting(page);
+
+    // Open the share sheet from the feed action bar before revealing.
+    const shareButton = page.getByRole("button", { name: /Share review/i }).first();
+    await expect(shareButton).toBeVisible();
+    await shareButton.click();
+
+    const copyLinkButton = page.getByRole("button", { name: /Copy link/i });
+    await expect(copyLinkButton).toBeAttached();
+
+    // On a very small screen the bottom actions start below the fold.
+    const initiallyInViewport = await copyLinkButton.isVisible().catch(() => false);
+    if (initiallyInViewport) {
+      // If the device is large enough that it already fits, still verify it is
+      // reachable by scrolling the sheet to the bottom.
+      await copyLinkButton.scrollIntoViewIfNeeded();
+    }
+
+    // Scroll the share sheet panel to the bottom and confirm the action is visible.
+    await page.locator('[role="dialog"]').evaluate((el) => {
+      el.scrollTo({ top: el.scrollHeight, behavior: "instant" });
+    });
+
+    await expect(copyLinkButton).toBeVisible();
+    await expect(copyLinkButton).toBeInViewport();
+  });
+});

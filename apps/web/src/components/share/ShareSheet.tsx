@@ -126,7 +126,7 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden bg-black/80 p-4"
       role="presentation"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -137,7 +137,12 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
         role="dialog"
         aria-modal="true"
         aria-labelledby="share-title"
-        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-zinc-900 p-5 pb-8 text-white"
+        className="w-full max-w-md flex-shrink-0 max-h-[90vh] overflow-y-auto rounded-2xl bg-zinc-900 p-5 text-white"
+        style={{
+          WebkitOverflowScrolling: "touch",
+          overscrollBehaviorY: "contain",
+          paddingBottom: "max(2rem, env(safe-area-inset-bottom))",
+        }}
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 id="share-title" className="text-lg font-bold">Share review</h2>
