@@ -3,7 +3,9 @@ import { useExport } from "../../hooks/useExport";
 import { ExportProgress } from "./ExportProgress";
 import { QRCode } from "./QRCode";
 import { listPlatforms, type PlatformId } from "../../lib/export/platformTemplates";
-import { X, Download, Share2 } from "lucide-react";
+import { buildShareUrl } from "../../lib/share/urlBuilder";
+import { copyToClipboard } from "../../lib/share/copyToClipboard";
+import { X, Download, Share2, Link2 } from "lucide-react";
 
 interface ShareSheetProps {
   reviewId: string;
@@ -18,6 +20,7 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
   const exportApi = useExport();
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformId>("tiktok");
   const [showQR, setShowQR] = useState(false);
+  const [copied, setCopied] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -76,6 +79,17 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
         text: `Can you guess the rating for ${productName}?`,
         url: deepLinkUrl,
       }).catch(() => {});
+    }
+  }
+
+  async function handleCopyLink() {
+    const url = buildShareUrl(reviewId, productName, { provider: "copy" });
+    try {
+      await copyToClipboard(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Ignore copy failures (e.g. user denied permission).
     }
   }
 
@@ -159,6 +173,14 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
             <QRCode value={deepLinkUrl} size={160} />
           </div>
         )}
+
+        <button
+          onClick={handleCopyLink}
+          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 py-3 text-sm font-semibold text-white"
+        >
+          <Link2 className="h-4 w-4" />
+          {copied ? "Link copied!" : "Copy link"}
+        </button>
 
         {typeof navigator.share === "function" && (
           <button
