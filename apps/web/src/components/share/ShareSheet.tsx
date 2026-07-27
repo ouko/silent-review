@@ -4,7 +4,7 @@ import { ExportProgress } from "./ExportProgress";
 import { QRCode } from "./QRCode";
 import { listPlatforms, type PlatformId } from "../../lib/export/platformTemplates";
 import { generateCaption } from "../../lib/export/captionGenerator";
-import { buildShareUrl } from "../../lib/share/urlBuilder";
+import { buildShareUrl, type ShareUrlOptions } from "../../lib/share/urlBuilder";
 import { copyToClipboard } from "../../lib/share/copyToClipboard";
 import { X, Download, Share2, Link2, Copy } from "lucide-react";
 
@@ -71,15 +71,19 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
 
   async function handleExport() {
     await exportApi.generate({ videoUrl, platform: selectedPlatform, productName, rating });
+    trackShare(selectedPlatform);
   }
 
   function handleNativeShare() {
     if (navigator.share) {
-      navigator.share({
-        title: "Silent Review",
-        text: `Can you guess the rating for ${productName}?`,
-        url: deepLinkUrl,
-      }).catch(() => {});
+      navigator
+        .share({
+          title: "Silent Review",
+          text: `Can you guess the rating for ${productName}?`,
+          url: deepLinkUrl,
+        })
+        .then(() => trackShare("native"))
+        .catch(() => {});
     }
   }
 
@@ -89,9 +93,25 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
       await copyToClipboard(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      trackShare("copy");
     } catch {
       // Ignore copy failures (e.g. user denied permission).
     }
+  }
+
+  function trackShare(provider: string) {
+    const url = buildShareUrl(reviewId, productName, { provider: provider as ShareUrlOptions["provider"] });
+    const params = new URL(url).searchParams;
+    fetch("/api/shares", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reviewId,
+        provider,
+        utmCampaign: params.get("utm_campaign"),
+        utmContent: params.get("utm_content"),
+      }),
+    }).catch(() => {});
   }
 
   const caption = useMemo(
@@ -185,7 +205,10 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
               : "Export video"}
           </button>
           <button
-            onClick={() => exportApi.download(`silent-review-${reviewId}-${selectedPlatform}.webm`)}
+            onClick={() => {
+              exportApi.download(`silent-review-${reviewId}-${selectedPlatform}.webm`);
+              trackShare("download");
+            }}
             disabled={!exportApi.blobUrl}
             className="flex items-center justify-center gap-2 rounded-xl bg-white/10 py-3 font-semibold text-white disabled:opacity-50"
           >

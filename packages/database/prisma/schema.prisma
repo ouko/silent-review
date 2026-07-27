@@ -38,6 +38,7 @@ model User {
   guesses       Guess[]
   likes         Like[]
   comments      Comment[]
+  shareEvents   ShareEvent[]
   followers     Follow[]       @relation("following")
   following     Follow[]       @relation("follower")
   refreshTokens RefreshToken[]
@@ -156,9 +157,10 @@ model Review {
   updatedAt DateTime     @updatedAt
   deletedAt DateTime?
 
-  guesses  Guess[]
-  likes    Like[]
-  comments Comment[]
+  guesses      Guess[]
+  likes        Like[]
+  comments     Comment[]
+  shareEvents  ShareEvent[]
 
   @@index([userId])
   @@index([productId])
@@ -221,6 +223,24 @@ model Comment {
   @@index([userId])
   @@index([parentId])
   @@index([deletedAt])
+}
+
+model ShareEvent {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewId    String
+  review      Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  provider    String
+  utmCampaign String?
+  utmContent  String?
+  ipHash      String?
+  createdAt   DateTime @default(now())
+
+  @@index([reviewId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([provider, createdAt])
 }
 
 model Follow {
