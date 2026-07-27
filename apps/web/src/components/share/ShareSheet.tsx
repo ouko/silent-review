@@ -1,11 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useExport } from "../../hooks/useExport";
 import { ExportProgress } from "./ExportProgress";
 import { QRCode } from "./QRCode";
 import { listPlatforms, type PlatformId } from "../../lib/export/platformTemplates";
+import { generateCaption } from "../../lib/export/captionGenerator";
 import { buildShareUrl } from "../../lib/share/urlBuilder";
 import { copyToClipboard } from "../../lib/share/copyToClipboard";
-import { X, Download, Share2, Link2 } from "lucide-react";
+import { X, Download, Share2, Link2, Copy } from "lucide-react";
 
 interface ShareSheetProps {
   reviewId: string;
@@ -93,6 +94,12 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
     }
   }
 
+  const caption = useMemo(
+    () => generateCaption(productName, selectedPlatform, rating),
+    [productName, selectedPlatform, rating]
+  );
+  const fullCaptionText = `${caption.caption}\n\n${caption.hashtags}\n${caption.mentions}`;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 p-4"
@@ -140,6 +147,28 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
           {exportApi.blobUrl && (
             <video src={exportApi.blobUrl} className="max-h-48 w-full rounded-xl" controls muted />
           )}
+        </div>
+
+        <div className="mb-4 space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wide text-white/50">Caption</label>
+          <textarea
+            readOnly
+            value={fullCaptionText}
+            className="h-24 w-full resize-none rounded-xl bg-white/5 p-3 text-sm text-white outline-none focus:ring-1 focus:ring-white/20"
+          />
+          <button
+            onClick={async () => {
+              try {
+                await copyToClipboard(fullCaptionText);
+              } catch {
+                // Ignore copy failures.
+              }
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+          >
+            <Copy className="h-4 w-4" />
+            Copy caption
+          </button>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
