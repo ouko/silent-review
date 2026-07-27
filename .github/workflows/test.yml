@@ -89,7 +89,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browsers
-        run: pnpm exec playwright install chromium
+        run: pnpm exec playwright install chromium webkit
 
       - name: Build packages
         run: pnpm --filter shared build && pnpm --filter database build && pnpm --filter api build && pnpm --filter web build
