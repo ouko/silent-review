@@ -149,15 +149,19 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
             className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-3 font-semibold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Share2 className="h-4 w-4" />
-            {exportApi.blobUrl ? "Regenerate" : "Export video"}
+            {exportApi.blobUrl
+              ? "Regenerate"
+              : selectedPlatform === "tiktok"
+              ? "Export for TikTok"
+              : "Export video"}
           </button>
           <button
-            onClick={() => exportApi.download(`silent-review-${reviewId}.webm`)}
+            onClick={() => exportApi.download(`silent-review-${reviewId}-${selectedPlatform}.webm`)}
             disabled={!exportApi.blobUrl}
             className="flex items-center justify-center gap-2 rounded-xl bg-white/10 py-3 font-semibold text-white disabled:opacity-50"
           >
             <Download className="h-4 w-4" />
-            Download
+            Save video
           </button>
         </div>
 

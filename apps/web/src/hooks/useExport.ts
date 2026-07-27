@@ -28,7 +28,15 @@ export function useExport() {
     const a = document.createElement("a");
     a.href = blobUrl;
     a.download = filename || "silent-review.webm";
+    a.style.display = "none";
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
+  }
+
+  function saveToCameraRoll(filename?: string) {
+    // On mobile, the OS save dialog is triggered by the same download flow.
+    download(filename);
   }
 
   function cleanup() {
@@ -38,5 +46,5 @@ export function useExport() {
     }
   }
 
-  return { generate, download, cleanup, progress, blobUrl };
+  return { generate, download, saveToCameraRoll, cleanup, progress, blobUrl };
 }
