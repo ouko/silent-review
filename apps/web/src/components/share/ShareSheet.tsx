@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useExport } from "../../hooks/useExport";
 import { ExportProgress } from "./ExportProgress";
 import { QRCode } from "./QRCode";
+import { FramePicker } from "./FramePicker";
 import { listPlatforms, type PlatformId } from "../../lib/export/platformTemplates";
 import { generateCaption } from "../../lib/export/captionGenerator";
 import { buildShareUrl, type ShareUrlOptions } from "../../lib/share/urlBuilder";
@@ -22,6 +23,8 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
   const [selectedPlatform, setSelectedPlatform] = useState<PlatformId>("tiktok");
   const [showQR, setShowQR] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showFramePicker, setShowFramePicker] = useState(false);
+  const [coverBlobUrl, setCoverBlobUrl] = useState<string | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
 
@@ -66,8 +69,9 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       previousFocusRef.current?.focus();
+      if (coverBlobUrl) URL.revokeObjectURL(coverBlobUrl);
     };
-  }, [onClose]);
+  }, [onClose, coverBlobUrl]);
 
   async function handleExport() {
     await exportApi.generate({ videoUrl, platform: selectedPlatform, productName, rating });
@@ -228,6 +232,33 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
           <div className="mt-3 flex justify-center rounded-xl bg-white p-3">
             <QRCode value={deepLinkUrl} size={160} />
           </div>
+        )}
+
+        <button
+          onClick={() => setShowFramePicker((s) => !s)}
+          className="mt-3 w-full rounded-xl bg-white/5 py-2 text-sm font-medium text-white/70"
+        >
+          {showFramePicker ? "Hide cover picker" : "Pick TikTok cover"}
+        </button>
+
+        {showFramePicker && (
+          <div className="mt-3">
+            <FramePicker
+              videoUrl={videoUrl}
+              onSelect={(blob) => {
+                if (coverBlobUrl) URL.revokeObjectURL(coverBlobUrl);
+                setCoverBlobUrl(URL.createObjectURL(blob));
+              }}
+            />
+          </div>
+        )}
+
+        {coverBlobUrl && (
+          <img
+            src={coverBlobUrl}
+            alt="Selected TikTok cover"
+            className="mt-3 max-h-48 w-full rounded-xl object-contain"
+          />
         )}
 
         <button

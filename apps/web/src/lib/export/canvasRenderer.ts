@@ -122,6 +122,59 @@ export function renderShareableVideo(options: RenderOptions): Promise<Blob> {
   });
 }
 
+export function captureFrame(
+  videoUrl: string,
+  time: number,
+  platform: PlatformId = "tiktok"
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const template = getPlatformTemplate(platform);
+    const video = document.createElement("video");
+    video.src = videoUrl;
+    video.crossOrigin = "anonymous";
+    video.muted = true;
+    video.playsInline = true;
+    video.currentTime = time;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = template.width;
+    canvas.height = template.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return reject(new Error("Could not get canvas context"));
+
+    video.onerror = () => reject(new Error("Failed to load video"));
+    video.onseeked = () => {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const videoAspect = video.videoWidth / video.videoHeight;
+      const canvasAspect = canvas.width / canvas.height;
+      let drawW = canvas.width;
+      let drawH = canvas.height;
+      let drawX = 0;
+      let drawY = 0;
+      if (videoAspect > canvasAspect) {
+        drawH = canvas.width / videoAspect;
+        drawY = (canvas.height - drawH) / 2;
+      } else {
+        drawW = canvas.height * videoAspect;
+        drawX = (canvas.width - drawW) / 2;
+      }
+      ctx.drawImage(video, drawX, drawY, drawW, drawH);
+
+      canvas.toBlob(
+        (blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error("Could not create frame blob"));
+        },
+        "image/jpeg",
+        0.92
+      );
+    };
+    video.load();
+  });
+}
+
 function wrapText(
   ctx: CanvasRenderingContext2D,
   text: string,
