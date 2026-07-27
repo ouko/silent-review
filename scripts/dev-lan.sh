@@ -32,10 +32,30 @@ error() { echo -e "${RED}[dev-lan]${NC} $1"; }
 # terminal closes, e.g. when run via scripts/dev-lan-daemon.sh.
 trap '' HUP
 
-# --- sanity checks ---
+# --- one-time setup ---
+# dev-lan.sh is often run directly on a fresh clone, so make sure the
+# environment, dependencies, database, and built workspace packages exist.
 if [ ! -f ".env" ]; then
-  error "No .env file found. Run 'cp .env.example .env' first and fill in JWT_SECRET / JWT_REFRESH_SECRET."
-  exit 1
+  if [ -f ".env.example" ]; then
+    log "Creating .env from .env.example with generated secrets"
+    cp .env.example .env
+    node -e "
+const fs = require('fs');
+const crypto = require('crypto');
+const envPath = '.env';
+let env = fs.readFileSync(envPath, 'utf8');
+const secret = crypto.randomBytes(32).toString('hex');
+const refreshSecret = crypto.randomBytes(32).toString('hex');
+env = env.replace(/^JWT_SECRET=.*$/m, 'JWT_SECRET=' + secret);
+env = env.replace(/^JWT_REFRESH_SECRET=.*$/m, 'JWT_REFRESH_SECRET=' + refreshSecret);
+fs.writeFileSync(envPath, env);
+"
+  else
+    error ".env.example not found. Cannot create .env"
+    exit 1
+  fi
+else
+  log ".env already exists"
 fi
 
 if ! grep -qE '^JWT_SECRET=.{32,}' .env 2>/dev/null; then
@@ -43,6 +63,47 @@ if ! grep -qE '^JWT_SECRET=.{32,}' .env 2>/dev/null; then
   warn "Generate secrets with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
   warn "Then paste them into .env as JWT_SECRET and JWT_REFRESH_SECRET."
 fi
+
+if [ ! -d "node_modules" ]; then
+  log "Installing dependencies..."
+  pnpm install
+else
+  log "Dependencies already installed"
+fi
+
+if ! docker ps --format '{{.Names}}' | grep -q "^silent-review-postgres$"; then
+  log "Starting PostgreSQL and Redis..."
+  docker compose up -d
+else
+  log "PostgreSQL and Redis already running"
+fi
+
+log "Waiting for PostgreSQL to be healthy..."
+for i in {1..30}; do
+  if docker exec silent-review-postgres pg_isready -U postgres -d silent_review >/dev/null 2>&1; then
+    success "PostgreSQL is ready"
+    break
+  fi
+  if [ "$i" -eq 30 ]; then
+    error "PostgreSQL did not become healthy in time"
+    exit 1
+  fi
+  sleep 1
+done
+
+log "Generating Prisma client..."
+pnpm exec dotenv -e .env -- pnpm --filter database generate
+
+if ! pnpm exec dotenv -e .env -- pnpm --filter database exec prisma migrate status 2>/dev/null | grep -q "Database schema is up to date"; then
+  log "Running database migrations..."
+  pnpm exec dotenv -e .env -- pnpm --filter database run deploy
+else
+  success "Database schema is already up to date"
+fi
+
+log "Building workspace packages..."
+pnpm --filter shared build
+pnpm --filter database build
 
 # --- detect LAN IP ---
 # Prefer the interface used for the default route (the one that reaches the

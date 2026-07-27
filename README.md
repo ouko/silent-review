@@ -57,7 +57,7 @@ pnpm dev
 bash scripts/dev-lan.sh
 ```
 
-The script prints a LAN URL (e.g. `http://192.168.1.42:5173`). Open that URL in Safari on your iPhone. Both devices must be on the same network.
+The script handles one-time setup automatically (creates `.env`, installs dependencies, starts PostgreSQL/Redis, runs migrations, and builds workspace packages) before exposing the app on your LAN. It prints a LAN URL (e.g. `http://192.168.1.42:5173`). Open that URL in Safari on your iPhone. Both devices must be on the same network.
 
 **Keep it running in the background**
 
@@ -117,6 +117,19 @@ The seed script creates demo accounts you can use to try the app:
 | `pnpm db:migrate` | Run Prisma migrations |
 | `pnpm db:studio` | Open Prisma Studio |
 | `pnpm deploy` | Deploy to production server |
+
+## Testing
+
+Run the test suites from the repo root:
+
+```bash
+pnpm typecheck        # Type-check all packages and apps
+pnpm --filter web test # Web component tests
+pnpm --filter api test # API unit/integration tests
+pnpm test:e2e         # Playwright E2E tests
+```
+
+E2E tests require the dev stack to be running (`pnpm start:dev` or `bash scripts/dev-lan-daemon.sh start`). They run against `http://localhost:5173` by default.
 
 ## Project Structure
 

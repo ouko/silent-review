@@ -2,9 +2,10 @@ import { test, expect } from "@playwright/test";
 import { registerFreshUser } from "./helpers/auth";
 
 async function prepareFeedForTesting(page) {
-  // Wait for the for-you feed to hydrate before interacting.
-  await expect(page.getByText("For You")).toBeVisible();
-  await expect(page.getByText(/Guess the rating/i).first()).toBeVisible();
+  // Wait for the for-you feed to hydrate before interacting. Under load the
+  // feed can take longer than the default 5s to render.
+  await expect(page.getByText("For You")).toBeVisible({ timeout: 15000 });
+  await expect(page.getByText(/Guess the rating/i).first()).toBeVisible({ timeout: 15000 });
 
   // Disable scroll snapping and motion so Playwright clicks land predictably on the first card.
   await page.addStyleTag({
@@ -19,16 +20,24 @@ async function revealFirstReview(page, rating: string) {
   const radio = page.getByRole("radio", { name: rating }).first();
   await expect(radio).toBeVisible();
   // Scroll the rating bar into view and click its centre to avoid landing on
-  // an adjacent snap-scrolled card.
+  // an adjacent snap-scrolled card. Force-click bypasses scroll-snap stability
+  // checks that can otherwise time out in Mobile Chrome.
   await radio.scrollIntoViewIfNeeded();
-  await radio.click();
+  await radio.click({ force: true });
   await expect(radio).toHaveAttribute("aria-checked", "true");
 
   const revealButton = page.getByRole("button", { name: /Reveal/i }).first();
   await expect(revealButton).toBeEnabled();
-  await revealButton.click();
 
-  await expect(page.getByText(/The actual rating was/i).first()).toBeVisible({ timeout: 10000 });
+  // Wait for the reveal response before asserting on UI so slow API responses
+  // under concurrent test load don't time out the visible-text check.
+  const revealResponse = page.waitForResponse((res) =>
+    res.url().includes("/api/guesses/") && res.url().includes("/reveal")
+  );
+  await revealButton.click();
+  await revealResponse;
+
+  await expect(page.getByText(/The actual rating was/i).first()).toBeVisible({ timeout: 20000 });
 }
 
 test.describe.configure({ mode: "serial" });

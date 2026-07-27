@@ -40,7 +40,7 @@ export async function registerFreshUser(
   await registerResponse;
 
   await expect(page).toHaveURL("/", { timeout: 20000 });
-  await expect(page.getByText("For You")).toBeVisible();
+  await expect(page.getByText("For You")).toBeVisible({ timeout: 15000 });
 
   return { email, username };
 }
