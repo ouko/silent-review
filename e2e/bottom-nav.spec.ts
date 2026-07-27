@@ -1,4 +1,5 @@
 import { test, expect, type Locator } from "@playwright/test";
+import { registerFreshUser } from "./helpers/auth";
 
 test.setTimeout(60000);
 
@@ -51,15 +52,7 @@ test.describe("bottom navigation", () => {
 
   test("is visible on home and hides/shows with touch swipe", async ({ page }) => {
     // Use a fresh user so this test does not race with onboarding over the demo account.
-    const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
-    await page.goto("/register");
-    await page.getByPlaceholder("Email").fill(`e2e-${suffix}@silentreview.app`);
-    await page.getByPlaceholder("Username").fill(`e2enav${suffix}`);
-    await page.getByPlaceholder("Password").fill("DemoPass123!");
-    await page.getByRole("button", { name: /sign up with email/i }).click();
-
-    await expect(page).toHaveURL("/", { timeout: 10000 });
-    await expect(page.getByText("For You")).toBeVisible();
+    await registerFreshUser(page);
 
     const nav = page.locator("nav").filter({ hasText: "Home" });
     const navWrapper = nav.locator("..");

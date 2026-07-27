@@ -19,6 +19,9 @@ build
 *.log
 logs
 
+# Dev daemon runtime files
+.dev-lan-daemon.pid
+
 # Testing
 test-results/
 playwright-report/

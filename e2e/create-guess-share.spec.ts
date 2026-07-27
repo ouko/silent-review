@@ -1,14 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { registerFreshUser } from "./helpers/auth";
 
-const DEMO_PASSWORD = "DemoPass123!";
-
-async function registerFreshUser(page, suffix: string) {
-  await page.goto("/register");
-  await page.getByPlaceholder("Email").fill(`e2e-${suffix}@silentreview.app`);
-  await page.getByPlaceholder("Username").fill(`e2euser${suffix}`);
-  await page.getByPlaceholder("Password").fill(DEMO_PASSWORD);
-  await page.getByRole("button", { name: /sign up with email/i }).click();
-  await expect(page).toHaveURL("/", { timeout: 10000 });
+async function prepareFeedForTesting(page) {
   // Wait for the for-you feed to hydrate before interacting.
   await expect(page.getByText("For You")).toBeVisible();
   await expect(page.getByText(/Guess the rating/i).first()).toBeVisible();
@@ -25,7 +18,11 @@ async function registerFreshUser(page, suffix: string) {
 async function revealFirstReview(page, rating: string) {
   const radio = page.getByRole("radio", { name: rating }).first();
   await expect(radio).toBeVisible();
+  // Scroll the rating bar into view and click its centre to avoid landing on
+  // an adjacent snap-scrolled card.
+  await radio.scrollIntoViewIfNeeded();
   await radio.click();
+  await expect(radio).toHaveAttribute("aria-checked", "true");
 
   const revealButton = page.getByRole("button", { name: /Reveal/i }).first();
   await expect(revealButton).toBeEnabled();
@@ -39,8 +36,8 @@ test.describe.configure({ mode: "serial" });
 test.describe("guess and reveal journey", () => {
   test.skip(({ browserName }) => browserName === "webkit", "desktop WebKit emulator is too flaky for this flow");
   test("fresh user can guess on a seeded review and reveal the rating", async ({ page }) => {
-    const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
-    await registerFreshUser(page, suffix);
+    await registerFreshUser(page);
+    await prepareFeedForTesting(page);
 
     await revealFirstReview(page, "7");
 
@@ -49,8 +46,8 @@ test.describe("guess and reveal journey", () => {
   });
 
   test("user can replay the same review", async ({ page }) => {
-    const suffix = `${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
-    await registerFreshUser(page, suffix);
+    await registerFreshUser(page);
+    await prepareFeedForTesting(page);
 
     await revealFirstReview(page, "5");
 

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { registerFreshUser, loginDemoUser } from "./helpers/auth";
 
 test.describe("onboarding", () => {
   test("guest can view login and register", async ({ page }) => {
@@ -14,25 +15,10 @@ test.describe("onboarding", () => {
   });
 
   test("guest can register and land on the feed", async ({ page }) => {
-    await page.goto("/register");
-
-    const timestamp = Date.now();
-    await page.getByPlaceholder("Email").fill(`e2e-${timestamp}@silentreview.app`);
-    await page.getByPlaceholder("Username").fill(`e2euser${timestamp}`);
-    await page.getByPlaceholder("Password").fill("E2EPass123!");
-    await page.getByRole("button", { name: /sign up with email/i }).click();
-
-    await expect(page).toHaveURL("/", { timeout: 10000 });
-    await expect(page.getByText("For You")).toBeVisible();
+    await registerFreshUser(page, { password: "E2EPass123!" });
   });
 
   test("existing demo user can log in", async ({ page }) => {
-    await page.goto("/login");
-    await page.getByPlaceholder("Email").fill("demo@silentreview.app");
-    await page.getByPlaceholder("Password").fill("DemoPass123!");
-    await page.getByRole("button", { name: /log in with email/i }).click();
-
-    await expect(page).toHaveURL("/", { timeout: 10000 });
-    await expect(page.getByText("For You")).toBeVisible();
+    await loginDemoUser(page);
   });
 });
