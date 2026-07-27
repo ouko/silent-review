@@ -137,7 +137,7 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
         role="dialog"
         aria-modal="true"
         aria-labelledby="share-title"
-        className="w-full max-w-md rounded-2xl bg-zinc-900 p-5 text-white"
+        className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl bg-zinc-900 p-5 pb-8 text-white"
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 id="share-title" className="text-lg font-bold">Share review</h2>

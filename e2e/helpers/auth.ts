@@ -3,15 +3,15 @@ import { type Page, expect } from "@playwright/test";
 export const DEMO_PASSWORD = "DemoPass123!";
 
 function uniqueSuffix(): string {
-  // Use crypto randomness plus a timestamp to avoid cross-worker collisions
-  // when multiple tests register users in parallel. Keep the result alphanumeric
+  // Use a full UUID plus a timestamp to avoid cross-worker collisions when
+  // multiple tests register users in parallel. Keep the result alphanumeric
   // and under 23 chars so "e2euser" + suffix stays within the API's 30-char
   // username limit (/^[a-zA-Z0-9_]+$/).
   const random =
     typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID().replace(/-/g, "").slice(0, 8)
-      : Math.random().toString(36).slice(2, 8);
-  return `${Date.now()}${random}`;
+      ? crypto.randomUUID().replace(/-/g, "")
+      : Math.random().toString(36).slice(2, 16) + Math.random().toString(36).slice(2, 16);
+  return `${Date.now()}${random}`.slice(0, 22);
 }
 
 export async function registerFreshUser(

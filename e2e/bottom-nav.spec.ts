@@ -1,8 +1,6 @@
 import { test, expect, type Locator } from "@playwright/test";
 import { registerFreshUser } from "./helpers/auth";
 
-test.setTimeout(60000);
-
 async function swipeOnFeed(feed: Locator, direction: "up" | "down") {
   // WebKit can be slow to return layout info; use getBoundingClientRect from
   // inside the page instead of Playwright's boundingBox helper.

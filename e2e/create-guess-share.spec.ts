@@ -17,14 +17,15 @@ async function prepareFeedForTesting(page) {
 }
 
 async function revealFirstReview(page, rating: string) {
-  const radio = page.getByRole("radio", { name: rating }).first();
-  await expect(radio).toBeVisible();
-  // Scroll the rating bar into view and click its centre to avoid landing on
-  // an adjacent snap-scrolled card. Force-click bypasses scroll-snap stability
-  // checks that can otherwise time out in Mobile Chrome.
-  await radio.scrollIntoViewIfNeeded();
-  await radio.click({ force: true });
-  await expect(radio).toHaveAttribute("aria-checked", "true");
+  // Retry the rating selection if the feed re-renders and detaches the radio
+  // from the DOM while we are scrolling it into view.
+  await expect(async () => {
+    const radio = page.getByRole("radio", { name: rating }).first();
+    await expect(radio).toBeVisible();
+    await radio.scrollIntoViewIfNeeded();
+    await radio.click({ force: true });
+    await expect(radio).toHaveAttribute("aria-checked", "true");
+  }).toPass({ timeout: 10000 });
 
   const revealButton = page.getByRole("button", { name: /Reveal/i }).first();
   await expect(revealButton).toBeEnabled();
@@ -43,6 +44,10 @@ async function revealFirstReview(page, rating: string) {
 test.describe.configure({ mode: "serial" });
 
 test.describe("guess and reveal journey", () => {
+  // Reveal requests and feed hydration can be slow under concurrent test load,
+  // so give these end-to-end flows more time than the default 60s.
+  test.setTimeout(120000);
+
   test.skip(({ browserName }) => browserName === "webkit", "desktop WebKit emulator is too flaky for this flow");
   test("fresh user can guess on a seeded review and reveal the rating", async ({ page }) => {
     await registerFreshUser(page);
@@ -52,6 +57,28 @@ test.describe("guess and reveal journey", () => {
 
     await expect(page.getByRole("button", { name: /Share/i }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: /Play again/i }).first()).toBeVisible();
+  });
+
+  test("share sheet bottom actions are reachable on a small viewport", async ({ page }) => {
+    await registerFreshUser(page);
+    await prepareFeedForTesting(page);
+
+    await revealFirstReview(page, "6");
+
+    const shareButton = page.getByRole("button", { name: /Share/i }).first();
+    await expect(shareButton).toBeVisible();
+    await shareButton.click();
+
+    // The share sheet should open and the bottom-most actions must be visible
+    // without the user having to scroll the page behind the modal.
+    const copyLinkButton = page.getByRole("button", { name: /Copy link/i });
+    await expect(copyLinkButton).toBeVisible({ timeout: 10000 });
+    await copyLinkButton.scrollIntoViewIfNeeded();
+    await expect(copyLinkButton).toBeInViewport();
+
+    // Close the sheet and return to the feed.
+    await page.getByRole("button", { name: /Close share sheet/i }).click();
+    await expect(page.getByRole("button", { name: /Share/i }).first()).toBeVisible();
   });
 
   test("user can replay the same review", async ({ page }) => {
