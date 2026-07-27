@@ -43,16 +43,24 @@ export function Feed({
   const reducedMotion = useReducedMotion();
   const { setItemRef, shouldPlay, shouldPreload, shouldRender } = useVideoFeed(reviews.length);
 
+  const touchStartY = useRef<number | null>(null);
+  const touchLastY = useRef<number | null>(null);
+
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const y = e.touches[0].clientY;
+    touchStartY.current = y;
+    touchLastY.current = y;
     if (containerRef.current?.scrollTop === 0) {
-      setPullStartY(e.touches[0].clientY);
+      setPullStartY(y);
     }
   }, []);
 
   const handleTouchMove = useCallback(
     (e: React.TouchEvent) => {
+      const y = e.touches[0].clientY;
+      touchLastY.current = y;
       if (pullStartY == null) return;
-      const delta = e.touches[0].clientY - pullStartY;
+      const delta = y - pullStartY;
       if (delta > 0) setPullDistance(Math.min(delta * 0.5, 90));
     },
     [pullStartY]
@@ -64,7 +72,20 @@ export function Feed({
     }
     setPullStartY(null);
     setPullDistance(0);
-  }, [pullDistance, onRefresh]);
+
+    // iOS Safari/Chrome throttle scroll events during momentum scrolling, so use
+    // the touch gesture itself as a reliable fallback for scroll direction.
+    if (onScrollDirection && touchStartY.current != null && touchLastY.current != null) {
+      const delta = touchStartY.current - touchLastY.current;
+      const threshold = 30;
+      if (Math.abs(delta) > threshold) {
+        // Finger moving up means content scrolls down; finger moving down means content scrolls up.
+        onScrollDirection(delta > 0 ? "down" : "up");
+      }
+    }
+    touchStartY.current = null;
+    touchLastY.current = null;
+  }, [pullDistance, onRefresh, onScrollDirection]);
 
   const lastScrollY = useRef(0);
 
@@ -88,7 +109,8 @@ export function Feed({
   return (
     <div
       ref={containerRef}
-      className="relative h-full snap-y snap-mandatory overflow-y-scroll"
+      className="relative h-full snap-y snap-mandatory overflow-y-scroll overscroll-y-contain"
+      style={{ WebkitOverflowScrolling: "touch" }}
       onScroll={handleScroll}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}

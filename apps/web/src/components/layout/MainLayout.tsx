@@ -19,7 +19,7 @@ export function MainLayout() {
   const shouldShowNav = showBottomNav && !hideNavOnAuth;
 
   return (
-    <div className="flex h-screen flex-col bg-black text-white">
+    <div className="flex h-dvh flex-col bg-black text-white">
       <main className="relative flex-1 overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div

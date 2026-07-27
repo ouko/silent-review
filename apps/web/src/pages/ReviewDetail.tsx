@@ -84,7 +84,7 @@ export function ReviewDetail() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-black text-white">
+    <div className="flex min-h-dvh flex-col bg-black text-white">
       <header className="flex items-center gap-3 border-b border-white/10 bg-black/80 p-3 backdrop-blur-md">
         <button
           onClick={() => navigate(-1)}
