@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { Loading } from "../components/common/Loading";
 import { LikeButton } from "../components/social/LikeButton";
 import { CommentsSection } from "../components/comments/CommentsSection";
+import { ShareSheet } from "../components/share/ShareSheet";
 
 interface ReviewDetailData {
   id: string;
@@ -25,6 +26,7 @@ export function ReviewDetail() {
   const [review, setReview] = useState<ReviewDetailData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showShare, setShowShare] = useState(false);
 
   const loadReview = async () => {
     if (!id) return;
@@ -71,16 +73,8 @@ export function ReviewDetail() {
 
   const displayName = review.user.displayName || review.user.username;
 
-  async function handleShare() {
-    if (!review) return;
-    const url = `${window.location.origin}/review/${review.id}`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: "Silent Review", url });
-      } catch {}
-    } else {
-      await navigator.clipboard.writeText(url);
-    }
+  function handleShare() {
+    setShowShare(true);
   }
 
   return (
@@ -146,6 +140,17 @@ export function ReviewDetail() {
       <div className="flex-1">
         <CommentsSection reviewId={id} />
       </div>
+
+      {showShare && review && (
+        <ShareSheet
+          reviewId={review.id}
+          videoUrl={review.videoUrl}
+          productName={review.productTag || review.caption || "Review"}
+          rating={review.rating}
+          deepLinkUrl={`${window.location.origin}/review/${review.id}`}
+          onClose={() => setShowShare(false)}
+        />
+      )}
     </div>
   );
 }

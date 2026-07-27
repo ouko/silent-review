@@ -13,6 +13,7 @@ interface RevealScreenProps {
   reviewId?: string;
   videoUrl?: string;
   productName?: string | null;
+  onShare?: () => void;
 }
 
 export function RevealScreen({
@@ -24,12 +25,17 @@ export function RevealScreen({
   onPlayAgain,
   reviewId,
   productName,
+  onShare,
 }: RevealScreenProps) {
   const reducedMotion = useReducedMotion();
 
   const canNativeShare = typeof navigator !== "undefined" && "share" in navigator;
 
   async function handleShare() {
+    if (onShare) {
+      onShare();
+      return;
+    }
     if (!canNativeShare) return;
     const url = reviewId ? `${window.location.origin}/review/${reviewId}` : window.location.href;
     try {
@@ -104,9 +110,9 @@ export function RevealScreen({
 
       <motion.button
         variants={itemVariants}
-        whileTap={canNativeShare ? { scale: 0.96 } : {}}
+        whileTap={onShare || canNativeShare ? { scale: 0.96 } : {}}
         onClick={handleShare}
-        disabled={!canNativeShare}
+        disabled={!onShare && !canNativeShare}
         className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-white/10 py-3.5 font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Share2 className="h-4 w-4" />

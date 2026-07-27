@@ -7,6 +7,7 @@ import { VideoPlayer } from "./VideoPlayer";
 import { VideoInfo } from "./VideoInfo";
 import { RatingBar } from "../guess/RatingBar";
 import { RevealScreen } from "../guess/RevealScreen";
+import { ShareSheet } from "../share/ShareSheet";
 import { BrandSpinner } from "../ui/BrandSpinner";
 import type { FeedReview } from "../../hooks/useFeed";
 
@@ -40,6 +41,7 @@ export function Feed({
   const containerRef = useRef<HTMLDivElement>(null);
   const [pullStartY, setPullStartY] = useState<number | null>(null);
   const [pullDistance, setPullDistance] = useState(0);
+  const [shareReview, setShareReview] = useState<FeedReview | null>(null);
   const reducedMotion = useReducedMotion();
   const { setItemRef, shouldPlay, shouldPreload, shouldRender } = useVideoFeed(reviews.length);
 
@@ -163,16 +165,7 @@ export function Feed({
                 <FeedActionButton
                   icon={<Share2 className="h-5 w-5" />}
                   count={review.shareCount}
-                  onClick={async () => {
-                    const url = `${window.location.origin}/review/${review.id}`;
-                    if (navigator.share) {
-                      try {
-                        await navigator.share({ title: "Silent Review", url });
-                      } catch {}
-                    } else {
-                      await navigator.clipboard.writeText(url);
-                    }
-                  }}
+                  onClick={() => setShareReview(review)}
                 />
               </div>
 
@@ -208,6 +201,7 @@ export function Feed({
                         reviewId={review.id}
                         videoUrl={review.videoUrl}
                         productName={review.productTag ?? review.caption}
+                        onShare={() => setShareReview(review)}
                       />
                     );
                   })()}
@@ -223,6 +217,17 @@ export function Feed({
           <BrandSpinner size="md" />
           <p className="text-sm font-medium text-white/50">Loading more...</p>
         </div>
+      )}
+
+      {shareReview && (
+        <ShareSheet
+          reviewId={shareReview.id}
+          videoUrl={shareReview.videoUrl}
+          productName={shareReview.product?.name || shareReview.productTag || shareReview.caption || "Review"}
+          rating={shareReview.rating}
+          deepLinkUrl={`${window.location.origin}/review/${shareReview.id}`}
+          onClose={() => setShareReview(null)}
+        />
       )}
     </div>
   );
