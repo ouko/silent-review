@@ -3,31 +3,8 @@ import { api } from "../lib/api";
 import { useAuthStore } from "../stores/authStore";
 import { useUpload, type UploadResult } from "./useUpload";
 import { generateUUID } from "../lib/uuid";
+import { formatUserError } from "../lib/errors";
 import type { FeedResponse, FeedReview } from "./useFeed";
-
-function extractErrorMessage(err: unknown): string {
-  if (err && typeof err === "object" && "response" in err) {
-    const response = (err as {
-      response?: {
-        data?: { error?: string; message?: string; issues?: Array<{ path: string[]; message: string }> };
-        statusText?: string;
-        status?: number;
-      };
-    }).response;
-    const issues = response?.data?.issues;
-    if (issues && issues.length > 0) {
-      return issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
-    }
-    return (
-      response?.data?.error ||
-      response?.data?.message ||
-      response?.statusText ||
-      (response?.status ? `Request failed with status code ${response.status}` : "Request failed")
-    );
-  }
-  if (err instanceof Error) return err.message;
-  return "Something went wrong";
-}
 
 export interface Product {
   id: string;
@@ -151,7 +128,7 @@ export function useCreateReview(options?: { onSuccess?: (review: FeedReview) => 
     isPending: mutation.isPending,
     isUploading,
     progress,
-    error: rawError ? new Error(extractErrorMessage(rawError)) : null,
+    error: rawError ? new Error(formatUserError(rawError)) : null,
     reset: mutation.reset,
   };
 }

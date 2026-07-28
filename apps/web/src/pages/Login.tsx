@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { login, type AuthProvider, type OAuthProvider } from "../lib/auth";
 import { useAuthStore } from "../stores/authStore";
+import { formatUserError } from "../lib/errors";
 import { AuthLayout } from "../components/auth/AuthLayout";
 import { AuthInput } from "../components/auth/AuthInput";
 import { AuthButton } from "../components/auth/AuthButton";
@@ -41,20 +42,7 @@ export function Login() {
       navigate("/");
     } catch (err) {
       setIsLoading(false);
-      const axiosError = err as { message?: string; response?: { status?: number; data?: { message?: string } } };
-      const message = axiosError.message ?? String(err);
-      const status = axiosError.response?.status;
-      const serverMessage = axiosError.response?.data?.message;
-
-      if (!status && (message.includes("Network Error") || message.includes("ECONNREFUSED"))) {
-        setError("Cannot reach the API server. Make sure the dev stack is running and try again.");
-      } else if (status === 401 || status === 403 || serverMessage?.toLowerCase().includes("invalid")) {
-        setError("Invalid email or password");
-      } else if (serverMessage) {
-        setError(serverMessage);
-      } else {
-        setError(message || "Something went wrong. Please try again.");
-      }
+      setError(formatUserError(err));
     }
   }
 

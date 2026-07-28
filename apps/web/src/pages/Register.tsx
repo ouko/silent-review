@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { register, type AuthProvider, type OAuthProvider } from "../lib/auth";
 import { useAuthStore } from "../stores/authStore";
+import { formatUserError } from "../lib/errors";
 import { AuthLayout } from "../components/auth/AuthLayout";
 import { AuthInput } from "../components/auth/AuthInput";
 import { AuthButton } from "../components/auth/AuthButton";
@@ -44,8 +45,8 @@ export function Register() {
       setAccessToken(accessToken);
       setLoading(false);
       navigate("/");
-    } catch {
-      setError("Could not create account. Email or username may be taken.");
+    } catch (err) {
+      setError(formatUserError(err));
     } finally {
       setIsLoading(false);
     }
