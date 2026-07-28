@@ -41,7 +41,26 @@ export function useUpload(options: UseUploadOptions = {}) {
         options.onSuccess?.(data);
         return data;
       } catch (err) {
-        const error = err instanceof Error ? err : new Error("Upload failed");
+        let message = "Upload failed";
+        if (err && typeof err === "object" && "response" in err) {
+          const response = (err as {
+            response?: {
+              data?: { error?: string; message?: string; details?: string[]; issues?: Array<{ path: string[]; message: string }> };
+              statusText?: string;
+            };
+          }).response;
+          const issues = response?.data?.issues;
+          if (issues && issues.length > 0) {
+            message = issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+          } else if (response?.data?.details && response.data.details.length > 0) {
+            message = response.data.details.join("; ");
+          } else {
+            message = response?.data?.error || response?.data?.message || response?.statusText || message;
+          }
+        } else if (err instanceof Error) {
+          message = err.message;
+        }
+        const error = new Error(message);
         setError(error);
         options.onError?.(error);
         throw error;

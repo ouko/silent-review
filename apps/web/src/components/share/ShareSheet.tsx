@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useExport } from "../../hooks/useExport";
 import { ExportProgress } from "./ExportProgress";
 import { QRCode } from "./QRCode";
@@ -25,8 +26,15 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
   const [copied, setCopied] = useState(false);
   const [showFramePicker, setShowFramePicker] = useState(false);
   const [coverBlobUrl, setCoverBlobUrl] = useState<string | null>(null);
+  const [videoSaved, setVideoSaved] = useState(false);
+  const [captionCopied, setCaptionCopied] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const backdropPointer = useRef<{ x: number; y: number } | null>(null);
+  const dragStartY = useRef<number | null>(null);
+  const [dragDelta, setDragDelta] = useState(0);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     previousFocusRef.current = document.activeElement as HTMLElement;
@@ -76,6 +84,7 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
   async function handleExport() {
     await exportApi.generate({ videoUrl, platform: selectedPlatform, productName, rating });
     trackShare(selectedPlatform);
+    setVideoSaved(false);
   }
 
   function handleNativeShare() {
@@ -124,165 +133,268 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
   );
   const fullCaptionText = `${caption.caption}\n\n${caption.hashtags}\n${caption.mentions}`;
 
-  return (
+  const sheet = (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center overflow-hidden bg-black/80 p-4"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/80"
       role="presentation"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+      onPointerDown={(e) => {
+        if (e.target === e.currentTarget) {
+          backdropPointer.current = { x: e.clientX, y: e.clientY };
+        }
       }}
+      onPointerUp={(e) => {
+        if (e.target !== e.currentTarget || !backdropPointer.current) return;
+        const dx = e.clientX - backdropPointer.current.x;
+        const dy = e.clientY - backdropPointer.current.y;
+        backdropPointer.current = null;
+        // Only close on a tap, not on a scroll/drag gesture.
+        if (Math.hypot(dx, dy) < 10) onClose();
+      }}
+      style={{ WebkitOverflowScrolling: "touch", overscrollBehaviorY: "contain" }}
     >
-      <div
-        ref={sheetRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="share-title"
-        className="w-full max-w-md flex-shrink-0 max-h-[90vh] overflow-y-auto rounded-2xl bg-zinc-900 p-5 text-white"
-        style={{
-          WebkitOverflowScrolling: "touch",
-          overscrollBehaviorY: "contain",
-          paddingBottom: "max(2rem, env(safe-area-inset-bottom))",
-        }}
-      >
-        <div className="mb-4 flex items-center justify-between">
-          <h2 id="share-title" className="text-lg font-bold">Share review</h2>
-          <button
-            onClick={onClose}
-            aria-label="Close share sheet"
-            className="rounded-full p-1 hover:bg-white/10"
+      <div className="flex min-h-full items-end justify-center p-4">
+        <div
+          ref={sheetRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="share-title"
+          className="w-full max-w-md flex-shrink-0 rounded-2xl bg-zinc-900 p-5 text-white"
+          style={{
+            paddingBottom: "max(2rem, env(safe-area-inset-bottom))",
+          }}
+        >
+          <div
+            className="flex cursor-grab flex-col items-center pb-2 active:cursor-grabbing"
+            onPointerDown={(e) => {
+              dragStartY.current = e.clientY;
+              setDragDelta(0);
+              (e.target as HTMLElement).setPointerCapture(e.pointerId);
+            }}
+            onPointerMove={(e) => {
+              if (dragStartY.current == null) return;
+              const delta = Math.max(0, e.clientY - dragStartY.current);
+              setDragDelta(delta);
+            }}
+            onPointerUp={(e) => {
+              if (dragStartY.current == null) return;
+              const delta = e.clientY - dragStartY.current;
+              dragStartY.current = null;
+              setDragDelta(0);
+              if (delta > 80) onClose();
+            }}
+            onPointerCancel={() => {
+              dragStartY.current = null;
+              setDragDelta(0);
+            }}
+            style={{
+              transform: `translateY(${dragDelta}px)`,
+              transition: dragDelta === 0 ? "transform 0.2s ease-out" : undefined,
+            }}
           >
-            <X className="h-5 w-5" aria-hidden="true" />
-          </button>
-        </div>
+            <div className="mb-3 h-1 w-12 rounded-full bg-white/30" aria-hidden="true" />
+          </div>
 
-        <div className="mb-4 grid grid-cols-5 gap-2">
-          {listPlatforms().map((p) => (
+          <div className="mb-4 flex items-center justify-between">
+            <h2 id="share-title" className="text-lg font-bold">Share review</h2>
             <button
-              key={p.id}
-              onClick={() => setSelectedPlatform(p.id)}
-              className={`rounded-xl px-2 py-3 text-xs font-semibold transition-colors ${
-                selectedPlatform === p.id
-                  ? "bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 text-white"
-                  : "bg-white/10 text-white/70 hover:bg-white/15"
-              }`}
+              onClick={onClose}
+              aria-label="Close share sheet"
+              className="rounded-full p-1 hover:bg-white/10"
             >
-              {p.name.split(" ")[0]}
+              <X className="h-5 w-5" aria-hidden="true" />
             </button>
-          ))}
-        </div>
+          </div>
 
-        <div className="mb-4 space-y-3">
-          <ExportProgress progress={exportApi.progress} />
-          {exportApi.blobUrl && (
-            <video src={exportApi.blobUrl} className="max-h-48 w-full rounded-xl" controls muted />
+          <div className="mb-4 grid grid-cols-5 gap-2">
+            {listPlatforms().map((p) => (
+              <button
+                key={p.id}
+                onClick={() => {
+                  setSelectedPlatform(p.id);
+                  setVideoSaved(false);
+                  setCaptionCopied(false);
+                }}
+                className={`rounded-xl px-2 py-3 text-xs font-semibold transition-colors ${
+                  selectedPlatform === p.id
+                    ? "bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 text-white"
+                    : "bg-white/10 text-white/70 hover:bg-white/15"
+                }`}
+              >
+                {p.name.split(" ")[0]}
+              </button>
+            ))}
+          </div>
+
+          <div className="mb-4 rounded-xl bg-white/5 p-3">
+            <ol className="space-y-2 text-sm">
+              <li className="flex items-center gap-2">
+                <span
+                  className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    exportApi.blobUrl ? "bg-green-500 text-black" : "bg-white/20 text-white/70"
+                  }`}
+                >
+                  {exportApi.blobUrl ? "✓" : "1"}
+                </span>
+                <span className={exportApi.blobUrl ? "text-white/70 line-through" : "text-white"}>
+                  Export video for {selectedPlatform === "tiktok" ? "TikTok" : selectedPlatform}
+                </span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span
+                  className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    videoSaved ? "bg-green-500 text-black" : exportApi.blobUrl ? "bg-rose-500 text-white" : "bg-white/20 text-white/70"
+                  }`}
+                >
+                  {videoSaved ? "✓" : "2"}
+                </span>
+                <span className={videoSaved ? "text-white/70 line-through" : exportApi.blobUrl ? "text-white" : "text-white/50"}>
+                  Save video to your device
+                </span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span
+                  className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    captionCopied ? "bg-green-500 text-black" : videoSaved ? "bg-rose-500 text-white" : "bg-white/20 text-white/70"
+                  }`}
+                >
+                  {captionCopied ? "✓" : "3"}
+                </span>
+                <span className={captionCopied ? "text-white/70 line-through" : videoSaved ? "text-white" : "text-white/50"}>
+                  Copy caption + hashtags
+                </span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span
+                  className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                    captionCopied && videoSaved ? "bg-rose-500 text-white" : "bg-white/20 text-white/70"
+                  }`}
+                >
+                  4
+                </span>
+                <span className={captionCopied && videoSaved ? "text-white" : "text-white/50"}>
+                  Open {selectedPlatform === "tiktok" ? "TikTok" : selectedPlatform} and paste
+                </span>
+              </li>
+            </ol>
+          </div>
+
+          <div className="mb-4 space-y-3">
+            <ExportProgress progress={exportApi.progress} />
+            {exportApi.blobUrl && (
+              <video src={exportApi.blobUrl} className="max-h-48 w-full rounded-xl" controls muted />
+            )}
+          </div>
+
+          <div className="mb-4 space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wide text-white/50">Caption</label>
+            <textarea
+              readOnly
+              value={fullCaptionText}
+              className="h-24 w-full resize-none rounded-xl bg-white/5 p-3 text-sm text-white outline-none focus:ring-1 focus:ring-white/20"
+            />
+            <button
+              onClick={async () => {
+                try {
+                  await copyToClipboard(fullCaptionText);
+                  setCaptionCopied(true);
+                } catch {
+                  // Ignore copy failures.
+                }
+              }}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
+            >
+              <Copy className="h-4 w-4" />
+              {captionCopied ? "Caption copied!" : "Copy caption"}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={handleExport}
+              disabled={exportApi.progress.status === "encoding"}
+              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-3 font-semibold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Share2 className="h-4 w-4" />
+              {exportApi.blobUrl
+                ? "Regenerate"
+                : selectedPlatform === "tiktok"
+                ? "Export for TikTok"
+                : "Export video"}
+            </button>
+            <button
+              onClick={() => {
+                exportApi.download(`silent-review-${reviewId}-${selectedPlatform}.webm`);
+                trackShare("download");
+                setVideoSaved(true);
+              }}
+              disabled={!exportApi.blobUrl}
+              className="flex items-center justify-center gap-2 rounded-xl bg-white/10 py-3 font-semibold text-white disabled:opacity-50"
+            >
+              <Download className="h-4 w-4" />
+              {videoSaved ? "Video saved!" : "Save video"}
+            </button>
+          </div>
+
+          <button
+            onClick={() => setShowQR((s) => !s)}
+            className="mt-3 w-full rounded-xl bg-white/5 py-2 text-sm font-medium text-white/70"
+          >
+            {showQR ? "Hide product sticker" : "Generate product sticker"}
+          </button>
+
+          {showQR && (
+            <div className="mt-3 flex justify-center rounded-xl bg-white p-3">
+              <QRCode value={deepLinkUrl} size={160} />
+            </div>
+          )}
+
+          <button
+            onClick={() => setShowFramePicker((s) => !s)}
+            className="mt-3 w-full rounded-xl bg-white/5 py-2 text-sm font-medium text-white/70"
+          >
+            {showFramePicker ? "Hide cover picker" : "Pick TikTok cover"}
+          </button>
+
+          {showFramePicker && (
+            <div className="mt-3">
+              <FramePicker
+                videoUrl={videoUrl}
+                onSelect={(blob) => {
+                  if (coverBlobUrl) URL.revokeObjectURL(coverBlobUrl);
+                  setCoverBlobUrl(URL.createObjectURL(blob));
+                }}
+              />
+            </div>
+          )}
+
+          {coverBlobUrl && (
+            <img
+              src={coverBlobUrl}
+              alt="Selected TikTok cover"
+              className="mt-3 max-h-48 w-full rounded-xl object-contain"
+            />
+          )}
+
+          <button
+            onClick={handleCopyLink}
+            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 py-3 text-sm font-semibold text-white"
+          >
+            <Link2 className="h-4 w-4" />
+            {copied ? "Link copied!" : "Copy link"}
+          </button>
+
+          {typeof navigator.share === "function" && (
+            <button
+              onClick={handleNativeShare}
+              className="mt-3 w-full rounded-xl border border-white/20 py-3 text-sm font-semibold text-white"
+            >
+              Share link
+            </button>
           )}
         </div>
-
-        <div className="mb-4 space-y-2">
-          <label className="text-xs font-semibold uppercase tracking-wide text-white/50">Caption</label>
-          <textarea
-            readOnly
-            value={fullCaptionText}
-            className="h-24 w-full resize-none rounded-xl bg-white/5 p-3 text-sm text-white outline-none focus:ring-1 focus:ring-white/20"
-          />
-          <button
-            onClick={async () => {
-              try {
-                await copyToClipboard(fullCaptionText);
-              } catch {
-                // Ignore copy failures.
-              }
-            }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
-          >
-            <Copy className="h-4 w-4" />
-            Copy caption
-          </button>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={handleExport}
-            disabled={exportApi.progress.status === "encoding"}
-            className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-3 font-semibold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Share2 className="h-4 w-4" />
-            {exportApi.blobUrl
-              ? "Regenerate"
-              : selectedPlatform === "tiktok"
-              ? "Export for TikTok"
-              : "Export video"}
-          </button>
-          <button
-            onClick={() => {
-              exportApi.download(`silent-review-${reviewId}-${selectedPlatform}.webm`);
-              trackShare("download");
-            }}
-            disabled={!exportApi.blobUrl}
-            className="flex items-center justify-center gap-2 rounded-xl bg-white/10 py-3 font-semibold text-white disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" />
-            Save video
-          </button>
-        </div>
-
-        <button
-          onClick={() => setShowQR((s) => !s)}
-          className="mt-3 w-full rounded-xl bg-white/5 py-2 text-sm font-medium text-white/70"
-        >
-          {showQR ? "Hide product sticker" : "Generate product sticker"}
-        </button>
-
-        {showQR && (
-          <div className="mt-3 flex justify-center rounded-xl bg-white p-3">
-            <QRCode value={deepLinkUrl} size={160} />
-          </div>
-        )}
-
-        <button
-          onClick={() => setShowFramePicker((s) => !s)}
-          className="mt-3 w-full rounded-xl bg-white/5 py-2 text-sm font-medium text-white/70"
-        >
-          {showFramePicker ? "Hide cover picker" : "Pick TikTok cover"}
-        </button>
-
-        {showFramePicker && (
-          <div className="mt-3">
-            <FramePicker
-              videoUrl={videoUrl}
-              onSelect={(blob) => {
-                if (coverBlobUrl) URL.revokeObjectURL(coverBlobUrl);
-                setCoverBlobUrl(URL.createObjectURL(blob));
-              }}
-            />
-          </div>
-        )}
-
-        {coverBlobUrl && (
-          <img
-            src={coverBlobUrl}
-            alt="Selected TikTok cover"
-            className="mt-3 max-h-48 w-full rounded-xl object-contain"
-          />
-        )}
-
-        <button
-          onClick={handleCopyLink}
-          className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 py-3 text-sm font-semibold text-white"
-        >
-          <Link2 className="h-4 w-4" />
-          {copied ? "Link copied!" : "Copy link"}
-        </button>
-
-        {typeof navigator.share === "function" && (
-          <button
-            onClick={handleNativeShare}
-            className="mt-3 w-full rounded-xl border border-white/20 py-3 text-sm font-semibold text-white"
-          >
-            Share link
-          </button>
-        )}
       </div>
     </div>
   );
+
+  return mounted ? createPortal(sheet, document.body) : null;
 }

@@ -3,8 +3,10 @@ import { ZodError } from "zod";
 
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof ZodError) {
+    const firstIssue = err.issues[0];
+    const detail = firstIssue ? `${firstIssue.path.join(".")}: ${firstIssue.message}` : "Invalid request";
     res.status(400).json({
-      error: "Validation error",
+      error: `Validation error: ${detail}`,
       issues: err.issues.map((i) => ({ path: i.path, message: i.message })),
     });
     return;

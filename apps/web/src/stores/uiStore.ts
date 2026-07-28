@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { generateUUID } from "../lib/uuid";
 
 interface Toast {
   id: string;
@@ -26,7 +27,7 @@ export const useUIStore = create<UIState>((set) => ({
   showBottomNav: true,
   addToast: (message, type = "info") =>
     set((state) => ({
-      toasts: [...state.toasts, { id: crypto.randomUUID(), message, type }],
+      toasts: [...state.toasts, { id: generateUUID(), message, type }],
     })),
   removeToast: (id) =>
     set((state) => ({

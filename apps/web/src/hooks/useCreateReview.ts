@@ -2,7 +2,32 @@ import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-
 import { api } from "../lib/api";
 import { useAuthStore } from "../stores/authStore";
 import { useUpload, type UploadResult } from "./useUpload";
+import { generateUUID } from "../lib/uuid";
 import type { FeedResponse, FeedReview } from "./useFeed";
+
+function extractErrorMessage(err: unknown): string {
+  if (err && typeof err === "object" && "response" in err) {
+    const response = (err as {
+      response?: {
+        data?: { error?: string; message?: string; issues?: Array<{ path: string[]; message: string }> };
+        statusText?: string;
+        status?: number;
+      };
+    }).response;
+    const issues = response?.data?.issues;
+    if (issues && issues.length > 0) {
+      return issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+    }
+    return (
+      response?.data?.error ||
+      response?.data?.message ||
+      response?.statusText ||
+      (response?.status ? `Request failed with status code ${response.status}` : "Request failed")
+    );
+  }
+  if (err instanceof Error) return err.message;
+  return "Something went wrong";
+}
 
 export interface Product {
   id: string;
@@ -33,7 +58,7 @@ interface CreateReviewContext {
 
 const FEED_QUERY_KEY = ["feed", "for-you", undefined];
 
-export function useCreateReview(options?: { onSuccess?: () => void }) {
+export function useCreateReview(options?: { onSuccess?: (review: FeedReview) => void }) {
   const queryClient = useQueryClient();
   const user = useAuthStore((s) => s.user);
   const { upload, progress, isUploading, error: uploadError } = useUpload();
@@ -45,13 +70,13 @@ export function useCreateReview(options?: { onSuccess?: () => void }) {
       const { data } = await api.post("/api/reviews", {
         productId: review.productId,
         videoUrl: uploadResult.url,
-        thumbnailUrl: uploadResult.thumbnailUrl,
+        ...(uploadResult.thumbnailUrl ? { thumbnailUrl: uploadResult.thumbnailUrl } : {}),
         duration: uploadResult.duration,
         format: file.type,
         rating: review.rating,
         caption: review.caption,
-        productTag: review.productTag,
-        duetOfId: review.duetOfId,
+        ...(review.productTag ? { productTag: review.productTag } : {}),
+        ...(review.duetOfId ? { duetOfId: review.duetOfId } : {}),
       });
 
       return data as FeedReview;
@@ -60,7 +85,7 @@ export function useCreateReview(options?: { onSuccess?: () => void }) {
       await queryClient.cancelQueries({ queryKey: FEED_QUERY_KEY });
       const previous = queryClient.getQueryData<InfiniteData<FeedResponse>>(FEED_QUERY_KEY);
 
-      const tempId = crypto.randomUUID();
+      const tempId = generateUUID();
       const videoUrl = URL.createObjectURL(file);
 
       if (user) {
@@ -114,17 +139,19 @@ export function useCreateReview(options?: { onSuccess?: () => void }) {
       }
       queryClient.invalidateQueries({ queryKey: FEED_QUERY_KEY });
     },
-    onSuccess: () => {
-      options?.onSuccess?.();
+    onSuccess: (data) => {
+      options?.onSuccess?.(data);
     },
   });
+
+  const rawError = mutation.error || uploadError;
 
   return {
     createReview: mutation.mutate,
     isPending: mutation.isPending,
     isUploading,
     progress,
-    error: mutation.error || uploadError,
+    error: rawError ? new Error(extractErrorMessage(rawError)) : null,
     reset: mutation.reset,
   };
 }

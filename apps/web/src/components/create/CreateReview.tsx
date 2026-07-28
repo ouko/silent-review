@@ -28,7 +28,7 @@ export function CreateReview() {
   const previewUrlRef = useRef<string | null>(null);
 
   const { createReview, isPending, isUploading, progress, error, reset } = useCreateReview({
-    onSuccess: () => navigate("/"),
+    onSuccess: (review) => navigate(`/review/${review.id}`),
   });
 
   useEffect(() => {
@@ -42,7 +42,7 @@ export function CreateReview() {
 
   useEffect(() => {
     if (error) {
-      setUploadError("Upload failed. You can retry without re-recording.");
+      setUploadError(error.message || "Upload failed. You can retry without re-recording.");
     }
   }, [error]);
 
@@ -73,8 +73,24 @@ export function CreateReview() {
     setUploadError(null);
     reset();
 
-    const extension = recordedBlob.type === "video/mp4" ? ".mp4" : recordedBlob.type === "video/quicktime" ? ".mov" : ".webm";
-    const file = new File([recordedBlob], `review${extension}`, { type: recordedBlob.type || "video/webm" });
+    let extension: string;
+    let fileType: string;
+    if (recordedBlob.type === "video/mp4") {
+      extension = ".mp4";
+      fileType = "video/mp4";
+    } else if (recordedBlob.type === "video/quicktime") {
+      extension = ".mov";
+      fileType = "video/quicktime";
+    } else if (recordedBlob.type === "video/webm") {
+      extension = ".webm";
+      fileType = "video/webm";
+    } else {
+      // iOS Safari MediaRecorder may report an empty or generic type; recorded output is usually MP4.
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      extension = isIOS ? ".mp4" : ".webm";
+      fileType = recordedBlob.type || (isIOS ? "video/mp4" : "video/webm");
+    }
+    const file = new File([recordedBlob], `review${extension}`, { type: fileType });
 
     createReview({
       file,

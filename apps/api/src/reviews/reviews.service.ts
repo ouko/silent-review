@@ -1,4 +1,5 @@
 import { prisma } from "../prisma.js";
+import { getRedis } from "../redis.js";
 import { notifyFollowersOfReview } from "../socket/index.js";
 import { updateStreak } from "../gamification/streaks.service.js";
 import { checkAchievements } from "../gamification/achievements.service.js";
@@ -12,7 +13,7 @@ export async function createReview(userId: string, input: CreateReviewInput) {
   });
   if (existing) {
     // Edit in place rather than creating a duplicate.
-    return prisma.review.update({
+    const updated = await prisma.review.update({
       where: { id: existing.id },
       data: {
         videoUrl: input.videoUrl,
@@ -31,6 +32,8 @@ export async function createReview(userId: string, input: CreateReviewInput) {
         product: { select: { id: true, name: true, category: true } },
       },
     });
+    clearFeedCache().catch(() => {});
+    return updated;
   }
 
   const review = await prisma.review.create({
@@ -65,7 +68,31 @@ export async function createReview(userId: string, input: CreateReviewInput) {
     caption: review.caption,
   }).catch(() => {});
 
+  // Ensure newly created reviews are visible in the feed immediately.
+  clearFeedCache().catch(() => {});
+
   return review;
+}
+
+async function clearFeedCache(): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
+
+  const stream = redis.scanStream({ match: "feed:*", count: 100 });
+  const keysToDelete: string[] = [];
+
+  stream.on("data", (keys: string[]) => {
+    if (keys.length) keysToDelete.push(...keys);
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    stream.on("end", () => resolve());
+    stream.on("error", reject);
+  });
+
+  if (keysToDelete.length) {
+    await redis.del(...keysToDelete);
+  }
 }
 
 export async function getReviewById(reviewId: string) {

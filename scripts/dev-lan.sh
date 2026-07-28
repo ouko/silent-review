@@ -105,6 +105,13 @@ log "Building workspace packages..."
 pnpm --filter shared build
 pnpm --filter database build
 
+# The API serves uploaded videos from ./uploads, but the seeded demo assets live
+# in apps/web/public/uploads. Copy them once so the API can serve them through
+# the /uploads proxy to every device on the LAN.
+log "Syncing demo video assets to API upload directory..."
+mkdir -p uploads
+cp -n apps/web/public/uploads/* uploads/ 2>/dev/null || true
+
 # --- detect LAN IP ---
 # Prefer the interface used for the default route (the one that reaches the
 # internet), since that is almost always the same network the iPhone is on.

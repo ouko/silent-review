@@ -30,8 +30,8 @@ export function VideoInfo({ username, avatarUrl, caption, productTag }: VideoInf
         <div className="flex flex-col">
           <p className="font-bold text-white">@{username}</p>
           {productTag && (
-            <span className="w-fit rounded-full border border-white/10 bg-white/10 px-2 py-0.5 text-xs font-semibold text-white/80 backdrop-blur-sm">
-              {productTag}
+            <span className="w-fit rounded-full border border-rose-500/30 bg-rose-500/20 px-2.5 py-0.5 text-xs font-semibold text-rose-300 backdrop-blur-sm">
+              #{productTag}
             </span>
           )}
         </div>

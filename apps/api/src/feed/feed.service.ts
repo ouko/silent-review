@@ -64,6 +64,9 @@ export async function getForYouFeed(
     }
   }
 
+  // Prioritize recency: newest reviews should appear at the top of the feed.
+  result.sort((a, b) => b.review.createdAt.getTime() - a.review.createdAt.getTime());
+
   const paginated = result.slice(0, limit);
   const nextCursor = candidates.length === CANDIDATE_POOL_SIZE
     ? paginated[paginated.length - 1]?.review.id
