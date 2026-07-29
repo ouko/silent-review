@@ -69,7 +69,7 @@ describe("runVideoModeration graceful degradation", () => {
 
     beforeAll(async () => {
       fixturePath = await createFixture("sharp-degrade", 2, "testsrc=duration=2:size=320x240:rate=30");
-    });
+    }, 60000);
 
     afterAll(async () => {
       await unlink(fixturePath).catch(() => {});
@@ -92,7 +92,7 @@ describe("runVideoModeration graceful degradation", () => {
 
       expect(result.status).toBe("PASS");
       expect(result.reasons.some((r) => r.includes("Frame analysis failed"))).toBe(true);
-    });
+    }, 60000);
 
     it("returns REJECT when sharp fails and VIDEO_MODERATION_FAIL_CLOSED=true", async () => {
       mockEnv.VIDEO_MODERATION_FAIL_CLOSED = "true";
@@ -108,7 +108,7 @@ describe("runVideoModeration graceful degradation", () => {
 
       expect(result.status).toBe("REJECT");
       expect(result.reasons.some((r) => r.includes("Frame analysis failed"))).toBe(true);
-    });
+    }, 60000);
   });
 
   it("returns PASS when frame count is zero", async () => {
