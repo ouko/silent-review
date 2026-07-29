@@ -318,7 +318,8 @@ This report documents all findings. Critical and high-severity items were resolv
 
 ### 7.10 Low — E2E job does not upload failure artifacts
 - **File:** `.github/workflows/test.yml:117-118`
-- **Status:** Tracked (low). Add `actions/upload-artifact` for test results.
+- **Status:** Fixed.
+- **Fix:** Added `actions/upload-artifact@v4` step that uploads `test-results/` when the E2E job fails.
 
 ---
 
@@ -456,6 +457,20 @@ A second pass focused on user-facing quality, cross-user workflows, and test cov
 - **Status:** Fixed.
 - **Fix:** Set `WEB_APP_URL: http://localhost:5173` in both the `test` and `e2e` job environments so the API explicitly allows the preview origin.
 
+### 11.8 GitHub E2E Playwright system dependencies
+- **File:** `.github/workflows/test.yml`
+- **Issue:** The E2E job installed the Chromium and WebKit browser binaries but did not install the system libraries WebKit requires on Ubuntu. On the GitHub Actions runner this caused WebKit to fail to launch (or crash immediately), producing failures in the E2E step.
+- **Status:** Fixed.
+- **Fix:** Changed the browser install step to `pnpm exec playwright install --with-deps chromium webkit` so Playwright installs the required OS packages on Linux CI runners.
+
+### 11.9 E2E test stabilization
+- **Files:** `e2e/multi-user-workflows.spec.ts`, `e2e/bottom-nav.spec.ts`
+- **Issue:** The multi-user like/comment/notification test and the bottom-nav swipe test were flaky under load. The like/comment test skipped the like action when a previous run had already liked the target review, and it raced React Query's notifications fetch. The bottom-nav test used a small swipe distance and short timeout that did not reliably trigger the hide/show animation.
+- **Status:** Fixed.
+- **Fix:**
+  - `multi-user-workflows.spec.ts`: ensure a fresh like by unliking first if needed, wait for like/comment API responses before proceeding, use a unique comment text per run, and wait for the notifications GET response after opening the Activity tab.
+  - `bottom-nav.spec.ts`: increase swipe distance, add `cancelable: true` to synthetic touch events, and extend the opacity assertion timeout.
+
 ---
 
 ## 12. Remaining Work (Medium/Low Priority)
@@ -491,6 +506,7 @@ After the production-readiness pass, the full workflow was run locally:
 - `pnpm --filter api test` — 5 suites, 27 tests passed.
 - `pnpm --filter web test` — 4 files, 12 tests passed.
 - `pnpm test:e2e` — 22 Playwright tests: 18 passed, 4 WebKit tests intentionally skipped (no failures).
+- `pnpm test:e2e --workers=1` — CI-simulation run: 18 passed, 4 skipped (no failures).
 
 ### 13.2 Commits
 
@@ -501,10 +517,12 @@ The production-readiness changes were committed as:
 - `0d27187` — docs: correct e2e pass count in AUDIT_REPORT
 - `ef437d9` — fix(web): proxy /api and /uploads in vite preview server for CI e2e
 - `2d48c8d` — ci: set WEB_APP_URL in test workflow so CORS allows the e2e preview origin
+- `d114174` — docs: add CI CORS fix to AUDIT_REPORT
+- `46bb2fe` — ci: install Playwright system deps and upload e2e artifacts; stabilize multi-user and bottom-nav e2e tests
 
 ### 13.3 GitHub CI
 
-The `Test` workflow on `main` is expected to pass for commit `ef437d9`. The earlier failures were caused by the Vite preview server not proxying API routes in CI; that was resolved by the `ef437d9` vite config fix.
+The `Test` workflow on `main` is expected to pass for commit `46bb2fe`. Earlier failures were caused by (1) the Vite preview server not proxying API routes in CI (fixed in `ef437d9`), (2) the API CORS middleware not allowing the `vite preview` origin under `NODE_ENV=test` (fixed in `2d48c8d`), and (3) the E2E job not installing Playwright's Linux system dependencies, which prevented WebKit from launching on the Ubuntu runner (fixed in `46bb2fe`).
 
 ### 13.4 Notable follow-up work
 
