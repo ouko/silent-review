@@ -20,6 +20,31 @@ reviewsRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res, next
   }
 });
 
+reviewsRouter.get("/moderation", requireAuth, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const videoUrl = req.query.videoUrl as string;
+    if (!videoUrl) {
+      res.status(400).json({ error: "Missing videoUrl" });
+      return;
+    }
+
+    const moderation = await prisma.videoModeration.findFirst({
+      where: { review: { videoUrl } },
+      orderBy: { createdAt: "desc" },
+      select: { status: true, reasons: true, score: true },
+    });
+
+    if (!moderation) {
+      res.json({ status: "PENDING", reasons: [], score: null });
+      return;
+    }
+
+    res.json(moderation);
+  } catch (err) {
+    next(err);
+  }
+});
+
 reviewsRouter.get("/:id", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const review = await getReviewById(req.params.id);

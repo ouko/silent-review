@@ -6,6 +6,10 @@ import { generateUUID } from "../lib/uuid";
 import { formatUserError } from "../lib/errors";
 import type { FeedResponse, FeedReview } from "./useFeed";
 
+interface CreateReviewResponse extends FeedReview {
+  status: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -44,7 +48,7 @@ export function useCreateReview(options?: { onSuccess?: (review: FeedReview) => 
     mutationFn: async ({ file, review }) => {
       const uploadResult: UploadResult = await upload(file);
 
-      const { data } = await api.post("/api/reviews", {
+      const { data } = await api.post<CreateReviewResponse>("/api/reviews", {
         productId: review.productId,
         videoUrl: uploadResult.url,
         ...(uploadResult.thumbnailUrl ? { thumbnailUrl: uploadResult.thumbnailUrl } : {}),
@@ -55,6 +59,13 @@ export function useCreateReview(options?: { onSuccess?: (review: FeedReview) => 
         ...(review.productTag ? { productTag: review.productTag } : {}),
         ...(review.duetOfId ? { duetOfId: review.duetOfId } : {}),
       });
+
+      if (data.status === "UNDER_REVIEW") {
+        const moderation = await waitForModeration(uploadResult.url);
+        if (moderation?.status === "REJECT") {
+          throw new Error("This video couldn't be uploaded because it may violate community guidelines.");
+        }
+      }
 
       return data as FeedReview;
     },
@@ -131,4 +142,20 @@ export function useCreateReview(options?: { onSuccess?: (review: FeedReview) => 
     error: rawError ? new Error(formatUserError(rawError)) : null,
     reset: mutation.reset,
   };
+}
+
+async function waitForModeration(
+  videoUrl: string,
+  maxAttempts = 30
+): Promise<{ status: string; reasons?: string[]; score?: number | null } | null> {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const { data } = await api.get(`/api/reviews/moderation?videoUrl=${encodeURIComponent(videoUrl)}`);
+      if (data.status !== "PENDING") return data;
+    } catch {
+      return null;
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  return null;
 }
