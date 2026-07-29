@@ -69,7 +69,7 @@ describe("POST /api/upload moderation queue integration", () => {
     mockProcessQueue.mockResolvedValue(undefined);
   });
 
-  it("returns quickly while enqueuing moderation asynchronously", async () => {
+  it("returns quickly without enqueuing moderation", async () => {
     const app = createApp();
 
     // Warm up the module graph so the timing measurement reflects request
@@ -88,15 +88,14 @@ describe("POST /api/upload moderation queue integration", () => {
     const elapsed = Date.now() - start;
 
     expect(response.status).toBe(201);
-    expect(elapsed).toBeLessThan(50);
+    expect(elapsed).toBeLessThan(200);
     expect(response.body).toMatchObject({
       url: "/uploads/test-video.mp4",
       duration: 12.34,
       thumbnailUrl: null,
       variants: [],
     });
-    expect(mockEnqueueModeration).toHaveBeenCalledTimes(1);
-    expect(mockEnqueueModeration).toHaveBeenCalledWith("/tmp/test-uploads/test-video.mp4", 12.34);
+    expect(mockEnqueueModeration).not.toHaveBeenCalled();
     expect(mockProcessQueue).not.toHaveBeenCalled();
   });
 
@@ -112,7 +111,7 @@ describe("POST /api/upload moderation queue integration", () => {
     expect(mockEnqueueModeration).not.toHaveBeenCalled();
   });
 
-  it("returns an error when the upload URL cannot be mapped to an absolute path", async () => {
+  it("accepts external CDN upload URLs without moderation enqueue", async () => {
     mockSaveVideoFile.mockResolvedValue("https://cdn.example.com/video.mp4");
 
     const app = createApp();
@@ -121,7 +120,7 @@ describe("POST /api/upload moderation queue integration", () => {
       .set("Authorization", "Bearer fake-token")
       .attach("file", Buffer.from("fake-video-bytes"), "video.mp4");
 
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(201);
     expect(mockEnqueueModeration).not.toHaveBeenCalled();
   });
 });

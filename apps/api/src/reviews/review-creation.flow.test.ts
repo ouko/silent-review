@@ -43,7 +43,7 @@ describe("createReview flow", () => {
     mockEnv.VIDEO_MODERATION_ENABLED = "true";
   });
 
-  it("creates a new review when none exists for the user/product", async () => {
+  it("creates a new review as UNDER_REVIEW when moderation is enabled and no record exists", async () => {
     const input = {
       productId: "p1",
       videoUrl: "/uploads/v.mp4",
@@ -52,7 +52,7 @@ describe("createReview flow", () => {
       rating: 8,
       caption: "Great!",
     };
-    const created = { id: "r1", ...input, userId: "u1", status: "PUBLISHED" };
+    const created = { id: "r1", ...input, userId: "u1", status: "UNDER_REVIEW" };
     mockPrisma.review.findFirst.mockResolvedValue(null);
     mockPrisma.videoModeration.findFirst.mockResolvedValue(null);
     mockPrisma.review.create.mockResolvedValue(created);
@@ -61,7 +61,7 @@ describe("createReview flow", () => {
     expect(result.id).toBe("r1");
     expect(mockPrisma.review.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ status: "PUBLISHED" }),
+        data: expect.objectContaining({ status: "UNDER_REVIEW" }),
       })
     );
     expect(mockPrisma.videoModeration.create).toHaveBeenCalledWith({
@@ -131,7 +131,7 @@ describe("createReview flow", () => {
     expect(mockPrisma.review.create).not.toHaveBeenCalled();
   });
 
-  it("updates an existing review instead of duplicating", async () => {
+  it("updates an existing review as UNDER_REVIEW when moderation is enabled and no record exists", async () => {
     const input = {
       productId: "p1",
       videoUrl: "/uploads/v2.mp4",
@@ -143,12 +143,12 @@ describe("createReview flow", () => {
     const existing = { id: "r1", productId: "p1", userId: "u1" };
     mockPrisma.review.findFirst.mockResolvedValue(existing);
     mockPrisma.videoModeration.findFirst.mockResolvedValue(null);
-    mockPrisma.review.update.mockResolvedValue({ id: "r1", ...input, userId: "u1", status: "PUBLISHED" });
+    mockPrisma.review.update.mockResolvedValue({ id: "r1", ...input, userId: "u1", status: "UNDER_REVIEW" });
 
     await createReview("u1", input);
     expect(mockPrisma.review.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ status: "PUBLISHED" }),
+        data: expect.objectContaining({ status: "UNDER_REVIEW" }),
       })
     );
     expect(mockPrisma.review.create).not.toHaveBeenCalled();

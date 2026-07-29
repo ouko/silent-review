@@ -1,4 +1,4 @@
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect, jest } from "@jest/globals";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { readFile } from "fs/promises";
@@ -11,6 +11,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 describe("validateVideoFile", () => {
+  // Real ffmpeg/sharp frame analysis can take >5s on slower CI runners.
+  jest.setTimeout(30000);
+
   it("accepts a valid 5s silent 720p mp4", async () => {
     const buffer = await fixtureBuffer("valid-720p.mp4");
     const result = await validateVideoFile(buffer, "video/mp4", "valid-720p.mp4");

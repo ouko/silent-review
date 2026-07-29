@@ -26,7 +26,9 @@ export async function createReview(userId: string, input: CreateReviewInput) {
     throw new Error("Video moderation failed: content violates community guidelines");
   }
 
-  const moderationPending = moderation?.status === "PENDING";
+  const isModerationEnabled = env.VIDEO_MODERATION_ENABLED === "true";
+  const moderationPending =
+    moderation?.status === "PENDING" || (isModerationEnabled && !moderation);
 
   if (existing) {
     // Edit in place rather than creating a duplicate.

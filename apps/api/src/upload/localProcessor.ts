@@ -4,15 +4,9 @@ import { randomUUID } from "crypto";
 import { mkdir, writeFile, unlink } from "fs/promises";
 import { join } from "path";
 import { UPLOAD_DIR, UPLOAD_BASE_URL } from "./upload-helpers.js";
-import { type VideoVariant, type ProcessedVideo } from "./upload.service.js";
+import { type ProcessedVideo } from "./upload.service.js";
 
 const execFileAsync = promisify(execFile);
-
-const VARIANTS: Array<{ label: VideoVariant["label"]; height: number }> = [
-  { label: "480p", height: 480 },
-  { label: "720p", height: 720 },
-  { label: "1080p", height: 1080 },
-];
 
 export async function processVideoLocally(originalUrl: string, buffer: Buffer): Promise<ProcessedVideo> {
   await mkdir(UPLOAD_DIR, { recursive: true });
@@ -40,64 +34,11 @@ export async function processVideoLocally(originalUrl: string, buffer: Buffer): 
       thumbnailPath,
     ]);
 
-    const variants: VideoVariant[] = [];
-    for (const variant of VARIANTS) {
-      const outputFilename = `${variant.label}-${id}.mp4`;
-      const outputPath = join(UPLOAD_DIR, outputFilename);
-      try {
-        await execFileAsync("ffmpeg", [
-          "-i",
-          inputPath,
-          "-vf",
-          `scale=-2:${variant.height}`,
-          "-c:v",
-          "libx264",
-          "-preset",
-          "fast",
-          "-crf",
-          "23",
-          "-an",
-          "-movflags",
-          "+faststart",
-          "-y",
-          outputPath,
-        ]);
-        variants.push({
-          label: variant.label,
-          url: `${UPLOAD_BASE_URL}/${outputFilename}`,
-          width: 0,
-          height: variant.height,
-        });
-      } catch {
-        // Skip variants that fail (e.g. source smaller than target height).
-      }
-    }
-
-    // WebM fallback variant for open-web compatibility.
-    const webmFilename = `webm-${id}.webm`;
-    const webmPath = join(UPLOAD_DIR, webmFilename);
-    try {
-      await execFileAsync("ffmpeg", [
-        "-i",
-        inputPath,
-        "-vf",
-        "scale=-2:720",
-        "-c:v",
-        "libvpx-vp9",
-        "-b:v",
-        "1M",
-        "-an",
-        "-y",
-        webmPath,
-      ]);
-      variants.push({ label: "webm", url: `${UPLOAD_BASE_URL}/${webmFilename}`, width: 0, height: 720 });
-    } catch {
-      // WebM fallback is optional.
-    }
-
+    // Variants are generated asynchronously by the moderation queue so the
+    // upload response is not blocked by slow transcoding.
     return {
       originalUrl,
-      variants,
+      variants: [],
       thumbnailUrl: `${UPLOAD_BASE_URL}/${thumbnailFilename}`,
       duration,
     };

@@ -3,7 +3,7 @@ import type { ModerationResult } from "./moderationEngine.js";
 
 const mockPrisma = {
   videoModeration: {
-    create: jest.fn() as jest.Mock,
+    upsert: jest.fn() as jest.Mock,
   },
   review: {
     update: jest.fn() as jest.Mock,
@@ -70,7 +70,7 @@ describe("enqueueModeration", () => {
     pushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
     await processQueue();
     expect(mockRunVideoModeration).toHaveBeenCalledWith("/uploads/video.mp4", 5);
-    expect(mockPrisma.videoModeration.create).toHaveBeenCalled();
+    expect(mockPrisma.videoModeration.upsert).toHaveBeenCalled();
   });
 });
 
@@ -82,14 +82,21 @@ describe("processQueue", () => {
     mockEnv.VIDEO_MODERATION_FAIL_CLOSED = "false";
   });
 
-  it("creates a VideoModeration record with the engine result", async () => {
+  it("upserts a VideoModeration record with the engine result", async () => {
     mockRunVideoModeration.mockResolvedValue(passResult);
     pushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
     await processQueue();
 
     expect(mockRunVideoModeration).toHaveBeenCalledWith("/uploads/video.mp4", 5);
-    expect(mockPrisma.videoModeration.create).toHaveBeenCalledWith({
-      data: {
+    expect(mockPrisma.videoModeration.upsert).toHaveBeenCalledWith({
+      where: { reviewId: "review-1" },
+      update: {
+        status: "PASS",
+        score: 0.1,
+        reasons: [],
+        frameScores: [],
+      },
+      create: {
         reviewId: "review-1",
         status: "PASS",
         score: 0.1,
@@ -105,8 +112,15 @@ describe("processQueue", () => {
     pushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
     await processQueue();
 
-    expect(mockPrisma.videoModeration.create).toHaveBeenCalledWith({
-      data: {
+    expect(mockPrisma.videoModeration.upsert).toHaveBeenCalledWith({
+      where: { reviewId: "review-1" },
+      update: {
+        status: "REJECT",
+        score: 0.9,
+        reasons: ["Excessive skin tone detected at 1.00s"],
+        frameScores: rejectResult.frameScores,
+      },
+      create: {
         reviewId: "review-1",
         status: "REJECT",
         score: 0.9,
@@ -126,7 +140,7 @@ describe("processQueue", () => {
     await processQueue();
 
     expect(mockRunVideoModeration).toHaveBeenCalledWith("/uploads/video.mp4", 5);
-    expect(mockPrisma.videoModeration.create).not.toHaveBeenCalled();
+    expect(mockPrisma.videoModeration.upsert).not.toHaveBeenCalled();
     expect(mockPrisma.review.update).not.toHaveBeenCalled();
   });
 
@@ -137,7 +151,7 @@ describe("processQueue", () => {
     await processQueue();
 
     expect(mockRunVideoModeration).toHaveBeenCalledTimes(2);
-    expect(mockPrisma.videoModeration.create).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.videoModeration.upsert).toHaveBeenCalledTimes(2);
   });
 
   it("logs the error and takes no action when fail-closed is false", async () => {
@@ -150,13 +164,13 @@ describe("processQueue", () => {
     await processQueue();
 
     expect(consoleSpy).toHaveBeenCalledWith("Moderation failed", error);
-    expect(mockPrisma.videoModeration.create).not.toHaveBeenCalled();
+    expect(mockPrisma.videoModeration.upsert).not.toHaveBeenCalled();
     expect(mockPrisma.review.update).not.toHaveBeenCalled();
 
     consoleSpy.mockRestore();
   });
 
-  it("creates a REJECT record and hides the review when fail-closed is true", async () => {
+  it("upserts a REJECT record and hides the review when fail-closed is true", async () => {
     mockEnv.VIDEO_MODERATION_FAIL_CLOSED = "true";
     const error = new Error("ffmpeg crashed");
     mockRunVideoModeration.mockRejectedValue(error);
@@ -165,8 +179,13 @@ describe("processQueue", () => {
     pushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
     await processQueue();
 
-    expect(mockPrisma.videoModeration.create).toHaveBeenCalledWith({
-      data: {
+    expect(mockPrisma.videoModeration.upsert).toHaveBeenCalledWith({
+      where: { reviewId: "review-1" },
+      update: {
+        status: "REJECT",
+        reasons: ["Moderation could not be completed"],
+      },
+      create: {
         reviewId: "review-1",
         status: "REJECT",
         reasons: ["Moderation could not be completed"],
@@ -187,7 +206,7 @@ describe("processQueue", () => {
     const dbError = new Error("database unavailable");
 
     mockRunVideoModeration.mockRejectedValueOnce(engineError);
-    mockPrisma.videoModeration.create.mockImplementationOnce(() => Promise.reject(dbError));
+    mockPrisma.videoModeration.upsert.mockImplementationOnce(() => Promise.reject(dbError));
 
     const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
@@ -199,7 +218,7 @@ describe("processQueue", () => {
     expect(consoleSpy).toHaveBeenCalledWith("Moderation failed", engineError);
     // The second item must still be processed despite the DB failure on the first.
     expect(mockRunVideoModeration).toHaveBeenCalledTimes(2);
-    expect(mockPrisma.videoModeration.create).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.videoModeration.upsert).toHaveBeenCalledTimes(2);
 
     consoleSpy.mockRestore();
   });

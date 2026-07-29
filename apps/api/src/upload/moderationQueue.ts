@@ -38,8 +38,15 @@ async function runModeration(item: QueueItem): Promise<void> {
     const result = await runVideoModeration(item.videoPath, item.duration);
 
     if (item.reviewId) {
-      await prisma.videoModeration.create({
-        data: {
+      await prisma.videoModeration.upsert({
+        where: { reviewId: item.reviewId },
+        update: {
+          status: result.status,
+          score: result.score,
+          reasons: result.reasons,
+          frameScores: result.frameScores as unknown as Prisma.InputJsonValue,
+        },
+        create: {
           reviewId: item.reviewId,
           status: result.status,
           score: result.score,
@@ -59,8 +66,13 @@ async function runModeration(item: QueueItem): Promise<void> {
     const failClosed = env.VIDEO_MODERATION_FAIL_CLOSED === "true";
     if (item.reviewId && failClosed) {
       try {
-        await prisma.videoModeration.create({
-          data: {
+        await prisma.videoModeration.upsert({
+          where: { reviewId: item.reviewId },
+          update: {
+            status: "REJECT",
+            reasons: ["Moderation could not be completed"],
+          },
+          create: {
             reviewId: item.reviewId,
             status: "REJECT",
             reasons: ["Moderation could not be completed"],

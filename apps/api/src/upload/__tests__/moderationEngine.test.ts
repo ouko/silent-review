@@ -8,7 +8,7 @@ const execFileAsync = promisify(execFile);
 
 // Frame extraction + sharp analysis is slow under parallel test load, so these
 // tests get a longer timeout than Jest's default 5s.
-const TEST_TIMEOUT_MS = 20_000;
+const TEST_TIMEOUT_MS = 60_000;
 
 describe("runVideoModeration", () => {
   it(
