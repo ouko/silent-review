@@ -478,7 +478,7 @@ After the production-readiness pass, the full workflow was run locally:
 - `pnpm typecheck` — passed across all workspace packages.
 - `pnpm --filter api test` — 5 suites, 27 tests passed.
 - `pnpm --filter web test` — 4 files, 12 tests passed.
-- `pnpm test:e2e` — 22 Playwright tests: 17 passed, 4 WebKit tests intentionally skipped, and 1 bottom-nav swipe test passed on retry (flaky under load).
+- `pnpm test:e2e` — 22 Playwright tests: 18 passed, 4 WebKit tests intentionally skipped (no failures).
 
 ### 13.2 Commit
 
