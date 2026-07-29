@@ -1,5 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
+import { join } from "path";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import {
   validateVideoFile,
@@ -11,6 +12,7 @@ import {
   UPLOAD_DIR,
 } from "../upload/upload-helpers.js";
 import { processVideoLocally } from "../upload/localProcessor.js";
+import { enqueueModeration } from "../upload/moderationQueue.js";
 
 export const uploadRouter = Router();
 
@@ -43,6 +45,10 @@ uploadRouter.post("/", requireAuth, upload.single("file"), async (req: Authentic
     }
 
     const originalUrl = await saveVideoFile(file.buffer, file.originalname, file.mimetype);
+
+    // Enqueue async moderation using the saved file path.
+    const absolutePath = join(UPLOAD_DIR, originalUrl.replace(UPLOAD_BASE_URL, ""));
+    enqueueModeration(absolutePath, validation.duration);
 
     let processed = {
       originalUrl,
