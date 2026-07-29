@@ -27,6 +27,10 @@ export function useFollow(userId?: string) {
       }
       return { previous };
     },
+    onSuccess: () => {
+      // Refresh feeds so the new follow relationship is reflected immediately.
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
+    },
     onError: (_err, _vars, context) => {
       if (context?.previous && userId) {
         queryClient.setQueryData(["profile", userId], context.previous);

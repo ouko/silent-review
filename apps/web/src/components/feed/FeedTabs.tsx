@@ -34,7 +34,7 @@ export function FeedTabs({ tabs, activeId, onSelect }: FeedTabsProps) {
               <motion.div
                 layoutId="activeFeedTab"
                 transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 30 }}
-                className="absolute inset-0 -z-10 rounded-full bg-white/15"
+                className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-white/15"
               />
             )}
           </button>
