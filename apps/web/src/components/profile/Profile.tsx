@@ -8,6 +8,7 @@ import { ProfileReviews } from "./ProfileReviews";
 import { ActivityFeed } from "../social/ActivityFeed";
 import { Loading } from "../common/Loading";
 import { FeedTabs } from "../feed/FeedTabs";
+import { UserListSheet } from "./UserListSheet";
 import { Flame, Award, User, Pencil, LogOut } from "lucide-react";
 import { logout } from "../../lib/auth";
 
@@ -25,6 +26,7 @@ export function Profile() {
   const { data: achievements } = useProfileAchievements(userId);
   const { data: reviews } = useProfileReviews(userId);
   const [activeTab, setActiveTab] = useState("reviews");
+  const [sheetType, setSheetType] = useState<"followers" | "following" | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const isMe = currentUser?.id === userId;
   const reducedMotion = useReducedMotion();
@@ -71,9 +73,9 @@ export function Profile() {
 
           {/* Stats */}
           <div className="mt-5 grid w-full max-w-sm grid-cols-3 gap-3">
-            <StatCard value={profile.reviewCount} label="Reviews" />
-            <StatCard value={profile.followerCount} label="Followers" />
-            <StatCard value={profile.followingCount} label="Following" />
+            <StatCard value={profile.reviewCount} label="Reviews" onClick={() => setActiveTab("reviews")} />
+            <StatCard value={profile.followerCount} label="Followers" onClick={() => setSheetType("followers")} />
+            <StatCard value={profile.followingCount} label="Following" onClick={() => setSheetType("following")} />
           </div>
 
           {/* Chips */}
@@ -119,6 +121,15 @@ export function Profile() {
         </div>
       </motion.div>
 
+      {sheetType && userId && (
+        <UserListSheet
+          userId={userId}
+          username={profile.username}
+          type={sheetType}
+          onClose={() => setSheetType(null)}
+        />
+      )}
+
       {/* Tabs */}
       <div className="px-3 pb-2">
         <FeedTabs tabs={TABS} activeId={activeTab} onSelect={(tabId) => setActiveTab(tabId)} />
@@ -159,11 +170,28 @@ export function Profile() {
   );
 }
 
-function StatCard({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center backdrop-blur-sm">
+function StatCard({
+  value,
+  label,
+  onClick,
+}: {
+  value: number;
+  label: string;
+  onClick?: () => void;
+}) {
+  const content = (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center backdrop-blur-sm transition-colors hover:bg-white/10">
       <p className="text-xl font-black tracking-tighter gradient-text">{value.toLocaleString()}</p>
       <p className="text-xs font-semibold uppercase tracking-wider text-white/50">{label}</p>
     </div>
   );
+
+  if (onClick) {
+    return (
+      <button onClick={onClick} className="w-full text-left">
+        {content}
+      </button>
+    );
+  }
+  return content;
 }
