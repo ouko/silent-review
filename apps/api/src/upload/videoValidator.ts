@@ -5,6 +5,7 @@ import { randomUUID } from "crypto";
 import { mkdir, writeFile, unlink } from "fs/promises";
 import { join } from "path";
 import { env } from "../config/index.js";
+import { UPLOAD_DIR, extensionForContentType, isFFmpegAvailable } from "./upload.service.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -25,6 +26,11 @@ const TARGET_DURATION_SECONDS = 5.0;
 const DURATION_TOLERANCE_SECONDS = 0.5;
 const ALLOWED_VIDEO_MIME_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 const ALLOWED_CODECS = new Set(["h264", "hevc", "vp8", "vp9", "av1"]);
+
+// Frame brightness below this threshold is considered too dark / blank.
+const DARK_BRIGHTNESS_THRESHOLD = 15;
+// Max Hamming distance between consecutive frame hashes to treat them as identical.
+const STATIC_HASH_DISTANCE_THRESHOLD = 2;
 
 export async function validateVideoFile(
   buffer: Buffer,
@@ -49,9 +55,21 @@ export async function validateVideoFile(
   let probe: VideoProbe | null = null;
   const ffprobeAvailable = await isFFprobeAvailable();
   if (!ffprobeAvailable) {
-    errors.push("Video processing is temporarily unavailable");
+    const message = "ffprobe not found; video quality checks unavailable";
+    console.warn(`[videoValidator] ${message}`);
+    if (env.VIDEO_MODERATION_FAIL_CLOSED === "true") {
+      errors.push("Video processing is temporarily unavailable");
+      return {
+        valid: false,
+        duration: TARGET_DURATION_SECONDS,
+        hasAudio: false,
+        format: contentType,
+        errors,
+      };
+    }
+    // Fail open in dev: allow the upload without probing.
     return {
-      valid: false,
+      valid: errors.length === 0,
       duration: TARGET_DURATION_SECONDS,
       hasAudio: false,
       format: contentType,
@@ -90,6 +108,9 @@ export async function validateVideoFile(
     }
 
     const staticOrDark = await checkStaticAndDark(buffer, ext || extensionForContentType(contentType), probe.duration);
+    if (staticOrDark.error && env.VIDEO_MODERATION_FAIL_CLOSED === "true") {
+      errors.push(staticOrDark.error);
+    }
     if (staticOrDark.isStatic) {
       errors.push("Video appears to be a still image. Please upload a real video");
     }
@@ -123,9 +144,8 @@ interface VideoProbe {
 }
 
 async function probeVideo(buffer: Buffer, ext: string): Promise<VideoProbe> {
-  const uploadDir = join(process.cwd(), "uploads");
-  await mkdir(uploadDir, { recursive: true });
-  const probePath = join(uploadDir, `probe-${randomUUID()}${ext}`);
+  await mkdir(UPLOAD_DIR, { recursive: true });
+  const probePath = join(UPLOAD_DIR, `probe-${randomUUID()}${ext}`);
   await writeFile(probePath, buffer);
 
   try {
@@ -169,12 +189,22 @@ function parseRational(rational: string): number | undefined {
 interface StaticDarkCheck {
   isStatic: boolean;
   isDark: boolean;
+  error?: string;
 }
 
 async function checkStaticAndDark(buffer: Buffer, ext: string, duration: number): Promise<StaticDarkCheck> {
-  const uploadDir = join(process.cwd(), "uploads");
-  await mkdir(uploadDir, { recursive: true });
-  const inputPath = join(uploadDir, `check-${randomUUID()}${ext}`);
+  const ffmpegAvailable = await isFFmpegAvailable();
+  if (!ffmpegAvailable) {
+    const message = "ffmpeg not found; static/dark analysis unavailable";
+    console.warn(`[videoValidator] ${message}`);
+    if (env.VIDEO_MODERATION_FAIL_CLOSED === "true") {
+      return { isStatic: false, isDark: false, error: "Video processing is temporarily unavailable" };
+    }
+    return { isStatic: false, isDark: false };
+  }
+
+  await mkdir(UPLOAD_DIR, { recursive: true });
+  const inputPath = join(UPLOAD_DIR, `check-${randomUUID()}${ext}`);
   await writeFile(inputPath, buffer);
 
   try {
@@ -184,7 +214,7 @@ async function checkStaticAndDark(buffer: Buffer, ext: string, duration: number)
     let sampleCount = 0;
 
     for (const t of sampleTimes) {
-      const framePath = join(uploadDir, `frame-${randomUUID()}.jpg`);
+      const framePath = join(UPLOAD_DIR, `frame-${randomUUID()}.jpg`);
       try {
         await execFileAsync("ffmpeg", [
           "-ss", String(t),
@@ -210,10 +240,17 @@ async function checkStaticAndDark(buffer: Buffer, ext: string, duration: number)
       }
     }
 
-    const isDark = sampleCount > 0 && totalBrightness / sampleCount < 15;
-    const isStatic = hashes.length > 1 && hashes.every((h) => hammingDistance(h, hashes[0]) <= 2);
+    const isDark = sampleCount > 0 && totalBrightness / sampleCount < DARK_BRIGHTNESS_THRESHOLD;
+    const isStatic = hashes.length > 1 && hashes.every((h) => hammingDistance(h, hashes[0]) <= STATIC_HASH_DISTANCE_THRESHOLD);
 
     return { isStatic, isDark };
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    console.warn(`[videoValidator] frame extraction failed: ${reason}; static/dark analysis unavailable`);
+    if (env.VIDEO_MODERATION_FAIL_CLOSED === "true") {
+      return { isStatic: false, isDark: false, error: "Video processing is temporarily unavailable" };
+    }
+    return { isStatic: false, isDark: false };
   } finally {
     await unlink(inputPath).catch(() => {});
   }
@@ -257,18 +294,5 @@ async function isFFprobeAvailable(): Promise<boolean> {
     return true;
   } catch {
     return false;
-  }
-}
-
-function extensionForContentType(contentType: string): string {
-  switch (contentType) {
-    case "video/webm":
-      return ".webm";
-    case "video/mp4":
-      return ".mp4";
-    case "video/quicktime":
-      return ".mov";
-    default:
-      return ".bin";
   }
 }
