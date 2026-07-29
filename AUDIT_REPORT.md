@@ -444,6 +444,12 @@ A second pass focused on user-facing quality, cross-user workflows, and test cov
   - Changed the feed comment button from a full-page `window.location.href` to an in-app `Link` so auth state is preserved.
   - Updated the axios refresh interceptor to restore the user object as well as the access token after a silent refresh.
 
+### 11.6 GitHub E2E preview proxy
+- **File:** `apps/web/vite.config.ts`
+- **Issue:** The Vite preview server used in CI did not proxy `/api` and `/uploads` to the API. When the production build was served by `vite preview`, API calls from the browser failed because there was no backend on the same origin.
+- **Status:** Fixed.
+- **Fix:** Added a `preview.proxy` configuration matching the dev `server.proxy`, so `pnpm --filter web run preview --port 5173` forwards API and upload routes to `localhost:3001`.
+
 ---
 
 ## 12. Remaining Work (Medium/Low Priority)
@@ -480,17 +486,18 @@ After the production-readiness pass, the full workflow was run locally:
 - `pnpm --filter web test` — 4 files, 12 tests passed.
 - `pnpm test:e2e` — 22 Playwright tests: 18 passed, 4 WebKit tests intentionally skipped (no failures).
 
-### 13.2 Commit
+### 13.2 Commits
 
-All changes were committed as `a89e084`:
+The production-readiness changes were committed as:
 
-```
-test(e2e): multi-user seeded workflow tests and auth/feed testability fixes
-```
+- `a89e084` — test(e2e): multi-user seeded workflow tests and auth/feed testability fixes
+- `abff04e` — docs: update TESTING, USER_GUIDE, and AUDIT_REPORT for multi-user workflows and recent fixes
+- `0d27187` — docs: correct e2e pass count in AUDIT_REPORT
+- `ef437d9` — fix(web): proxy /api and /uploads in vite preview server for CI e2e
 
 ### 13.3 GitHub CI
 
-The latest changes were pushed to `main` and the `Test` workflow is expected to run on push. The previous workflow on `main` passed, and the new commit retains the same green signals for typecheck, unit tests, and E2E.
+The `Test` workflow on `main` is expected to pass for commit `ef437d9`. The earlier failures were caused by the Vite preview server not proxying API routes in CI; that was resolved by the `ef437d9` vite config fix.
 
 ### 13.4 Notable follow-up work
 
