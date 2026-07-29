@@ -172,14 +172,29 @@ test("demo users can guess, like, and comment on each other's reviews", async ({
   await expect(likeButton).toBeVisible();
   await expect(likeButton).toBeEnabled({ timeout: 10000 });
   const likeLabel = await likeButton.getAttribute("aria-label");
-  if (likeLabel?.startsWith("Like")) {
+  // Ensure a fresh like (and notification) by unliking first if already liked.
+  if (likeLabel?.startsWith("Unlike")) {
+    const unlikeResponse = page.waitForResponse((res) =>
+      res.url().includes(`/api/likes/reviews/${target!.id}`) && res.request().method() === "POST"
+    );
     await likeButton.click();
-    await expect(page.getByRole("button", { name: /^Unlike review/i })).toBeVisible();
+    await unlikeResponse;
+    await expect(page.getByRole("button", { name: /^Like review/i })).toBeEnabled({ timeout: 10000 });
   }
+  const likeResponse = page.waitForResponse((res) =>
+    res.url().includes(`/api/likes/reviews/${target!.id}`) && res.request().method() === "POST"
+  );
+  await page.getByRole("button", { name: /^Like review/i }).click();
+  await likeResponse;
+  await expect(page.getByRole("button", { name: /^Unlike review/i })).toBeVisible();
 
-  const commentText = "Great take from the e2e suite!";
+  const commentText = `Great take from the e2e suite! ${Date.now()}`;
   await page.getByPlaceholder("Add a comment...").fill(commentText);
+  const commentResponse = page.waitForResponse((res) =>
+    res.url().includes(`/api/comments/reviews/${target!.id}/comments`) && res.request().method() === "POST"
+  );
   await page.getByRole("button", { name: /Post comment/i }).click();
+  await commentResponse;
   await expect(page.getByText(commentText).first()).toBeVisible();
 
   // Switch to the review owner and confirm notifications arrived.
@@ -189,7 +204,13 @@ test("demo users can guess, like, and comment on each other's reviews", async ({
   await switchToUser(page, context, owner!.email);
   await page.getByRole("link", { name: "Profile" }).click();
   await expect(page).toHaveURL("/profile/me");
+
+  // Wait for the notifications API so the test does not race the React Query fetch.
+  const notificationsResponse = page.waitForResponse(
+    (res) => res.url().includes("/api/notifications") && res.request().method() === "GET"
+  );
   await page.getByRole("tab", { name: "Activity" }).click();
+  await notificationsResponse;
 
   await expect(page.getByText(/New like/).first()).toBeVisible();
   await expect(page.getByText(/New comment/).first()).toBeVisible();

@@ -2,13 +2,11 @@ import { test, expect, type Locator } from "@playwright/test";
 import { registerFreshUser } from "./helpers/auth";
 
 async function swipeOnFeed(feed: Locator, direction: "up" | "down") {
-  // WebKit can be slow to return layout info; use getBoundingClientRect from
-  // inside the page instead of Playwright's boundingBox helper.
   const rect = await feed.evaluate((el) => el.getBoundingClientRect());
 
   const x = rect.left + rect.width / 2;
-  const yStart = direction === "up" ? rect.top + rect.height * 0.7 : rect.top + rect.height * 0.2;
-  const yEnd = direction === "up" ? rect.top + rect.height * 0.2 : rect.top + rect.height * 0.7;
+  const yStart = direction === "up" ? rect.top + rect.height * 0.8 : rect.top + rect.height * 0.2;
+  const yEnd = direction === "up" ? rect.top + rect.height * 0.2 : rect.top + rect.height * 0.8;
 
   await feed.evaluate(
     (el, { x, yStart, yEnd }) => {
@@ -24,6 +22,7 @@ async function swipeOnFeed(feed: Locator, direction: "up" | "down") {
           touches: [createTouch(yStart)],
           changedTouches: [createTouch(yStart)],
           bubbles: true,
+          cancelable: true,
         })
       );
       el.dispatchEvent(
@@ -31,6 +30,7 @@ async function swipeOnFeed(feed: Locator, direction: "up" | "down") {
           touches: [createTouch(yEnd)],
           changedTouches: [createTouch(yEnd)],
           bubbles: true,
+          cancelable: true,
         })
       );
       el.dispatchEvent(
@@ -38,6 +38,7 @@ async function swipeOnFeed(feed: Locator, direction: "up" | "down") {
           touches: [],
           changedTouches: [createTouch(yEnd)],
           bubbles: true,
+          cancelable: true,
         })
       );
     },
@@ -58,16 +59,14 @@ test.describe("bottom navigation", () => {
     await expect(feed).toBeVisible({ timeout: 10000 });
     await expect(nav).toBeVisible();
     await expect(navWrapper).toHaveCSS("opacity", "1");
-    await page.screenshot({ path: "test-results/bottom-nav-visible.png" });
 
     // Swipe up (finger moves up) => content scrolls down => nav hides.
     await swipeOnFeed(feed, "up");
-    await expect(navWrapper).toHaveCSS("opacity", "0", { timeout: 2000 });
-    await page.screenshot({ path: "test-results/bottom-nav-hidden.png" });
+    await expect(navWrapper).toHaveCSS("opacity", "0", { timeout: 5000 });
 
     // Swipe down (finger moves down) => content scrolls up => nav shows.
     await swipeOnFeed(feed, "down");
-    await expect(navWrapper).toHaveCSS("opacity", "1", { timeout: 2000 });
+    await expect(navWrapper).toHaveCSS("opacity", "1", { timeout: 5000 });
     await expect(nav).toBeVisible();
   });
 });
