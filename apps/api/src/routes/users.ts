@@ -97,3 +97,97 @@ usersRouter.get("/:id/reviews", optionalAuth, async (req: AuthenticatedRequest, 
     next(err);
   }
 });
+
+usersRouter.get("/:id/followers", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const cursor = req.query.cursor as string | undefined;
+    const limit = LimitSchema.parse(req.query.limit);
+
+    const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const followers = await prisma.follow.findMany({
+      where: { followingId: req.params.id },
+      take: limit,
+      skip: cursor ? 1 : 0,
+      cursor: cursor ? { id: cursor } : undefined,
+      orderBy: { createdAt: "desc" },
+      include: {
+        follower: {
+          select: { id: true, username: true, displayName: true, avatarUrl: true },
+        },
+      },
+    });
+
+    const nextCursor = followers.length === limit ? followers[followers.length - 1].id : undefined;
+
+    const viewerId = req.user?.id;
+    const users = await Promise.all(
+      followers.map(async (f) => {
+        const user = f.follower;
+        let isFollowing = false;
+        if (viewerId && viewerId !== user.id) {
+          const follow = await prisma.follow.findUnique({
+            where: { followerId_followingId: { followerId: viewerId, followingId: user.id } },
+          });
+          isFollowing = !!follow;
+        }
+        return { ...user, isFollowing };
+      })
+    );
+
+    res.json({ users, nextCursor });
+  } catch (err) {
+    next(err);
+  }
+});
+
+usersRouter.get("/:id/following", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const cursor = req.query.cursor as string | undefined;
+    const limit = LimitSchema.parse(req.query.limit);
+
+    const user = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true } });
+    if (!user) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    const following = await prisma.follow.findMany({
+      where: { followerId: req.params.id },
+      take: limit,
+      skip: cursor ? 1 : 0,
+      cursor: cursor ? { id: cursor } : undefined,
+      orderBy: { createdAt: "desc" },
+      include: {
+        following: {
+          select: { id: true, username: true, displayName: true, avatarUrl: true },
+        },
+      },
+    });
+
+    const nextCursor = following.length === limit ? following[following.length - 1].id : undefined;
+
+    const viewerId = req.user?.id;
+    const users = await Promise.all(
+      following.map(async (f) => {
+        const user = f.following;
+        let isFollowing = false;
+        if (viewerId && viewerId !== user.id) {
+          const follow = await prisma.follow.findUnique({
+            where: { followerId_followingId: { followerId: viewerId, followingId: user.id } },
+          });
+          isFollowing = !!follow;
+        }
+        return { ...user, isFollowing };
+      })
+    );
+
+    res.json({ users, nextCursor });
+  } catch (err) {
+    next(err);
+  }
+});
