@@ -40,5 +40,5 @@ Visit your profile to see your reviews, stats, streak, and achievements. Follow 
 ## Tips
 
 - Keep reviews under 5 seconds and well-lit.
-- Use tags to help others discover your review.
+- Use tags to help others discover your review. Tags appear as `#tag` pills on each video.
 - Guess honestly — the algorithm rewards engagement.

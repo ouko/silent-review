@@ -91,7 +91,7 @@ describe("PointsDisplay", () => {
 
 ## Writing E2E Tests
 
-E2E tests use Playwright with a mobile viewport. Use demo credentials when testing authenticated flows:
+E2E tests use Playwright with mobile viewports (Pixel 5 and iPhone 14). Use demo credentials when testing authenticated flows:
 
 ```ts
 await page.goto("/login");
@@ -100,6 +100,16 @@ await page.getByPlaceholder("Password").fill("DemoPass123!");
 await page.getByRole("button", { name: /log in with email/i }).click();
 ```
 
+The seeded demo accounts are:
+
+| Email | Username | Password |
+|-------|----------|----------|
+| `demo@silentreview.app` | `demouser` | `DemoPass123!` |
+| `alice@silentreview.app` | `alice` | `DemoPass123!` |
+| `bob@silentreview.app` | `bob` | `DemoPass123!` |
+
+`e2e/multi-user-workflows.spec.ts` exercises these accounts end-to-end: each logs in, sees the newest reviews first with visible product tags, likes/comments on another user's review, and verifies the notification appears for the review owner. It also covers the follow → Following-feed workflow.
+
 ## CI
 
-Tests run on every push to `main` and every pull request via `.github/workflows/test.yml`.
+Tests run on every push to `main` and every pull request via `.github/workflows/test.yml`. The workflow runs `pnpm typecheck`, `pnpm build`, unit tests for the API and web apps, and the full Playwright E2E suite against a seeded database.
