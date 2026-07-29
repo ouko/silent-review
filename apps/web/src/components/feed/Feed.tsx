@@ -1,5 +1,6 @@
 import { useRef, useState, useCallback } from "react";
 import { motion, useReducedMotion } from "framer-motion";
+import { Link } from "react-router-dom";
 import { Eye, MessageCircle, Share2 } from "lucide-react";
 import { useVideoFeed } from "../../hooks/useVideoFeed";
 import { LikeButton } from "../social/LikeButton";
@@ -138,6 +139,12 @@ export function Feed({
             key={review.id}
             ref={setItemRef(index)}
             data-index={index}
+            data-review-id={review.id}
+            data-user-id={review.user.id}
+            data-username={review.user.username}
+            data-display-name={review.user.displayName || review.user.username}
+            data-created-at={review.createdAt}
+            data-product-tag={review.productTag}
             className="relative h-full w-full snap-start"
           >
             <VideoPlayer
@@ -150,6 +157,7 @@ export function Feed({
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/60 to-transparent p-5 pb-20">
               <VideoInfo
                 username={review.user.username}
+                userId={review.user.id}
                 avatarUrl={review.user.avatarUrl}
                 caption={review.caption}
                 productTag={review.productTag}
@@ -157,11 +165,15 @@ export function Feed({
 
               <div className="mb-3 mt-3 flex items-center gap-5">
                 <LikeButton reviewId={review.id} />
-                <FeedActionButton
-                  icon={<MessageCircle className="h-5 w-5" />}
-                  count={review.commentCount}
-                  onClick={() => (window.location.href = `/review/${review.id}`)}
-                />
+                <Link
+                  to={`/review/${review.id}`}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label="Comment on review"
+                  className="flex items-center gap-1.5 text-sm font-bold text-white/80 transition-colors hover:text-white"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                  <span>{review.commentCount}</span>
+                </Link>
                 <FeedActionButton
                   icon={<Share2 className="h-5 w-5" />}
                   count={review.shareCount}

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useAuthStore } from "../stores/authStore";
+import { useAuthStore, type User } from "../stores/authStore";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL ?? "",
@@ -22,8 +22,9 @@ api.interceptors.response.use(
     if (err.response?.status === 401 && !original._retry) {
       original._retry = true;
       try {
-        const { data } = await api.post("/api/auth/refresh", {});
+        const { data } = await api.post<{ accessToken: string; user: User }>("/api/auth/refresh", {});
         useAuthStore.getState().setAccessToken(data.accessToken);
+        useAuthStore.getState().setUser(data.user);
         return api(original);
       } catch {
         useAuthStore.getState().logout();

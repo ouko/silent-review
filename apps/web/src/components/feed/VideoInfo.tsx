@@ -1,13 +1,15 @@
 import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
 
 interface VideoInfoProps {
   username: string;
+  userId?: string;
   avatarUrl?: string | null;
   caption?: string | null;
   productTag?: string | null;
 }
 
-export function VideoInfo({ username, avatarUrl, caption, productTag }: VideoInfoProps) {
+export function VideoInfo({ username, userId, avatarUrl, caption, productTag }: VideoInfoProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -28,7 +30,17 @@ export function VideoInfo({ username, avatarUrl, caption, productTag }: VideoInf
           </div>
         )}
         <div className="flex flex-col">
-          <p className="font-bold text-white">@{username}</p>
+          {userId ? (
+            <Link
+              to={`/profile/${userId}`}
+              className="font-bold text-white hover:text-rose-300"
+              onClick={(e) => e.stopPropagation()}
+            >
+              @{username}
+            </Link>
+          ) : (
+            <p className="font-bold text-white">@{username}</p>
+          )}
           {productTag && (
             <span className="w-fit rounded-full border border-rose-500/30 bg-rose-500/20 px-2.5 py-0.5 text-xs font-semibold text-rose-300 backdrop-blur-sm">
               #{productTag}
