@@ -3,24 +3,10 @@ import { execFile } from "child_process";
 import { readFile } from "fs/promises";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { UPLOAD_DIR, extensionForContentType, isFFprobeAvailable } from "../upload-helpers.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-const TEST_UPLOAD_DIR = join(process.cwd(), "uploads");
-
-function extensionForContentType(contentType: string): string {
-  switch (contentType) {
-    case "video/webm":
-      return ".webm";
-    case "video/mp4":
-      return ".mp4";
-    case "video/quicktime":
-      return ".mov";
-    default:
-      return ".bin";
-  }
-}
 
 async function fixtureBuffer(name: string): Promise<Buffer> {
   return readFile(join(__dirname, "fixtures", name));
@@ -89,9 +75,10 @@ describe("validateVideoFile graceful degradation", () => {
     // Restore real child_process so ffprobe probing works.
     jest.unstable_mockModule("child_process", () => ({ execFile }));
 
-    jest.unstable_mockModule("../upload.service.js", () => ({
-      UPLOAD_DIR: TEST_UPLOAD_DIR,
+    jest.unstable_mockModule("../upload-helpers.js", () => ({
+      UPLOAD_DIR,
       extensionForContentType,
+      isFFprobeAvailable,
       isFFmpegAvailable: mockIsFFmpegAvailable,
     }));
 
@@ -110,9 +97,10 @@ describe("validateVideoFile graceful degradation", () => {
     // Restore real child_process so ffprobe probing works.
     jest.unstable_mockModule("child_process", () => ({ execFile }));
 
-    jest.unstable_mockModule("../upload.service.js", () => ({
-      UPLOAD_DIR: TEST_UPLOAD_DIR,
+    jest.unstable_mockModule("../upload-helpers.js", () => ({
+      UPLOAD_DIR,
       extensionForContentType,
+      isFFprobeAvailable,
       isFFmpegAvailable: mockIsFFmpegAvailable,
     }));
 

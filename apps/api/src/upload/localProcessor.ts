@@ -3,7 +3,8 @@ import { promisify } from "util";
 import { randomUUID } from "crypto";
 import { mkdir, writeFile, unlink } from "fs/promises";
 import { join } from "path";
-import { UPLOAD_DIR, UPLOAD_BASE_URL, type VideoVariant, type ProcessedVideo } from "./upload.service.js";
+import { UPLOAD_DIR, UPLOAD_BASE_URL } from "./upload-helpers.js";
+import { type VideoVariant, type ProcessedVideo } from "./upload.service.js";
 
 const execFileAsync = promisify(execFile);
 

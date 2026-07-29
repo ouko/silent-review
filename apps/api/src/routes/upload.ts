@@ -4,10 +4,12 @@ import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import {
   validateVideoFile,
   saveVideoFile,
+} from "../upload/upload.service.js";
+import {
   isFFmpegAvailable,
   UPLOAD_BASE_URL,
   UPLOAD_DIR,
-} from "../upload/upload.service.js";
+} from "../upload/upload-helpers.js";
 import { processVideoLocally } from "../upload/localProcessor.js";
 
 export const uploadRouter = Router();

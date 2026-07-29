@@ -5,7 +5,7 @@ import { randomUUID } from "crypto";
 import { mkdir, writeFile, unlink } from "fs/promises";
 import { join } from "path";
 import { env } from "../config/index.js";
-import { UPLOAD_DIR, extensionForContentType, isFFmpegAvailable } from "./upload.service.js";
+import { UPLOAD_DIR, extensionForContentType, isFFmpegAvailable, isFFprobeAvailable } from "./upload-helpers.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -94,7 +94,9 @@ export async function validateVideoFile(
       errors.push("Audio track detected. Silent Review videos must be silent");
     }
 
-    if (!probe.videoCodec || !ALLOWED_CODECS.has(probe.videoCodec.toLowerCase())) {
+    if (!probe.videoCodec) {
+      errors.push("No video stream found");
+    } else if (!ALLOWED_CODECS.has(probe.videoCodec.toLowerCase())) {
       errors.push("Unsupported video codec. Use H.264, H.265, VP8, VP9, or AV1");
     }
 
@@ -103,7 +105,7 @@ export async function validateVideoFile(
       errors.push(`Video resolution is too low. Shortest side must be at least ${env.VIDEO_MIN_RESOLUTION}px`);
     }
 
-    if (probe.fps && probe.fps < env.VIDEO_MIN_FPS) {
+    if (probe.fps != null && probe.fps < env.VIDEO_MIN_FPS) {
       errors.push(`Frame rate is too low. Must be at least ${env.VIDEO_MIN_FPS} fps`);
     }
 
@@ -256,6 +258,10 @@ async function checkStaticAndDark(buffer: Buffer, ext: string, duration: number)
   }
 }
 
+function rgbToLuma(r: number, g: number, b: number): number {
+  return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
 function averageHash(data: Buffer, width: number, height: number): string {
   const gray = new Array(width * height);
   let sum = 0;
@@ -263,7 +269,7 @@ function averageHash(data: Buffer, width: number, height: number): string {
     const r = data[i * 3];
     const g = data[i * 3 + 1];
     const b = data[i * 3 + 2];
-    const v = 0.299 * r + 0.587 * g + 0.114 * b;
+    const v = rgbToLuma(r, g, b);
     gray[i] = v;
     sum += v;
   }
@@ -275,7 +281,7 @@ function averageBrightness(data: Buffer): number {
   let sum = 0;
   const count = data.length / 3;
   for (let i = 0; i < count; i++) {
-    sum += 0.299 * data[i * 3] + 0.587 * data[i * 3 + 1] + 0.114 * data[i * 3 + 2];
+    sum += rgbToLuma(data[i * 3], data[i * 3 + 1], data[i * 3 + 2]);
   }
   return sum / count;
 }
@@ -286,13 +292,4 @@ function hammingDistance(a: string, b: string): number {
     if (a[i] !== b[i]) dist++;
   }
   return dist;
-}
-
-async function isFFprobeAvailable(): Promise<boolean> {
-  try {
-    await execFileAsync("ffprobe", ["-version"]);
-    return true;
-  } catch {
-    return false;
-  }
 }
