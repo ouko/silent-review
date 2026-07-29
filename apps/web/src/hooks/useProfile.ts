@@ -63,3 +63,33 @@ export function useProfileReviews(userId?: string) {
     enabled: !!userId,
   });
 }
+
+export interface UserSummary {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  isFollowing: boolean;
+}
+
+export function useFollowers(userId?: string) {
+  return useQuery<{ users: UserSummary[]; nextCursor?: string }>({
+    queryKey: ["followers", userId],
+    queryFn: async () => {
+      const { data } = await api.get(`/api/users/${userId}/followers?limit=50`);
+      return data;
+    },
+    enabled: !!userId,
+  });
+}
+
+export function useFollowing(userId?: string) {
+  return useQuery<{ users: UserSummary[]; nextCursor?: string }>({
+    queryKey: ["following", userId],
+    queryFn: async () => {
+      const { data } = await api.get(`/api/users/${userId}/following?limit=50`);
+      return data;
+    },
+    enabled: !!userId,
+  });
+}
