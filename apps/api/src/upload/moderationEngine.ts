@@ -5,8 +5,20 @@ import { mkdir, unlink } from "fs/promises";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { env } from "../config/index.js";
+import { isFFmpegAvailable } from "./upload-helpers.js";
 
 const execFileAsync = promisify(execFile);
+
+function moderateWithDegradation(message: string): ModerationResult {
+  console.warn(`[moderationEngine] ${message}`);
+  const failClosed = env.VIDEO_MODERATION_FAIL_CLOSED === "true";
+  return {
+    status: failClosed ? "REJECT" : "PASS",
+    score: failClosed ? 1 : 0,
+    reasons: [`${message} (fail-${failClosed ? "closed" : "open"})`],
+    frameScores: [],
+  };
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,13 +42,34 @@ interface FrameScore {
 }
 
 export async function runVideoModeration(videoPath: string, duration: number): Promise<ModerationResult> {
-  const frameCount = env.VIDEO_MODERATION_FRAME_COUNT;
-  const frameScores: FrameScore[] = [];
+  if (duration <= 0) {
+    return { status: "REJECT", score: 1, reasons: ["Invalid video duration"], frameScores: [] };
+  }
 
-  for (let i = 0; i < frameCount; i++) {
-    const t = Math.min((duration * (i + 1)) / (frameCount + 1), duration - 0.1);
-    const score = await analyzeFrame(videoPath, t);
-    frameScores.push(score);
+  const frameCount = env.VIDEO_MODERATION_FRAME_COUNT;
+  if (frameCount <= 0) {
+    return { status: "PASS", score: 0, reasons: [], frameScores: [] };
+  }
+
+  const ffmpegAvailable = await isFFmpegAvailable();
+  if (!ffmpegAvailable) {
+    return moderateWithDegradation("ffmpeg not found; video moderation unavailable");
+  }
+
+  const frameScores: FrameScore[] = [];
+  try {
+    for (let i = 0; i < frameCount; i++) {
+      const t = Math.min((duration * (i + 1)) / (frameCount + 1), duration - 0.1);
+      const score = await analyzeFrame(videoPath, t);
+      frameScores.push(score);
+    }
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    return moderateWithDegradation(`Frame analysis failed: ${reason}`);
+  }
+
+  if (frameScores.length === 0) {
+    return moderateWithDegradation("No frames could be analyzed");
   }
 
   const reasons: string[] = [];
