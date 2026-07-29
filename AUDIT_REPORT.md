@@ -493,6 +493,18 @@ A second pass focused on user-facing quality, cross-user workflows, and test cov
   - Replaced the placeholder QR code in `QRGenerator` with the real `QRCode` component.
   - Added E2E coverage that creates an invite, registers a fresh user through the invite link in a second browser context, and verifies the original inviter sees the "joined" badge.
 
+### 11.12 Video validation and content moderation
+- **Files:** `apps/api/src/upload/videoValidator.ts`, `apps/api/src/upload/moderationEngine.ts`, `apps/api/src/upload/moderationQueue.ts`, `apps/api/src/reviews/reviews.service.ts`, `apps/web/src/hooks/useCreateReview.ts`
+- **Issue:** Uploaded videos were only checked for duration, size, and silence. There was no enforcement of resolution/frame-rate/encoding quality and no local content moderation.
+- **Status:** Fixed.
+- **Fix:** Added synchronous validation for min 480p resolution, 24 fps, allowed codecs, static-frame detection, and brightness. Added asynchronous local-frame moderation using skin-tone, entropy, edge-density, and perceptual-hash heuristics. Review creation is gated on moderation status; rejected videos are hidden from feeds.
+
+### 11.13 Dev LAN stack same-origin cookie handling
+- **File:** `scripts/dev-lan.sh`
+- **Issue:** `dev-lan.sh` set `VITE_API_URL` to the machine's LAN IP (e.g. `http://192.168.1.5:3001`). This forced the browser to make cross-origin API calls even when the app was opened via `localhost`, so the HTTP-only refresh cookie was set on the LAN-IP origin and was not sent on subsequent `localhost` navigations. The result was that any full-page reload (e.g. direct navigation to `/viral` or `/record` in Playwright, or a phone user refreshing the page) silently lost authentication and redirected to `/login`.
+- **Status:** Fixed.
+- **Fix:** Stop overriding `VITE_API_URL` in `dev-lan.sh`. The browser now uses relative URLs, and the Vite dev server proxies `/api` and `/uploads` to `localhost:3001`. From the browser's perspective the API is same-origin on both `localhost` and the LAN IP, so refresh cookies survive reloads and local E2E tests are stable.
+
 ---
 
 ## 12. Remaining Work (Medium/Low Priority)
@@ -522,12 +534,12 @@ The following items were identified but not resolved in this pass due to scope/t
 
 ### 13.1 Final Test Run (local)
 
-After the challenges/invites pass, the full workflow was run locally:
+After the challenges/invites and follow-test fixes, the full workflow was run locally on the `feat/video-moderation` branch:
 
 - `pnpm typecheck` — passed across all workspace packages.
-- `pnpm --filter api test` — 5 suites, 27 tests passed.
+- `pnpm --filter api test` — 12 suites, 65 tests passed.
 - `pnpm --filter web test` — 4 files, 12 tests passed.
-- `pnpm test:e2e --workers=1` — 32 Playwright tests: 27 passed, 5 intentionally skipped (bottom-nav swipe test on both browsers, three WebKit guess/reveal tests), 0 failures.
+- `pnpm test:e2e --workers=1` — 40 Playwright tests: 34 passed, 5 intentionally skipped (bottom-nav swipe test on both browsers, three WebKit guess/reveal tests), 1 flaky (Mobile Chrome `fresh user can guess on a seeded review and reveal the rating` — first registration response occasionally exceeds the 120s test timeout under load, but passes on retry), 0 failures.
 
 ### 13.2 Commits
 
