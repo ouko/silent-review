@@ -554,6 +554,11 @@ The challenges/invites fixes and documentation updates were committed as:
 - `46bb2fe` — ci: install Playwright system deps and upload e2e artifacts; stabilize multi-user and bottom-nav e2e tests
 - `a4f2afc` — docs: document E2E CI system-deps fix and test stabilization in AUDIT_REPORT
 - `12c2647` — feat(viral): make challenges joinable, invites shareable via WhatsApp/SMS/copy, real QR codes, and add E2E coverage
+- `b3c7bcb` — fix(dev-lan): keep API and web same-origin so refresh cookies survive reloads
+- `5d7279f` — fix(web+e2e): support `?tab` query param and use it in follow test
+- `d28c63f` — test(api): extend timeout for moderation graceful-degradation fixture tests
+- `d275355` — feat(e2e): add video moderation E2E fixtures and spec
+- `4926e8a` — docs: update AUDIT_REPORT with dev-lan fix and final test counts
 
 ### 13.3 GitHub CI
 
