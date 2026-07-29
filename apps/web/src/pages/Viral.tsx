@@ -16,32 +16,27 @@ export function Viral() {
     const joinId = searchParams.get("join");
     if (!joinId || processedRef.current) return;
 
-    const allChallenges = [...myChallenges, ...discoverChallenges];
-    const target = allChallenges.find((c) => c.id === joinId);
-
-    if (target && myChallenges.some((c) => c.id === joinId)) {
-      addToast("You're already in this challenge!", "info");
+    if (myChallenges.some((c) => c.id === joinId)) {
       processedRef.current = true;
+      addToast("You're already in this challenge!", "info");
       searchParams.delete("join");
       setSearchParams(searchParams, { replace: true });
       return;
     }
 
-    if (target) {
-      processedRef.current = true;
-      joinChallenge(joinId)
-        .then(() => {
-          addToast(`Joined "${target.name}"!`, "success");
-        })
-        .catch((err) => {
-          const message = err instanceof Error ? err.message : "Could not join challenge";
-          addToast(message, "error");
-        })
-        .finally(() => {
-          searchParams.delete("join");
-          setSearchParams(searchParams, { replace: true });
-        });
-    }
+    processedRef.current = true;
+    joinChallenge(joinId)
+      .then(() => {
+        addToast("Joined challenge!", "success");
+      })
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : "Could not join challenge";
+        addToast(message, "error");
+      })
+      .finally(() => {
+        searchParams.delete("join");
+        setSearchParams(searchParams, { replace: true });
+      });
   }, [searchParams, myChallenges, discoverChallenges, joinChallenge, addToast, setSearchParams]);
 
   return (

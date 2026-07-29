@@ -54,7 +54,7 @@ export function InviteFriends() {
     const invite = await ensureInvite();
     if (!invite) return;
     const body = encodeURIComponent(`Join me on Silent Review: ${invite.link}`);
-    window.location.href = `sms:?&body=${body}`;
+    window.location.href = `sms:?body=${body}`;
   }
 
   async function copyToClipboard(text: string) {

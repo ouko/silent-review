@@ -471,6 +471,28 @@ A second pass focused on user-facing quality, cross-user workflows, and test cov
   - `multi-user-workflows.spec.ts`: ensure a fresh like by unliking first if needed, wait for like/comment API responses before proceeding, use a unique comment text per run, and wait for the notifications GET response after opening the Activity tab.
   - `bottom-nav.spec.ts`: increase swipe distance, add `cancelable: true` to synthetic touch events, and extend the opacity assertion timeout.
 
+### 11.10 Challenges joinable with reliable deep links
+- **Files:** `apps/api/src/challenges/challenges.routes.ts`, `apps/api/src/challenges/challenges.service.ts`, `apps/web/src/hooks/useChallenges.ts`, `apps/web/src/components/viral/ChallengeCard.tsx`, `apps/web/src/pages/Viral.tsx`, `e2e/challenges.spec.ts`
+- **Issue:** The `/viral` screen did not list all active challenges for users to join, and the `?join=<id>` deep link waited until all challenges finished loading before attempting to join. If the challenge list was empty or slow, the user saw no feedback and the URL stayed polluted with `?join=`.
+- **Status:** Fixed.
+- **Fix:**
+  - Added `GET /api/challenges` to return all active challenges and rewrote `useChallenges` to show separate "Discover" and "Your challenges" sections.
+  - `ChallengeCard` now renders a "Join challenge" button with loading state and a "Share" button that creates a deep link (`/viral?join=<id>`).
+  - `Viral.tsx` now attempts to join directly from the `?join=<id>` parameter instead of waiting for the full challenge list, shows a success/error toast, and clears the query param.
+  - Added `data-testid` and `data-challenge-id` attributes so E2E tests can locate cards and verify deep-link joins across two browser contexts.
+
+### 11.11 Invites shareable via WhatsApp/SMS/copy with real acceptance flow
+- **Files:** `packages/shared/src/schemas.ts`, `apps/api/src/routes/auth.ts`, `apps/api/src/invites/invites.service.ts`, `apps/web/src/lib/auth.ts`, `apps/web/src/pages/Register.tsx`, `apps/web/src/pages/InviteLanding.tsx`, `apps/web/src/components/viral/InviteFriends.tsx`, `apps/web/src/components/viral/QRGenerator.tsx`, `e2e/invites.spec.ts`
+- **Issue:** The invite UI let users copy a link and share to WhatsApp/SMS, but the backend never marked an invite as accepted when a new user registered. The `RegisterSchema` did not accept an `inviteCode`, the register page ignored the `?invite=` query parameter, and no route called `acceptInvite`. Recipients could sign up, but inviters never saw "joined" and the invite workflow was incomplete.
+- **Status:** Fixed.
+- **Fix:**
+  - Added optional `inviteCode` to `RegisterSchema` and wired it through `lib/auth.ts` to the register API call.
+  - Updated `Register.tsx` to read `?invite=` from the URL and pass it to `register()`.
+  - Updated `POST /api/auth/register` to call `acceptInvite(code, user.id)` after user creation.
+  - Kept the native share sheet, copy-link, WhatsApp, and SMS buttons in `InviteFriends`; fixed the SMS href to use `sms:?body=` for broader device compatibility.
+  - Replaced the placeholder QR code in `QRGenerator` with the real `QRCode` component.
+  - Added E2E coverage that creates an invite, registers a fresh user through the invite link in a second browser context, and verifies the original inviter sees the "joined" badge.
+
 ---
 
 ## 12. Remaining Work (Medium/Low Priority)
@@ -500,17 +522,16 @@ The following items were identified but not resolved in this pass due to scope/t
 
 ### 13.1 Final Test Run (local)
 
-After the production-readiness pass, the full workflow was run locally:
+After the challenges/invites pass, the full workflow was run locally:
 
 - `pnpm typecheck` — passed across all workspace packages.
 - `pnpm --filter api test` — 5 suites, 27 tests passed.
 - `pnpm --filter web test` — 4 files, 12 tests passed.
-- `pnpm test:e2e` — 22 Playwright tests: 18 passed, 4 WebKit tests intentionally skipped (no failures).
-- `pnpm test:e2e --workers=1` — CI-simulation run: 18 passed, 4 skipped (no failures).
+- `pnpm test:e2e --workers=1` — 32 Playwright tests: 27 passed, 5 intentionally skipped (bottom-nav swipe test on both browsers, three WebKit guess/reveal tests), 0 failures.
 
 ### 13.2 Commits
 
-The production-readiness changes were committed as:
+The challenges/invites fixes and documentation updates were committed as:
 
 - `a89e084` — test(e2e): multi-user seeded workflow tests and auth/feed testability fixes
 - `abff04e` — docs: update TESTING, USER_GUIDE, and AUDIT_REPORT for multi-user workflows and recent fixes
@@ -519,6 +540,8 @@ The production-readiness changes were committed as:
 - `2d48c8d` — ci: set WEB_APP_URL in test workflow so CORS allows the e2e preview origin
 - `d114174` — docs: add CI CORS fix to AUDIT_REPORT
 - `46bb2fe` — ci: install Playwright system deps and upload e2e artifacts; stabilize multi-user and bottom-nav e2e tests
+- `a4f2afc` — docs: document E2E CI system-deps fix and test stabilization in AUDIT_REPORT
+- `12c2647` — feat(viral): make challenges joinable, invites shareable via WhatsApp/SMS/copy, real QR codes, and add E2E coverage
 
 ### 13.3 GitHub CI
 

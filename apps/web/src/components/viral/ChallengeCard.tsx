@@ -47,7 +47,11 @@ function ChallengeCard({
   isJoining: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+    <div
+      className="rounded-2xl border border-white/10 bg-black/20 p-4"
+      data-testid="challenge-card"
+      data-challenge-id={challenge.id}
+    >
       <div className="mb-2 flex items-start justify-between gap-3">
         <div>
           <h3 className="font-bold text-white">{challenge.name}</h3>

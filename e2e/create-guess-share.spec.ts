@@ -100,12 +100,20 @@ test.describe("share sheet scrollability", () => {
     await prepareFeedForTesting(page);
 
     // Open the share sheet from the feed action bar before revealing.
-    const shareButton = page.getByRole("button", { name: /Share review/i }).first();
-    await expect(shareButton).toBeVisible();
-    await shareButton.click();
+    // The feed unmounts distant cards as the user scrolls, so retry if the
+    // first share button detaches between visibility and click.
+    await expect(async () => {
+      const shareButton = page.getByRole("button", { name: /Share review/i }).first();
+      await expect(shareButton).toBeVisible({ timeout: 5000 });
+      await shareButton.click({ force: true, timeout: 5000 });
+    }).toPass({ timeout: 15000 });
+
+    // Wait for the share sheet dialog to mount via createPortal.
+    const sheetDialog = page.locator('[role="dialog"]').filter({ hasText: /Share review/i });
+    await expect(sheetDialog).toBeAttached({ timeout: 10000 });
 
     const copyLinkButton = page.getByRole("button", { name: /Copy link/i });
-    await expect(copyLinkButton).toBeAttached();
+    await expect(copyLinkButton).toBeAttached({ timeout: 10000 });
 
     // On a very small screen the bottom actions start below the fold.
     const initiallyInViewport = await copyLinkButton.isVisible().catch(() => false);

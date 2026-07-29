@@ -21,6 +21,7 @@ import {
   revokeRefreshToken,
   toSafeUser,
 } from "../auth/auth.service.js";
+import { acceptInvite } from "../invites/invites.service.js";
 import {
   EmailProvider,
   GoogleProvider,
@@ -118,6 +119,14 @@ authRouter.post("/register", loginLimiter, async (req, res, next) => {
         passwordHash,
       },
     });
+
+    if (data.inviteCode) {
+      try {
+        await acceptInvite(data.inviteCode, user.id);
+      } catch {
+        // Non-fatal: registration succeeds even if invite acceptance fails.
+      }
+    }
 
     const { accessToken } = await issueTokens(res, user.id, user.email, user.role as UserRole);
     res.status(201).json({ user: toSafeUser(user), accessToken });

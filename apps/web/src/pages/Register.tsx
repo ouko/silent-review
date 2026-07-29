@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { register, type AuthProvider, type OAuthProvider } from "../lib/auth";
 import { useAuthStore } from "../stores/authStore";
@@ -11,6 +11,8 @@ import { SocialButton, PROVIDER_LABELS } from "../components/auth/SocialButton";
 
 export function Register() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const inviteCode = searchParams.get("invite") ?? undefined;
   const { setUser, setAccessToken, setLoading } = useAuthStore();
   const [form, setForm] = useState({
     email: "",
@@ -40,7 +42,7 @@ export function Register() {
     setError("");
     setIsLoading(true);
     try {
-      const { user, accessToken } = await register(form);
+      const { user, accessToken } = await register({ ...form, inviteCode });
       setUser(user);
       setAccessToken(accessToken);
       setLoading(false);

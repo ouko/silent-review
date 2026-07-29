@@ -21,6 +21,7 @@ export async function register(input: {
   username: string;
   password: string;
   displayName?: string;
+  inviteCode?: string;
 }): Promise<AuthResponse> {
   const { data } = await api.post<AuthResponse>("/api/auth/register", input);
   setAuth(data);

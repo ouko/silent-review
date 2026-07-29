@@ -10,6 +10,7 @@ export const RegisterSchema = z.object({
   username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/),
   password: z.string().min(8),
   displayName: z.string().optional(),
+  inviteCode: z.string().optional(),
 });
 
 export const CreateReviewSchema = z.object({
