@@ -505,6 +505,24 @@ A second pass focused on user-facing quality, cross-user workflows, and test cov
 - **Status:** Fixed.
 - **Fix:** Stop overriding `VITE_API_URL` in `dev-lan.sh`. The browser now uses relative URLs, and the Vite dev server proxies `/api` and `/uploads` to `localhost:3001`. From the browser's perspective the API is same-origin on both `localhost` and the LAN IP, so refresh cookies survive reloads and local E2E tests are stable.
 
+### 11.14 Profile logout button
+- **Files:** `apps/web/src/components/profile/Profile.tsx`, `e2e/logout.spec.ts`
+- **Issue:** Users had no in-app way to log out; the existing "Edit profile" button on their own profile was a non-functional placeholder.
+- **Status:** Fixed.
+- **Fix:** Added a "Log out" button below "Edit profile" on the own-profile view. The button calls the existing `logout()` helper, disables while the request is in flight, and redirects to `/login` on completion. Added an E2E spec verifying the redirect.
+
+### 11.15 Feed rendering and interaction polish
+- **Files:** `apps/api/src/feed/feed.service.ts`, `apps/web/src/components/feed/Feed.tsx`, `apps/web/src/components/feed/FeedTabs.tsx`, `apps/web/src/components/layout/BottomNav.tsx`, `apps/web/src/hooks/useFollow.ts`, `apps/web/src/components/feed/VideoInfo.tsx`
+- **Issue:** Diversity injection could introduce duplicate reviews into the feed, the virtualized renderer skipped cards entirely (causing layout gaps), tab/nav background indicators captured pointer events, and following a user did not refresh the Following feed.
+- **Status:** Fixed.
+- **Fix:** Deduplicate the scored feed before the recency sort; always render feed card shells and only defer `<video>` preload until a card is near the viewport; add `pointer-events-none` to indicator overlays; invalidate `feed` queries after a successful follow; add `data-profile-link` to the username Link for testability.
+
+### 11.16 Moderation flow refinement
+- **Files:** `apps/api/src/reviews/reviews.service.ts`, `apps/api/src/routes/upload.ts`, `apps/api/src/upload/localProcessor.ts`, `apps/api/src/upload/moderationQueue.ts`, related tests
+- **Issue:** Upload synchronously enqueued moderation and generated variants, blocking the response and causing race conditions when a review was created from the same upload; moderation records could not be updated once created.
+- **Status:** Fixed.
+- **Fix:** Remove moderation enqueue and variant generation from the upload handler; the creation flow now sets new reviews to `UNDER_REVIEW` when moderation is enabled and relies on the queue to update the record. Change `videoModeration.create` to `upsert` so re-processing updates the existing record instead of failing on unique constraint.
+
 ---
 
 ## 12. Remaining Work (Medium/Low Priority)
@@ -534,35 +552,27 @@ The following items were identified but not resolved in this pass due to scope/t
 
 ### 13.1 Final Test Run (local)
 
-After the challenges/invites and follow-test fixes, the full workflow was run locally on the `feat/video-moderation` branch:
+After the logout, feed polish, and moderation-flow refinements, the full workflow was run locally on the `feat/video-moderation` branch:
 
 - `pnpm typecheck` — passed across all workspace packages.
 - `pnpm --filter api test` — 12 suites, 65 tests passed.
 - `pnpm --filter web test` — 4 files, 12 tests passed.
-- `pnpm test:e2e --workers=1` — 40 Playwright tests: 34 passed, 5 intentionally skipped (bottom-nav swipe test on both browsers, three WebKit guess/reveal tests), 1 flaky (Mobile Chrome `fresh user can guess on a seeded review and reveal the rating` — first registration response occasionally exceeds the 120s test timeout under load, but passes on retry), 0 failures.
+- `pnpm test:e2e --workers=1` — 42 Playwright tests: 37 passed, 5 intentionally skipped (bottom-nav swipe test on both browsers, three WebKit guess/reveal tests), 0 flaky, 0 failures.
 
 ### 13.2 Commits
 
-The challenges/invites fixes and documentation updates were committed as:
+The latest round of fixes and documentation updates were committed as:
 
-- `a89e084` — test(e2e): multi-user seeded workflow tests and auth/feed testability fixes
-- `abff04e` — docs: update TESTING, USER_GUIDE, and AUDIT_REPORT for multi-user workflows and recent fixes
-- `0d27187` — docs: correct e2e pass count in AUDIT_REPORT
-- `ef437d9` — fix(web): proxy /api and /uploads in vite preview server for CI e2e
-- `2d48c8d` — ci: set WEB_APP_URL in test workflow so CORS allows the e2e preview origin
-- `d114174` — docs: add CI CORS fix to AUDIT_REPORT
-- `46bb2fe` — ci: install Playwright system deps and upload e2e artifacts; stabilize multi-user and bottom-nav e2e tests
-- `a4f2afc` — docs: document E2E CI system-deps fix and test stabilization in AUDIT_REPORT
-- `12c2647` — feat(viral): make challenges joinable, invites shareable via WhatsApp/SMS/copy, real QR codes, and add E2E coverage
-- `b3c7bcb` — fix(dev-lan): keep API and web same-origin so refresh cookies survive reloads
-- `5d7279f` — fix(web+e2e): support `?tab` query param and use it in follow test
-- `d28c63f` — test(api): extend timeout for moderation graceful-degradation fixture tests
-- `d275355` — feat(e2e): add video moderation E2E fixtures and spec
-- `4926e8a` — docs: update AUDIT_REPORT with dev-lan fix and final test counts
+- `77197cf` — feat(profile): add logout button for own profile
+- `fdb7a48` — test(e2e): verify logout redirects to login
+- `b3bcc94` — fix(web+api): feed recency/dedup, render optimization, pointer-events, follow invalidation
+- `541940d` — refactor(api): move moderation off upload path, upsert records, set UNDER_REVIEW on create
+
+(Previous commits from the audit pass remain in section 13.2 of prior versions of this report.)
 
 ### 13.3 GitHub CI
 
-The `Test` workflow on `main` is expected to pass for commit `46bb2fe`. Earlier failures were caused by (1) the Vite preview server not proxying API routes in CI (fixed in `ef437d9`), (2) the API CORS middleware not allowing the `vite preview` origin under `NODE_ENV=test` (fixed in `2d48c8d`), and (3) the E2E job not installing Playwright's Linux system dependencies, which prevented WebKit from launching on the Ubuntu runner (fixed in `46bb2fe`).
+The `Test` workflow on `feat/video-moderation` is expected to pass for commit `541940d`. Earlier failures were caused by (1) the Vite preview server not proxying API routes in CI (fixed in `ef437d9`), (2) the API CORS middleware not allowing the `vite preview` origin under `NODE_ENV=test` (fixed in `2d48c8d`), and (3) the E2E job not installing Playwright's Linux system dependencies, which prevented WebKit from launching on the Ubuntu runner (fixed in `46bb2fe`). I could not fetch the live Actions status because `gh` is not authenticated in this environment; verify at [github.com/ouko/silent-review/actions](https://github.com/ouko/silent-review/actions?query=branch%3Afeat%2Fvideo-moderation).
 
 ### 13.4 Notable follow-up work
 
