@@ -33,6 +33,20 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    port: 5173,
+    host: true,
+    proxy: {
+      "/api": {
+        target: process.env.VITE_API_URL || "http://localhost:3001",
+        changeOrigin: true,
+      },
+      "/uploads": {
+        target: process.env.VITE_API_URL || "http://localhost:3001",
+        changeOrigin: true,
+      },
+    },
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
