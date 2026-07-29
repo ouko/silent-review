@@ -8,7 +8,8 @@ import { ProfileReviews } from "./ProfileReviews";
 import { ActivityFeed } from "../social/ActivityFeed";
 import { Loading } from "../common/Loading";
 import { FeedTabs } from "../feed/FeedTabs";
-import { Flame, Award, User, Pencil } from "lucide-react";
+import { Flame, Award, User, Pencil, LogOut } from "lucide-react";
+import { logout } from "../../lib/auth";
 
 const TABS = [
   { id: "reviews", label: "Reviews" },
@@ -24,6 +25,7 @@ export function Profile() {
   const { data: achievements } = useProfileAchievements(userId);
   const { data: reviews } = useProfileReviews(userId);
   const [activeTab, setActiveTab] = useState("reviews");
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const isMe = currentUser?.id === userId;
   const reducedMotion = useReducedMotion();
 
@@ -35,6 +37,7 @@ export function Profile() {
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header card */}
       <motion.div
+        data-profile-username={profile.username}
         initial={reducedMotion ? {} : { opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
@@ -94,10 +97,23 @@ export function Profile() {
             {!isMe ? (
               <FollowButton userId={userId} isFollowing={profile.isFollowing} />
             ) : (
-              <button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 font-bold text-white transition-colors hover:bg-white/10">
-                <Pencil className="h-4 w-4" />
-                Edit profile
-              </button>
+              <div className="space-y-2">
+                <button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 font-bold text-white transition-colors hover:bg-white/10">
+                  <Pencil className="h-4 w-4" />
+                  Edit profile
+                </button>
+                <button
+                  onClick={async () => {
+                    setIsLoggingOut(true);
+                    await logout();
+                  }}
+                  disabled={isLoggingOut}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 font-bold text-white transition-colors hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {isLoggingOut ? "Logging out..." : "Log out"}
+                </button>
+              </div>
             )}
           </div>
         </div>
