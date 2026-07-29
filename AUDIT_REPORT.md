@@ -450,6 +450,12 @@ A second pass focused on user-facing quality, cross-user workflows, and test cov
 - **Status:** Fixed.
 - **Fix:** Added a `preview.proxy` configuration matching the dev `server.proxy`, so `pnpm --filter web run preview --port 5173` forwards API and upload routes to `localhost:3001`.
 
+### 11.7 GitHub E2E CORS origin
+- **File:** `.github/workflows/test.yml`
+- **Issue:** The CI workflow ran with `NODE_ENV=test` but did not set `WEB_APP_URL`. The API's CORS middleware then received an undefined origin and served `Access-Control-Allow-Origin: *`, which browsers reject for credentialed requests from `http://localhost:5173`.
+- **Status:** Fixed.
+- **Fix:** Set `WEB_APP_URL: http://localhost:5173` in both the `test` and `e2e` job environments so the API explicitly allows the preview origin.
+
 ---
 
 ## 12. Remaining Work (Medium/Low Priority)
@@ -494,6 +500,7 @@ The production-readiness changes were committed as:
 - `abff04e` — docs: update TESTING, USER_GUIDE, and AUDIT_REPORT for multi-user workflows and recent fixes
 - `0d27187` — docs: correct e2e pass count in AUDIT_REPORT
 - `ef437d9` — fix(web): proxy /api and /uploads in vite preview server for CI e2e
+- `2d48c8d` — ci: set WEB_APP_URL in test workflow so CORS allows the e2e preview origin
 
 ### 13.3 GitHub CI
 
