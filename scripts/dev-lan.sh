@@ -141,10 +141,12 @@ if [ -n "${DEFAULT_IFACE}" ]; then
 fi
 
 # --- environment overrides ---
-# WEB_APP_URL controls the API CORS origin and Socket.IO origin.
-# VITE_API_URL is the API base URL used by the browser and the Vite proxy.
+# WEB_APP_URL controls the API CORS origin, Socket.IO origin, and invite links.
+# Leave VITE_API_URL unset so the browser uses relative URLs and the Vite proxy
+# forwards them to localhost:3001. This keeps the API and web on the same origin
+# from the browser's perspective so HTTP-only refresh cookies survive reloads
+# whether the app is opened via localhost or the LAN IP.
 export WEB_APP_URL="http://${LAN_IP}:5173"
-export VITE_API_URL="http://${LAN_IP}:3001"
 
 # --- start ---
 log "Starting API and web dev servers..."
