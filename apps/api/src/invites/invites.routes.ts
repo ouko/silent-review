@@ -17,7 +17,13 @@ invitesRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res, next
 invitesRouter.get("/me", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const invites = await getInvitesForUser(req.user!.id);
-    res.json({ invites });
+    const baseUrl = process.env.WEB_APP_URL || `${req.protocol}://${req.get("host")}`;
+    res.json({
+      invites: invites.map((invite) => ({
+        ...invite,
+        link: `${baseUrl}/invite/${invite.code}`,
+      })),
+    });
   } catch (err) {
     next(err);
   }

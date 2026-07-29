@@ -5,6 +5,7 @@ import {
   createChallenge,
   joinChallenge,
   getActiveChallengesForUser,
+  getAllActiveChallenges,
 } from "./challenges.service.js";
 
 const CreateChallengeSchema = z.object({
@@ -36,6 +37,15 @@ challengesRouter.post("/:id/join", requireAuth, async (req: AuthenticatedRequest
 challengesRouter.get("/me", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const challenges = await getActiveChallengesForUser(req.user!.id);
+    res.json({ challenges });
+  } catch (err) {
+    next(err);
+  }
+});
+
+challengesRouter.get("/", requireAuth, async (_req: AuthenticatedRequest, res, next) => {
+  try {
+    const challenges = await getAllActiveChallenges();
     res.json({ challenges });
   } catch (err) {
     next(err);

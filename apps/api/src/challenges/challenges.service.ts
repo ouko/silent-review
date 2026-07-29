@@ -57,6 +57,23 @@ export async function getActiveChallengesForUser(userId: string) {
   });
 }
 
+export async function getAllActiveChallenges() {
+  return prisma.challenge.findMany({
+    where: {
+      status: "ACTIVE",
+      expiresAt: { gte: new Date() },
+    },
+    include: {
+      participants: {
+        include: { user: { select: { id: true, username: true, displayName: true, avatarUrl: true } } },
+        orderBy: { score: "desc" },
+      },
+      creator: { select: { id: true, username: true, displayName: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export async function expireOldChallenges() {
   return prisma.challenge.updateMany({
     where: { expiresAt: { lt: new Date() }, status: "ACTIVE" },

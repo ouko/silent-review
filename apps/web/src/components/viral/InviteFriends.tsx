@@ -1,22 +1,68 @@
 import { motion } from "framer-motion";
 import { useInvites } from "../../hooks/useInvites";
-import { Share2, Copy, Check, Users } from "lucide-react";
+import { Share2, Copy, Check, Users, MessageCircle, Mail } from "lucide-react";
+import { useState } from "react";
+import { useUIStore } from "../../stores/uiStore";
 
 export function InviteFriends() {
   const { invites, isLoading, createInvite, isCreating } = useInvites();
+  const addToast = useUIStore((s) => s.addToast);
+  const [lastInviteLink, setLastInviteLink] = useState<string | null>(null);
 
-  async function handleShare() {
-    const invite = await createInvite();
+  async function ensureInvite(): Promise<{ link: string; code: string } | null> {
+    if (lastInviteLink) {
+      const existing = invites.find((i) => i.link === lastInviteLink);
+      if (existing) return { link: existing.link, code: existing.code };
+    }
+    try {
+      const invite = await createInvite();
+      setLastInviteLink(invite.link);
+      return { link: invite.link, code: invite.code };
+    } catch {
+      addToast("Could not create invite link. Try again.", "error");
+      return null;
+    }
+  }
+
+  async function handleNativeShare() {
+    const invite = await ensureInvite();
+    if (!invite) return;
     const shareData = {
       title: "Join me on Silent Review",
-      text: "Guess the rating of silent 5-second reviews.",
+      text: "Guess the rating of silent 5-second reviews. Join me here:",
       url: invite.link,
     };
     if (navigator.canShare?.(shareData)) {
-      await navigator.share(shareData);
-    } else {
-      await navigator.clipboard.writeText(invite.link);
-      alert("Invite link copied to clipboard!");
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch {
+        // User cancelled or sharing failed — fall through to clipboard.
+      }
+    }
+    await copyToClipboard(invite.link);
+  }
+
+  async function handleWhatsAppShare() {
+    const invite = await ensureInvite();
+    if (!invite) return;
+    const text = encodeURIComponent(`Join me on Silent Review — guess the rating of silent 5-second reviews: ${invite.link}`);
+    window.open(`https://wa.me/?text=${text}`, "_blank", "noopener,noreferrer");
+  }
+
+  async function handleSMSShare() {
+    const invite = await ensureInvite();
+    if (!invite) return;
+    const body = encodeURIComponent(`Join me on Silent Review: ${invite.link}`);
+    window.location.href = `sms:?&body=${body}`;
+  }
+
+  async function copyToClipboard(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      addToast("Invite link copied to clipboard", "success");
+    } catch {
+      addToast("Could not copy link", "error");
     }
   }
 
@@ -34,15 +80,50 @@ export function InviteFriends() {
         </div>
       </div>
 
-      <motion.button
-        whileTap={{ scale: 0.97 }}
-        onClick={handleShare}
-        disabled={isCreating}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-3.5 font-bold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <Share2 className="h-4 w-4" />
-        {isCreating ? "Creating..." : "Share invite link"}
-      </motion.button>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={handleNativeShare}
+          disabled={isCreating}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-3.5 font-bold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Share2 className="h-4 w-4" />
+          {isCreating ? "Creating..." : "Share"}
+        </motion.button>
+
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={async () => {
+            const invite = await ensureInvite();
+            if (invite) await copyToClipboard(invite.link);
+          }}
+          disabled={isCreating}
+          className="flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3.5 font-bold text-white transition-colors hover:bg-white/10 disabled:opacity-50"
+        >
+          <Copy className="h-4 w-4" />
+          {isCreating ? "Creating..." : "Copy link"}
+        </motion.button>
+
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={handleWhatsAppShare}
+          disabled={isCreating}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-500/20 py-3 text-sm font-bold text-emerald-300 transition-colors hover:bg-emerald-500/30 disabled:opacity-50"
+        >
+          <MessageCircle className="h-4 w-4" />
+          WhatsApp
+        </motion.button>
+
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={handleSMSShare}
+          disabled={isCreating}
+          className="flex items-center justify-center gap-2 rounded-2xl bg-blue-500/20 py-3 text-sm font-bold text-blue-300 transition-colors hover:bg-blue-500/30 disabled:opacity-50"
+        >
+          <Mail className="h-4 w-4" />
+          SMS
+        </motion.button>
+      </div>
 
       {isLoading ? (
         <p className="mt-4 text-center text-sm text-white/50">Loading invites...</p>
@@ -67,7 +148,7 @@ export function InviteFriends() {
                   </span>
                 ) : (
                   <button
-                    onClick={() => navigator.clipboard.writeText(invite.link ?? invite.code)}
+                    onClick={() => invite.link && copyToClipboard(invite.link)}
                     className="rounded-full bg-white/10 p-1.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
                     aria-label="Copy invite link"
                   >

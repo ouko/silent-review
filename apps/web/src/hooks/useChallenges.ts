@@ -17,10 +17,18 @@ export interface Challenge {
 export function useChallenges() {
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery<{ challenges: Challenge[] }>({
-    queryKey: ["challenges"],
+  const { data: myData, isLoading: isLoadingMy } = useQuery<{ challenges: Challenge[] }>({
+    queryKey: ["challenges", "me"],
     queryFn: async () => {
       const { data } = await api.get("/api/challenges/me");
+      return data;
+    },
+  });
+
+  const { data: allData, isLoading: isLoadingAll } = useQuery<{ challenges: Challenge[] }>({
+    queryKey: ["challenges", "discover"],
+    queryFn: async () => {
+      const { data } = await api.get("/api/challenges");
       return data;
     },
   });
@@ -45,11 +53,17 @@ export function useChallenges() {
     },
   });
 
+  const myChallenges = myData?.challenges ?? [];
+  const joinedChallengeIds = new Set(myChallenges.map((c) => c.id));
+  const discoverChallenges = (allData?.challenges ?? []).filter((c) => !joinedChallengeIds.has(c.id));
+
   return {
-    challenges: data?.challenges ?? [],
-    isLoading,
+    myChallenges,
+    discoverChallenges,
+    isLoading: isLoadingMy || isLoadingAll,
     createChallenge: createMutation.mutateAsync,
     joinChallenge: joinMutation.mutateAsync,
     isCreating: createMutation.isPending,
+    isJoining: joinMutation.isPending,
   };
 }
