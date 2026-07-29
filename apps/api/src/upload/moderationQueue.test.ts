@@ -3,10 +3,10 @@ import type { ModerationResult } from "./moderationEngine.js";
 
 const mockPrisma = {
   videoModeration: {
-    create: jest.fn(),
+    create: jest.fn() as jest.Mock,
   },
   review: {
-    update: jest.fn(),
+    update: jest.fn() as jest.Mock,
   },
 };
 
@@ -30,6 +30,12 @@ const {
   __testOnlyPushQueue,
 } = await import("./moderationQueue.js");
 
+if (!__testOnlyResetQueue || !__testOnlyPushQueue) {
+  throw new Error("Test-only helpers are not available in this environment");
+}
+const resetQueue = __testOnlyResetQueue;
+const pushQueue = __testOnlyPushQueue;
+
 const passResult: ModerationResult = {
   status: "PASS",
   score: 0.1,
@@ -46,7 +52,7 @@ const rejectResult: ModerationResult = {
 
 describe("enqueueModeration", () => {
   beforeEach(() => {
-    __testOnlyResetQueue();
+    resetQueue();
     jest.clearAllMocks();
     mockEnv.VIDEO_MODERATION_ENABLED = "true";
     mockEnv.VIDEO_MODERATION_FAIL_CLOSED = "false";
@@ -61,9 +67,8 @@ describe("enqueueModeration", () => {
 
   it("triggers async processing when moderation is enabled", async () => {
     mockRunVideoModeration.mockResolvedValue(passResult);
-    enqueueModeration("/uploads/video.mp4", 5, "review-1");
-    // Allow the fire-and-forget processQueue() call to complete.
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    pushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
+    await processQueue();
     expect(mockRunVideoModeration).toHaveBeenCalledWith("/uploads/video.mp4", 5);
     expect(mockPrisma.videoModeration.create).toHaveBeenCalled();
   });
@@ -71,7 +76,7 @@ describe("enqueueModeration", () => {
 
 describe("processQueue", () => {
   beforeEach(() => {
-    __testOnlyResetQueue();
+    resetQueue();
     jest.clearAllMocks();
     mockEnv.VIDEO_MODERATION_ENABLED = "true";
     mockEnv.VIDEO_MODERATION_FAIL_CLOSED = "false";
@@ -79,7 +84,7 @@ describe("processQueue", () => {
 
   it("creates a VideoModeration record with the engine result", async () => {
     mockRunVideoModeration.mockResolvedValue(passResult);
-    __testOnlyPushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
+    pushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
     await processQueue();
 
     expect(mockRunVideoModeration).toHaveBeenCalledWith("/uploads/video.mp4", 5);
@@ -97,7 +102,7 @@ describe("processQueue", () => {
 
   it("hides the review when moderation rejects", async () => {
     mockRunVideoModeration.mockResolvedValue(rejectResult);
-    __testOnlyPushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
+    pushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
     await processQueue();
 
     expect(mockPrisma.videoModeration.create).toHaveBeenCalledWith({
@@ -117,7 +122,7 @@ describe("processQueue", () => {
 
   it("does not persist results when no reviewId is provided", async () => {
     mockRunVideoModeration.mockResolvedValue(passResult);
-    __testOnlyPushQueue({ videoPath: "/uploads/video.mp4", duration: 5 });
+    pushQueue({ videoPath: "/uploads/video.mp4", duration: 5 });
     await processQueue();
 
     expect(mockRunVideoModeration).toHaveBeenCalledWith("/uploads/video.mp4", 5);
@@ -127,8 +132,8 @@ describe("processQueue", () => {
 
   it("processes multiple items sequentially", async () => {
     mockRunVideoModeration.mockResolvedValue(passResult);
-    __testOnlyPushQueue({ videoPath: "/uploads/a.mp4", duration: 5, reviewId: "r1" });
-    __testOnlyPushQueue({ videoPath: "/uploads/b.mp4", duration: 10, reviewId: "r2" });
+    pushQueue({ videoPath: "/uploads/a.mp4", duration: 5, reviewId: "r1" });
+    pushQueue({ videoPath: "/uploads/b.mp4", duration: 10, reviewId: "r2" });
     await processQueue();
 
     expect(mockRunVideoModeration).toHaveBeenCalledTimes(2);
@@ -141,7 +146,7 @@ describe("processQueue", () => {
     mockRunVideoModeration.mockRejectedValue(error);
     const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    __testOnlyPushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
+    pushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
     await processQueue();
 
     expect(consoleSpy).toHaveBeenCalledWith("Moderation failed", error);
@@ -157,7 +162,7 @@ describe("processQueue", () => {
     mockRunVideoModeration.mockRejectedValue(error);
     const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
 
-    __testOnlyPushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
+    pushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
     await processQueue();
 
     expect(mockPrisma.videoModeration.create).toHaveBeenCalledWith({
@@ -172,6 +177,29 @@ describe("processQueue", () => {
       data: { status: "HIDDEN" },
     });
     expect(consoleSpy).toHaveBeenCalledWith("Moderation failed", error);
+
+    consoleSpy.mockRestore();
+  });
+
+  it("does not deadlock when the fail-closed DB write throws", async () => {
+    mockEnv.VIDEO_MODERATION_FAIL_CLOSED = "true";
+    const engineError = new Error("ffmpeg crashed");
+    const dbError = new Error("database unavailable");
+
+    mockRunVideoModeration.mockRejectedValueOnce(engineError);
+    mockPrisma.videoModeration.create.mockImplementationOnce(() => Promise.reject(dbError));
+
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    pushQueue({ videoPath: "/uploads/failing.mp4", duration: 5, reviewId: "review-fail" });
+    pushQueue({ videoPath: "/uploads/next.mp4", duration: 5, reviewId: "review-next" });
+    await processQueue();
+
+    expect(consoleSpy).toHaveBeenCalledWith("Failed to persist fail-closed moderation state", dbError);
+    expect(consoleSpy).toHaveBeenCalledWith("Moderation failed", engineError);
+    // The second item must still be processed despite the DB failure on the first.
+    expect(mockRunVideoModeration).toHaveBeenCalledTimes(2);
+    expect(mockPrisma.videoModeration.create).toHaveBeenCalledTimes(2);
 
     consoleSpy.mockRestore();
   });

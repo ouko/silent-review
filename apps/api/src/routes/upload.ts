@@ -47,7 +47,12 @@ uploadRouter.post("/", requireAuth, upload.single("file"), async (req: Authentic
     const originalUrl = await saveVideoFile(file.buffer, file.originalname, file.mimetype);
 
     // Enqueue async moderation using the saved file path.
-    const absolutePath = join(UPLOAD_DIR, originalUrl.replace(UPLOAD_BASE_URL, ""));
+    const uploadPrefix = `${UPLOAD_BASE_URL}/`;
+    if (!originalUrl.startsWith(uploadPrefix)) {
+      throw new Error("Unexpected upload URL format");
+    }
+    const relativePath = originalUrl.slice(uploadPrefix.length);
+    const absolutePath = join(UPLOAD_DIR, relativePath);
     enqueueModeration(absolutePath, validation.duration);
 
     let processed = {
