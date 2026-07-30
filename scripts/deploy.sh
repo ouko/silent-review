@@ -62,10 +62,15 @@ log "Building and deploying production stack..."
 docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" up -d --build --wait
 
 log "Running database migrations..."
-# Postgres is only reachable inside the Docker network, so run migrations
-# through the API container rather than from the host.
-docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" exec -T api \
-  node_modules/.bin/prisma migrate deploy --schema packages/database/prisma/schema.prisma
+# Postgres is only reachable inside the Docker network, and the Alpine API
+# image cannot run Prisma's migrate engine (OpenSSL 1.1 vs 3), so run
+# migrations in a throwaway Debian-based container on the same network.
+docker run --rm \
+  --network silent-review_backend \
+  --env-file "${ENV_FILE}" \
+  -v "${PROJECT_ROOT}/packages/database:/db" \
+  node:20-slim \
+  npx --yes prisma@5.22.0 migrate deploy --schema /db/prisma/schema.prisma
 
 HEALTH_URL="${WEB_APP_URL:-http://localhost}/api/health"
 log "Waiting for health check at ${HEALTH_URL}..."
