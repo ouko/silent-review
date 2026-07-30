@@ -9,6 +9,7 @@ node_modules
 dist
 build
 uploads
+certs
 tmp-verify
 tmp
 *.log

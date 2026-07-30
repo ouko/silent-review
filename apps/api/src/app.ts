@@ -12,7 +12,8 @@ import { reviewsRouter } from "./reviews/reviews.routes.js";
 import { guessesRouter } from "./guesses/guesses.routes.js";
 import { invitesRouter } from "./invites/invites.routes.js";
 import { challengesRouter } from "./challenges/challenges.routes.js";
-import { uploadRouter, UPLOAD_BASE_URL, UPLOAD_DIR } from "./routes/upload.js";
+import { uploadRouter, UPLOAD_BASE_URL } from "./routes/upload.js";
+import { serveUpload } from "./upload/serveUploads.js";
 import { usersRouter } from "./routes/users.js";
 import { followsRouter } from "./follows/follows.routes.js";
 import { commentsRouter } from "./comments/comments.routes.js";
@@ -40,7 +41,7 @@ export function createApp() {
   // phone testing) and localhost so laptop/browser tests still work.
   const allowedOrigins =
     env.NODE_ENV === "development"
-      ? [env.WEB_APP_URL, "http://localhost:5173"]
+      ? [env.WEB_APP_URL, "http://localhost:5173", "https://localhost:5173"]
       : env.WEB_APP_URL;
 
   app.use(
@@ -54,8 +55,9 @@ export function createApp() {
   app.use(regionalMiddleware);
   app.use(featuresMiddleware);
 
-  // Serve uploaded videos locally
-  app.use(UPLOAD_BASE_URL, express.static(UPLOAD_DIR));
+  // Serve uploaded videos locally, decrypting at-rest payloads and
+  // supporting Range requests (required by iOS Safari video playback).
+  app.get(`${UPLOAD_BASE_URL}/:filename`, serveUpload);
 
   app.get("/health", (_req, res) => {
     res.json({

@@ -36,7 +36,19 @@ const envSchema = z.object({
   S3_BUCKET_NAME: z.string().default("silent-review-uploads"),
   CLOUDFRONT_DOMAIN: z.string().optional(),
   WEB_APP_URL: z.string().url().default("http://localhost:5173"),
+  VIDEO_MODERATION_ENABLED: z.string().default("true"),
+  VIDEO_MIN_RESOLUTION: z.coerce.number().default(480),
+  VIDEO_MIN_FPS: z.coerce.number().default(24),
+  VIDEO_MODERATION_FRAME_COUNT: z.coerce.number().default(5),
+  VIDEO_MODERATION_SKIN_THRESHOLD: z.coerce.number().default(0.35),
+  VIDEO_MODERATION_FAIL_CLOSED: z.string().default("false"),
   TRUSTED_PROXIES: z.string().optional(),
+  // AES-256 key (hex) for encrypting uploaded media at rest. When unset,
+  // uploads are stored as plaintext (legacy behavior).
+  UPLOAD_ENCRYPTION_KEY: z
+    .string()
+    .regex(/^[0-9a-fA-F]{64}$/, "UPLOAD_ENCRYPTION_KEY must be 64 hex characters (32 bytes)")
+    .optional(),
 });
 
 export const env = envSchema.parse(process.env);

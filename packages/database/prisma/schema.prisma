@@ -161,6 +161,7 @@ model Review {
   likes        Like[]
   comments     Comment[]
   shareEvents  ShareEvent[]
+  videoModeration VideoModeration?
 
   @@index([userId])
   @@index([productId])
@@ -175,6 +176,27 @@ enum ReviewStatus {
   PUBLISHED
   HIDDEN
   UNDER_REVIEW
+}
+
+model VideoModeration {
+  id          String            @id @default(uuid())
+  reviewId    String            @unique
+  review      Review            @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  status      ModerationStatus  @default(PENDING)
+  score       Float?
+  reasons     String[]
+  frameScores Json?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([status, updatedAt])
+}
+
+enum ModerationStatus {
+  PENDING
+  PASS
+  REVIEW
+  REJECT
 }
 
 model Guess {

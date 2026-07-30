@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useFeed, type FeedType } from "../hooks/useFeed";
 import { Feed } from "../components/feed/Feed";
 import { FeedTabs } from "../components/feed/FeedTabs";
@@ -12,8 +13,15 @@ const TABS: { id: FeedType; label: string }[] = [
   { id: "trending", label: "Trending" },
 ];
 
+function isFeedType(value: string | null): value is FeedType {
+  return value === "for-you" || value === "following" || value === "trending";
+}
+
 export function Home() {
-  const [activeTab, setActiveTab] = useState<FeedType>("for-you");
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const initialTab = isFeedType(tabParam) ? tabParam : "for-you";
+  const [activeTab, setActiveTab] = useState<FeedType>(initialTab);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status, refetch } =
     useFeed(activeTab);
   const [revealed, setRevealed] = useState<Set<string>>(new Set());

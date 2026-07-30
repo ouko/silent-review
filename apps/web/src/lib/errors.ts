@@ -26,6 +26,8 @@ const KNOWN_MESSAGES: Array<[string | RegExp, string]> = [
   ["Duration must be", "Video must be about 5 seconds long."],
   ["Audio track detected", "Videos must be silent (no audio track)."],
   ["No video stream found", "We couldn’t read that video. Please try another file."],
+  ["Video moderation failed", "This video couldn’t be uploaded because it may violate community guidelines."],
+  ["content violates community guidelines", "This video couldn’t be uploaded because it may violate community guidelines."],
   [/format .* is not allowed/i, "Please upload an MP4, MOV, or WebM video."],
   ["Validation error", "Please check the highlighted fields and try again."],
 ];

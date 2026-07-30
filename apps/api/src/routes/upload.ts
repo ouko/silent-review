@@ -3,12 +3,20 @@ import multer from "multer";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import {
   validateVideoFile,
+  rectifyVideo,
   saveVideoFile,
+  TARGET_DURATION_SECONDS,
+} from "../upload/upload.service.js";
+import {
   isFFmpegAvailable,
   UPLOAD_BASE_URL,
   UPLOAD_DIR,
-} from "../upload/upload.service.js";
-import { processVideoLocally } from "../upload/localProcessor.js";
+  extensionForContentType,
+} from "../upload/upload-helpers.js";
+import { processVideoLocally, optimizeForFeed } from "../upload/localProcessor.js";
+import { env } from "../config/index.js";
+
+const DURATION_TOLERANCE_SECONDS = 0.5;
 
 export const uploadRouter = Router();
 
@@ -34,13 +42,55 @@ uploadRouter.post("/", requireAuth, upload.single("file"), async (req: Authentic
       return;
     }
 
-    const validation = await validateVideoFile(file.buffer, file.mimetype, file.originalname);
+    let buffer = file.buffer;
+    let validation = await validateVideoFile(buffer, file.mimetype, file.originalname);
+
+    // Rectify instead of reject: recorders and gallery videos rarely match
+    // the rules exactly — iOS Safari MediaRecorder always muxes an audio
+    // track, real-world clips are almost never exactly 5s, and users cannot
+    // fix resolution or frame rate themselves. When the problems are
+    // normalizable (audio, duration, resolution, frame rate), normalize the
+    // video and re-validate so it can be saved.
+    const tooLong = validation.duration > TARGET_DURATION_SECONDS + DURATION_TOLERANCE_SECONDS;
+    const minDim = Math.min(validation.width ?? 0, validation.height ?? 0);
+    const lowRes = validation.width != null && validation.height != null && minDim < env.VIDEO_MIN_RESOLUTION;
+    const lowFps = validation.fps != null && validation.fps < env.VIDEO_MIN_FPS;
+    if (!validation.valid && (validation.hasAudio || tooLong || lowRes || lowFps)) {
+      const rectified = await rectifyVideo(buffer, extensionForContentType(file.mimetype), {
+        trim: tooLong,
+        upscaleToMinSide: lowRes ? env.VIDEO_MIN_RESOLUTION : undefined,
+        targetFps: lowFps ? Math.max(30, env.VIDEO_MIN_FPS) : undefined,
+      });
+      if (rectified) {
+        const revalidation = await validateVideoFile(rectified, file.mimetype, file.originalname);
+        validation = revalidation;
+        if (revalidation.valid) {
+          buffer = rectified;
+        }
+      }
+    }
+
     if (!validation.valid) {
       res.status(422).json({ error: "Video validation failed", details: validation.errors });
       return;
     }
 
-    const originalUrl = await saveVideoFile(file.buffer, file.originalname, file.mimetype);
+    // Optimize for fast feed playback: cap at 720p shortest side and mux
+    // with +faststart so videos start playing before the full download.
+    // Without this, multi-MB 1080p originals are served as-is.
+    const ext = extensionForContentType(file.mimetype);
+    const ffmpeg = await isFFmpegAvailable();
+    if (ffmpeg && (ext === ".mp4" || ext === ".mov")) {
+      const optimized = await optimizeForFeed(buffer, ext, {
+        width: validation.width,
+        height: validation.height,
+      });
+      if (optimized) {
+        buffer = optimized;
+      }
+    }
+
+    const originalUrl = await saveVideoFile(buffer, file.originalname, file.mimetype);
 
     let processed = {
       originalUrl,
@@ -49,8 +99,8 @@ uploadRouter.post("/", requireAuth, upload.single("file"), async (req: Authentic
       duration: validation.duration,
     };
 
-    if (await isFFmpegAvailable()) {
-      processed = await processVideoLocally(originalUrl, file.buffer);
+    if (ffmpeg) {
+      processed = await processVideoLocally(originalUrl, buffer);
     }
 
     res.status(201).json({

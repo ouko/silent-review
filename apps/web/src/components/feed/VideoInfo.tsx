@@ -33,6 +33,7 @@ export function VideoInfo({ username, userId, avatarUrl, caption, productTag }: 
           {userId ? (
             <Link
               to={`/profile/${userId}`}
+              data-profile-link={username}
               className="font-bold text-white hover:text-rose-300"
               onClick={(e) => e.stopPropagation()}
             >

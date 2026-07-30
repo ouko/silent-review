@@ -25,6 +25,7 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
   const [phase, setPhase] = useState<"idle" | "countdown" | "recording" | "processing">("idle");
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const [isPressed, setIsPressed] = useState(false);
+  const stopWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -42,6 +43,7 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
   function stopAll() {
     if (timerRef.current) clearInterval(timerRef.current);
     if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current);
+    if (stopWatchdogRef.current) clearTimeout(stopWatchdogRef.current);
     recorderRef.current?.stop();
     recorderRef.current = null;
     stopCamera();
@@ -51,6 +53,25 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
     setPhase("idle");
     setCountdown(COUNTDOWN_SECONDS);
     setIsPressed(false);
+  }
+
+  // Flush buffered data, then stop. iOS Safari sometimes never fires the
+  // recorder's onstop after stop() — leaving the UI stuck on "Finishing..."
+  // forever — so a watchdog finalizes with the collected chunks instead.
+  function stopRecording() {
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state === "inactive") return;
+    try {
+      recorder.requestData();
+    } catch {
+      // requestData is a best-effort flush; ignore InvalidStateError.
+    }
+    recorder.stop();
+    stopWatchdogRef.current = setTimeout(() => {
+      if (recorderRef.current === recorder) {
+        recorder.onstop?.(new Event("stop"));
+      }
+    }, 3000);
   }
 
   function selectMimeType(): string | undefined {
@@ -71,8 +92,8 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
 
   function handlePressEnd() {
     setIsPressed(false);
-    if (phase === "countdown" || phase === "recording") {
-      recorderRef.current?.stop();
+    if (phase === "countdown" || phase === "recording" || phase === "processing") {
+      stopRecording();
     }
   }
 
@@ -97,6 +118,7 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
       const completed = completedRef.current;
       if (timerRef.current) clearInterval(timerRef.current);
       if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current);
+      if (stopWatchdogRef.current) clearTimeout(stopWatchdogRef.current);
       recorderRef.current = null;
       resetToIdle();
       if (completed) {
@@ -122,7 +144,7 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
       if (recorder.state !== "inactive") {
         completedRef.current = true;
         setPhase("processing");
-        recorder.stop();
+        stopRecording();
       }
     }, COUNTDOWN_SECONDS * 1000);
   }, [isReady, stream, phase, isPressed, onRecorded, stopCamera]);

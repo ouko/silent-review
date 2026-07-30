@@ -64,10 +64,18 @@ export async function getForYouFeed(
     }
   }
 
-  // Prioritize recency: newest reviews should appear at the top of the feed.
-  result.sort((a, b) => b.review.createdAt.getTime() - a.review.createdAt.getTime());
+  // Remove any duplicates introduced by diversity injection before recency sort.
+  const seenIds = new Set<string>();
+  const uniqueResult = result.filter((s) => {
+    if (seenIds.has(s.review.id)) return false;
+    seenIds.add(s.review.id);
+    return true;
+  });
 
-  const paginated = result.slice(0, limit);
+  // Prioritize recency: newest reviews should appear at the top of the feed.
+  uniqueResult.sort((a, b) => b.review.createdAt.getTime() - a.review.createdAt.getTime());
+
+  const paginated = uniqueResult.slice(0, limit);
   const nextCursor = candidates.length === CANDIDATE_POOL_SIZE
     ? paginated[paginated.length - 1]?.review.id
     : undefined;

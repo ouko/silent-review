@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { useProfile, useProfileAchievements, useProfileReviews } from "../../hooks/useProfile";
@@ -8,7 +8,9 @@ import { ProfileReviews } from "./ProfileReviews";
 import { ActivityFeed } from "../social/ActivityFeed";
 import { Loading } from "../common/Loading";
 import { FeedTabs } from "../feed/FeedTabs";
-import { Flame, Award, User, Pencil } from "lucide-react";
+import { UserListSheet } from "./UserListSheet";
+import { Flame, Award, User, Pencil, LogOut } from "lucide-react";
+import { logout } from "../../lib/auth";
 
 const TABS = [
   { id: "reviews", label: "Reviews" },
@@ -24,17 +26,37 @@ export function Profile() {
   const { data: achievements } = useProfileAchievements(userId);
   const { data: reviews } = useProfileReviews(userId);
   const [activeTab, setActiveTab] = useState("reviews");
+  const [sheetType, setSheetType] = useState<"followers" | "following" | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const isMe = currentUser?.id === userId;
   const reducedMotion = useReducedMotion();
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  function scrollToTabs() {
+    // Bring the tab bar (sticky) to the top so the tab content is visible.
+    tabsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function handleReviewsStatClick() {
+    setActiveTab("reviews");
+    scrollToTabs();
+  }
+
+  function handleTabSelect(tabId: string) {
+    setActiveTab(tabId);
+    scrollToTabs();
+  }
 
   if (isLoading || !profile) {
     return <Loading />;
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="h-full overflow-y-auto">
+      <div className="flex min-h-full flex-col">
       {/* Header card */}
       <motion.div
+        data-profile-username={profile.username}
         initial={reducedMotion ? {} : { opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, ease: "easeOut" }}
@@ -68,9 +90,9 @@ export function Profile() {
 
           {/* Stats */}
           <div className="mt-5 grid w-full max-w-sm grid-cols-3 gap-3">
-            <StatCard value={profile.reviewCount} label="Reviews" />
-            <StatCard value={profile.followerCount} label="Followers" />
-            <StatCard value={profile.followingCount} label="Following" />
+            <StatCard value={profile.reviewCount} label="Reviews" onClick={handleReviewsStatClick} />
+            <StatCard value={profile.followerCount} label="Followers" onClick={() => setSheetType("followers")} />
+            <StatCard value={profile.followingCount} label="Following" onClick={() => setSheetType("following")} />
           </div>
 
           {/* Chips */}
@@ -94,26 +116,48 @@ export function Profile() {
             {!isMe ? (
               <FollowButton userId={userId} isFollowing={profile.isFollowing} />
             ) : (
-              <button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 font-bold text-white transition-colors hover:bg-white/10">
-                <Pencil className="h-4 w-4" />
-                Edit profile
-              </button>
+              <div className="space-y-2">
+                <button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 font-bold text-white transition-colors hover:bg-white/10">
+                  <Pencil className="h-4 w-4" />
+                  Edit profile
+                </button>
+                <button
+                  onClick={async () => {
+                    setIsLoggingOut(true);
+                    await logout();
+                  }}
+                  disabled={isLoggingOut}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 font-bold text-white transition-colors hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <LogOut className="h-4 w-4" />
+                  {isLoggingOut ? "Logging out..." : "Log out"}
+                </button>
+              </div>
             )}
           </div>
         </div>
       </motion.div>
 
+      {sheetType && userId && (
+        <UserListSheet
+          userId={userId}
+          username={profile.username}
+          type={sheetType}
+          onClose={() => setSheetType(null)}
+        />
+      )}
+
       {/* Tabs */}
-      <div className="px-3 pb-2">
-        <FeedTabs tabs={TABS} activeId={activeTab} onSelect={(tabId) => setActiveTab(tabId)} />
+      <div ref={tabsRef} className="sticky top-0 z-10 bg-black/80 px-3 pb-2 backdrop-blur-xl">
+        <FeedTabs tabs={TABS} activeId={activeTab} onSelect={handleTabSelect} />
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1">
         {activeTab === "reviews" && <ProfileReviews reviews={reviews?.reviews ?? []} />}
         {activeTab === "activity" && <ActivityFeed />}
         {activeTab === "badges" && (
-          <div className="h-full overflow-y-auto p-3">
+          <div className="p-3">
             <div className="grid grid-cols-2 gap-3">
               {achievements?.achievements.map((a) => (
                 <motion.div
@@ -139,15 +183,36 @@ export function Profile() {
           </div>
         )}
       </div>
+      </div>
     </div>
   );
 }
 
-function StatCard({ value, label }: { value: number; label: string }) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center backdrop-blur-sm">
+function StatCard({
+  value,
+  label,
+  onClick,
+}: {
+  value: number;
+  label: string;
+  onClick?: () => void;
+}) {
+  const content = (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center backdrop-blur-sm transition-colors hover:bg-white/10">
       <p className="text-xl font-black tracking-tighter gradient-text">{value.toLocaleString()}</p>
       <p className="text-xs font-semibold uppercase tracking-wider text-white/50">{label}</p>
     </div>
   );
+
+  if (onClick) {
+    return (
+      <button
+        onClick={onClick}
+        className="w-full text-left transition-transform active:scale-95"
+      >
+        {content}
+      </button>
+    );
+  }
+  return content;
 }

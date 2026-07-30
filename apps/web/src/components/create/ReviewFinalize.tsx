@@ -33,10 +33,12 @@ export function ReviewFinalize({
   progress,
   error,
 }: ReviewFinalizeProps) {
-  const [rating, setRating] = useState(5);
+  const [rating, setRating] = useState<number | null>(null);
   const [caption, setCaption] = useState("");
   const [tag, setTag] = useState("");
   const tagInputRef = useRef<HTMLInputElement>(null);
+
+  const canSubmit = rating !== null && !isUploading;
 
 
 
@@ -61,7 +63,7 @@ export function ReviewFinalize({
         </div>
         <RatingBar selected={rating} onSelect={setRating} disabled={isUploading} />
         <p className="mt-2 text-center text-xs font-bold uppercase tracking-wider text-white/40">
-          {rating}/10
+          {rating === null ? "Tap a number to rate" : `${rating}/10`}
         </p>
       </div>
 
@@ -134,8 +136,8 @@ export function ReviewFinalize({
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.97 }}
-          onClick={() => onSubmit({ rating, caption, tag: tag.trim() || undefined })}
-          disabled={isUploading}
+          onClick={() => rating !== null && onSubmit({ rating, caption, tag: tag.trim() || undefined })}
+          disabled={!canSubmit}
           className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-3.5 font-bold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Send className="h-4 w-4" />

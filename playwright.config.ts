@@ -10,6 +10,9 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:5173",
+    // The dev-lan stack serves HTTPS with a local-CA cert; tolerate it while
+    // remaining compatible with plain HTTP servers.
+    ignoreHTTPSErrors: true,
     trace: "on-first-retry",
     reducedMotion: "reduce",
   },

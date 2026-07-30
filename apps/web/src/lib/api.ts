@@ -19,7 +19,14 @@ api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const original = err.config;
-    if (err.response?.status === 401 && !original._retry) {
+    // Never retry the refresh call itself: without a valid refresh cookie it
+    // also returns 401, which would otherwise re-enter this interceptor and
+    // loop forever (guests would be stuck on a blank page).
+    // Login/register 401s are credential errors, not session expiry — let
+    // them reach the form so it can show the message instead of the
+    // interceptor reloading the page and wiping it.
+    const isAuthEntryCall = /\/api\/auth\/(login|register|refresh)$/.test(original.url ?? "");
+    if (err.response?.status === 401 && !original._retry && !isAuthEntryCall) {
       original._retry = true;
       try {
         const { data } = await api.post<{ accessToken: string; user: User }>("/api/auth/refresh", {});

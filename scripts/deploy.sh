@@ -44,6 +44,9 @@ log "Installing dependencies..."
 pnpm install --frozen-lockfile
 
 log "Building web app..."
+# The SPA and API share an origin behind nginx, so the browser must use
+# relative URLs. Never bake the dev localhost URL into the prod bundle.
+export VITE_API_URL=""
 pnpm --filter web build
 
 log "Tagging current API image for rollback..."

@@ -44,7 +44,7 @@ export function Feed({
   const [pullDistance, setPullDistance] = useState(0);
   const [shareReview, setShareReview] = useState<FeedReview | null>(null);
   const reducedMotion = useReducedMotion();
-  const { setItemRef, shouldPlay, shouldPreload, shouldRender } = useVideoFeed(reviews.length);
+  const { setItemRef, shouldPlay, shouldPreload } = useVideoFeed(reviews.length);
 
   const touchStartY = useRef<number | null>(null);
   const touchLastY = useRef<number | null>(null);
@@ -97,10 +97,18 @@ export function Feed({
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
 
     if (onScrollDirection) {
-      const diff = scrollTop - lastScrollY.current;
-      if (Math.abs(diff) > 10) {
-        onScrollDirection(diff > 0 ? "down" : "up");
-        lastScrollY.current = scrollTop;
+      // Reaching the very top must always reveal the nav, even when iOS
+      // throttles scroll events during momentum and the touch fallback
+      // reported the fling direction instead.
+      if (scrollTop <= 0) {
+        onScrollDirection("up");
+        lastScrollY.current = 0;
+      } else {
+        const diff = scrollTop - lastScrollY.current;
+        if (Math.abs(diff) > 10) {
+          onScrollDirection(diff > 0 ? "down" : "up");
+          lastScrollY.current = scrollTop;
+        }
       }
     }
 
@@ -133,8 +141,7 @@ export function Feed({
         </motion.div>
       )}
 
-      {reviews.map((review, index) =>
-        shouldRender(index) ? (
+      {reviews.map((review, index) => (
           <div
             key={review.id}
             ref={setItemRef(index)}
@@ -147,12 +154,16 @@ export function Feed({
             data-product-tag={review.productTag}
             className="relative h-full w-full snap-start"
           >
-            <VideoPlayer
-              src={review.videoUrl}
-              shouldPlay={shouldPlay(index)}
-              preload={shouldPreload(index)}
-              poster={review.thumbnailUrl}
-            />
+            {shouldPreload(index) ? (
+              <VideoPlayer
+                src={review.videoUrl}
+                shouldPlay={shouldPlay(index)}
+                preload={shouldPreload(index)}
+                poster={review.thumbnailUrl}
+              />
+            ) : (
+              <div className="h-full w-full bg-black" aria-hidden="true" />
+            )}
 
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/60 to-transparent p-5 pb-20">
               <VideoInfo
@@ -222,8 +233,7 @@ export function Feed({
               )}
             </div>
           </div>
-        ) : null
-      )}
+      ))}
 
       {isLoadingMore && (
         <div className="flex h-24 items-center justify-center gap-3">

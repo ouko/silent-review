@@ -1,9 +1,13 @@
+import { join } from "path";
 import { prisma } from "../prisma.js";
 import { getRedis } from "../redis.js";
 import { notifyFollowersOfReview } from "../socket/index.js";
 import { updateStreak } from "../gamification/streaks.service.js";
 import { checkAchievements } from "../gamification/achievements.service.js";
 import { addPoints } from "../gamification/points.service.js";
+import { enqueueModeration } from "../upload/moderationQueue.js";
+import { UPLOAD_BASE_URL, UPLOAD_DIR } from "../upload/upload-helpers.js";
+import { env } from "../config/index.js";
 import type { CreateReviewInput } from "./reviews.validation.js";
 
 export async function createReview(userId: string, input: CreateReviewInput) {
@@ -11,6 +15,21 @@ export async function createReview(userId: string, input: CreateReviewInput) {
   const existing = await prisma.review.findFirst({
     where: { userId, productId: input.productId, deletedAt: null },
   });
+
+  // Check moderation status for this video before publishing.
+  const moderation = await prisma.videoModeration.findFirst({
+    where: { review: { videoUrl: input.videoUrl } },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (moderation?.status === "REJECT") {
+    throw new Error("Video moderation failed: content violates community guidelines");
+  }
+
+  const isModerationEnabled = env.VIDEO_MODERATION_ENABLED === "true";
+  const moderationPending =
+    moderation?.status === "PENDING" || (isModerationEnabled && !moderation);
+
   if (existing) {
     // Edit in place rather than creating a duplicate.
     const updated = await prisma.review.update({
@@ -23,7 +42,7 @@ export async function createReview(userId: string, input: CreateReviewInput) {
         rating: input.rating,
         caption: input.caption,
         productTag: input.productTag,
-        status: "PUBLISHED",
+        status: moderationPending ? "UNDER_REVIEW" : "PUBLISHED",
       },
       include: {
         user: {
@@ -36,8 +55,10 @@ export async function createReview(userId: string, input: CreateReviewInput) {
     return updated;
   }
 
+  const initialStatus = moderationPending ? "UNDER_REVIEW" : "PUBLISHED";
+
   const review = await prisma.review.create({
-    data: { ...input, userId },
+    data: { ...input, userId, status: initialStatus },
     include: {
       user: {
         select: { id: true, username: true, displayName: true, avatarUrl: true },
@@ -45,6 +66,22 @@ export async function createReview(userId: string, input: CreateReviewInput) {
       product: { select: { id: true, name: true, category: true } },
     },
   });
+
+  // If moderation is enabled and no moderation record exists yet for this
+  // video, create a pending record and enqueue async moderation now that we
+  // have a reviewId to link it to.
+  if (env.VIDEO_MODERATION_ENABLED === "true" && !moderation) {
+    await prisma.videoModeration.create({
+      data: {
+        reviewId: review.id,
+        status: "PENDING",
+      },
+    });
+    const absolutePath = videoUrlToAbsolutePath(input.videoUrl);
+    if (absolutePath) {
+      enqueueModeration(absolutePath, input.duration, review.id);
+    }
+  }
 
   await prisma.user.update({
     where: { id: userId },
@@ -72,6 +109,14 @@ export async function createReview(userId: string, input: CreateReviewInput) {
   clearFeedCache().catch(() => {});
 
   return review;
+}
+
+function videoUrlToAbsolutePath(videoUrl: string): string | null {
+  const uploadPrefix = `${UPLOAD_BASE_URL}/`;
+  if (!videoUrl.startsWith(uploadPrefix)) {
+    return null;
+  }
+  return join(UPLOAD_DIR, videoUrl.slice(uploadPrefix.length));
 }
 
 async function clearFeedCache(): Promise<void> {

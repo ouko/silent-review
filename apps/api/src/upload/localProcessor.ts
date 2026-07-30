@@ -1,20 +1,15 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { randomUUID } from "crypto";
-import { mkdir, writeFile, unlink } from "fs/promises";
+import { mkdir, writeFile, readFile, unlink } from "fs/promises";
 import { join } from "path";
-import { UPLOAD_DIR, UPLOAD_BASE_URL, type VideoVariant, type ProcessedVideo } from "./upload.service.js";
+import { UPLOAD_DIR, UPLOAD_BASE_URL } from "./upload-helpers.js";
+import { encryptAtRest, isEncryptionEnabled } from "./storageCrypto.js";
+import { type ProcessedVideo } from "./upload.service.js";
 
 const execFileAsync = promisify(execFile);
 
-const VARIANTS: Array<{ label: VideoVariant["label"]; height: number }> = [
-  { label: "480p", height: 480 },
-  { label: "720p", height: 720 },
-  { label: "1080p", height: 1080 },
-];
-
-export async function processVideoLocally(originalUrl: string, buffer: Buffer): Promise<ProcessedVideo> {
-  await mkdir(UPLOAD_DIR, { recursive: true });
+export async function processVideoLocally(originalUrl: string, buffer: Buffer): Promise<ProcessedVideo> {  await mkdir(UPLOAD_DIR, { recursive: true });
 
   const id = randomUUID();
   const inputPath = join(UPLOAD_DIR, `input-${id}.webm`);
@@ -39,64 +34,17 @@ export async function processVideoLocally(originalUrl: string, buffer: Buffer): 
       thumbnailPath,
     ]);
 
-    const variants: VideoVariant[] = [];
-    for (const variant of VARIANTS) {
-      const outputFilename = `${variant.label}-${id}.mp4`;
-      const outputPath = join(UPLOAD_DIR, outputFilename);
-      try {
-        await execFileAsync("ffmpeg", [
-          "-i",
-          inputPath,
-          "-vf",
-          `scale=-2:${variant.height}`,
-          "-c:v",
-          "libx264",
-          "-preset",
-          "fast",
-          "-crf",
-          "23",
-          "-an",
-          "-movflags",
-          "+faststart",
-          "-y",
-          outputPath,
-        ]);
-        variants.push({
-          label: variant.label,
-          url: `${UPLOAD_BASE_URL}/${outputFilename}`,
-          width: 0,
-          height: variant.height,
-        });
-      } catch {
-        // Skip variants that fail (e.g. source smaller than target height).
-      }
+    // Encrypt the stored thumbnail at rest when a key is configured.
+    if (isEncryptionEnabled()) {
+      const encrypted = encryptAtRest(await readFile(thumbnailPath));
+      await writeFile(thumbnailPath, encrypted);
     }
 
-    // WebM fallback variant for open-web compatibility.
-    const webmFilename = `webm-${id}.webm`;
-    const webmPath = join(UPLOAD_DIR, webmFilename);
-    try {
-      await execFileAsync("ffmpeg", [
-        "-i",
-        inputPath,
-        "-vf",
-        "scale=-2:720",
-        "-c:v",
-        "libvpx-vp9",
-        "-b:v",
-        "1M",
-        "-an",
-        "-y",
-        webmPath,
-      ]);
-      variants.push({ label: "webm", url: `${UPLOAD_BASE_URL}/${webmFilename}`, width: 0, height: 720 });
-    } catch {
-      // WebM fallback is optional.
-    }
-
+    // Variants are generated asynchronously by the moderation queue so the
+    // upload response is not blocked by slow transcoding.
     return {
       originalUrl,
-      variants,
+      variants: [],
       thumbnailUrl: `${UPLOAD_BASE_URL}/${thumbnailFilename}`,
       duration,
     };
@@ -119,5 +67,54 @@ async function probeDuration(inputPath: string): Promise<number> {
     return parseFloat(stdout.trim()) || 5;
   } catch {
     return 5;
+  }
+}
+
+const FEED_MAX_SHORT_SIDE = 720;
+const FEED_CRF = "26";
+
+/**
+ * Produce the feed-optimized rendition of an upload: H.264 capped at 720px
+ * on the shortest side (CRF 26) with +faststart so playback starts before
+ * the whole file downloads. Without this, multi-MB 1080p originals are
+ * served with the moov atom at the end — the main cause of slow feed loads.
+ * Returns the optimized buffer, or null on failure (caller keeps original).
+ */
+export async function optimizeForFeed(
+  buffer: Buffer,
+  ext: string,
+  dims: { width?: number; height?: number }
+): Promise<Buffer | null> {
+  await mkdir(UPLOAD_DIR, { recursive: true });
+  const id = randomUUID();
+  const inputPath = join(UPLOAD_DIR, `opt-in-${id}${ext}`);
+  const outputPath = join(UPLOAD_DIR, `opt-out-${id}${ext}`);
+  await writeFile(inputPath, buffer);
+
+  try {
+    const minDim = Math.min(dims.width ?? 0, dims.height ?? 0);
+    const needsScale = minDim > FEED_MAX_SHORT_SIDE;
+    const scaleArgs = needsScale
+      ? ["-vf", (dims.width ?? 0) < (dims.height ?? 0) ? "scale=720:-2" : "scale=-2:720"]
+      : [];
+    await execFileAsync("ffmpeg", [
+      "-y",
+      "-i", inputPath,
+      ...scaleArgs,
+      "-an",
+      "-c:v", "libx264",
+      "-preset", "veryfast",
+      "-crf", FEED_CRF,
+      "-pix_fmt", "yuv420p",
+      "-movflags", "+faststart",
+      outputPath,
+    ]);
+    return await readFile(outputPath);
+  } catch (err) {
+    console.warn(`[localProcessor] feed optimization failed: ${err instanceof Error ? err.message : String(err)}`);
+    return null;
+  } finally {
+    await unlink(inputPath).catch(() => {});
+    await unlink(outputPath).catch(() => {});
   }
 }
