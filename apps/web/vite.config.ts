@@ -31,6 +31,13 @@ export default defineConfig({
         target: process.env.VITE_API_URL || "http://localhost:3001",
         changeOrigin: true,
       },
+      // Socket.IO connects same-origin when VITE_API_URL is blank (dev-lan
+      // mode); forward it to the API like the other paths.
+      "/socket.io": {
+        target: process.env.VITE_API_URL || "http://localhost:3001",
+        changeOrigin: true,
+        ws: true,
+      },
     },
   },
   preview: {
@@ -44,6 +51,11 @@ export default defineConfig({
       "/uploads": {
         target: process.env.VITE_API_URL || "http://localhost:3001",
         changeOrigin: true,
+      },
+      "/socket.io": {
+        target: process.env.VITE_API_URL || "http://localhost:3001",
+        changeOrigin: true,
+        ws: true,
       },
     },
   },

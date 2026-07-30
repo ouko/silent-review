@@ -142,11 +142,15 @@ fi
 
 # --- environment overrides ---
 # WEB_APP_URL controls the API CORS origin, Socket.IO origin, and invite links.
-# Leave VITE_API_URL unset so the browser uses relative URLs and the Vite proxy
-# forwards them to localhost:3001. This keeps the API and web on the same origin
-# from the browser's perspective so HTTP-only refresh cookies survive reloads
-# whether the app is opened via localhost or the LAN IP.
+# Blank VITE_API_URL so the browser uses relative URLs and the Vite proxy
+# forwards them to localhost:3001. The repo-root .env sets
+# VITE_API_URL=http://localhost:3001, which the browser cannot reach from other
+# devices (localhost is the phone itself); an explicitly empty shell value
+# takes precedence over the .env file in Vite. This keeps the API and web on
+# the same origin from the browser's perspective so HTTP-only refresh cookies
+# survive reloads whether the app is opened via localhost or the LAN IP.
 export WEB_APP_URL="http://${LAN_IP}:5173"
+export VITE_API_URL=""
 
 # --- start ---
 log "Starting API and web dev servers..."
