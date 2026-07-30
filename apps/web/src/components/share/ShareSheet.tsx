@@ -28,6 +28,7 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
   const [coverBlobUrl, setCoverBlobUrl] = useState<string | null>(null);
   const [videoSaved, setVideoSaved] = useState(false);
   const [captionCopied, setCaptionCopied] = useState(false);
+  const [captionCopyFailed, setCaptionCopyFailed] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const backdropPointer = useRef<{ x: number; y: number } | null>(null);
@@ -304,8 +305,9 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
                 try {
                   await copyToClipboard(fullCaptionText);
                   setCaptionCopied(true);
+                  setCaptionCopyFailed(false);
                 } catch {
-                  // Ignore copy failures.
+                  setCaptionCopyFailed(true);
                 }
               }}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
@@ -313,6 +315,11 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
               <Copy className="h-4 w-4" />
               {captionCopied ? "Caption copied!" : "Copy caption"}
             </button>
+            {captionCopyFailed && (
+              <p className="text-xs text-amber-300">
+                Couldn't copy automatically — tap and hold the caption above to copy it manually.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
