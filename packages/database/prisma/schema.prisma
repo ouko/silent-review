@@ -1,5 +1,8 @@
 generator client {
   provider = "prisma-client-js"
+  // The production image is Alpine (musl) with OpenSSL 3; without this target
+  // Prisma ships the OpenSSL 1.1 engine and crashes with libssl.so.1.1 missing.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
