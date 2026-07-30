@@ -149,7 +149,22 @@ fi
 # takes precedence over the .env file in Vite. This keeps the API and web on
 # the same origin from the browser's perspective so HTTP-only refresh cookies
 # survive reloads whether the app is opened via localhost or the LAN IP.
-export WEB_APP_URL="http://${LAN_IP}:5173"
+#
+# HTTPS is enabled by default (DEV_HTTPS=1) using a local CA from
+# scripts/dev-cert.sh. This is required for camera recording on phones —
+# browsers only expose getUserMedia in secure contexts. To trust the CA on an
+# iPhone: AirDrop certs/local-ca.pem to the phone, install the profile
+# (Settings > Profile Downloaded), then enable it in Settings > General >
+# About > Certificate Trust Settings. Set DEV_LAN_HTTP=1 to fall back to
+# plain HTTP (camera will stay unavailable on the phone).
+if [ "${DEV_LAN_HTTP:-0}" = "1" ]; then
+  SCHEME="http"
+else
+  SCHEME="https"
+  export DEV_HTTPS=1
+  bash scripts/dev-cert.sh "${LAN_IP}"
+fi
+export WEB_APP_URL="${SCHEME}://${LAN_IP}:5173"
 export VITE_API_URL=""
 
 # --- start ---
@@ -172,7 +187,7 @@ trap cleanup INT TERM EXIT
 
 # --- wait for readiness ---
 API_URL="http://${LAN_IP}:3001/health"
-WEB_URL="http://${LAN_IP}:5173/login"
+WEB_URL="${SCHEME}://${LAN_IP}:5173/login"
 
 log "Waiting for servers to accept connections (this can take 20–40s)..."
 READY=false
@@ -182,7 +197,8 @@ for i in $(seq 1 120); do
   if curl -s -o /dev/null -w "%{http_code}" "${API_URL}" 2>/dev/null | grep -q "200"; then
     API_OK=true
   fi
-  if curl -s -o /dev/null -w "%{http_code}" "${WEB_URL}" 2>/dev/null | grep -q "200"; then
+  # -k: the dev cert is signed by our local CA, which curl doesn't trust yet.
+  if curl -sk -o /dev/null -w "%{http_code}" "${WEB_URL}" 2>/dev/null | grep -q "200"; then
     WEB_OK=true
   fi
   if [ "${API_OK}" = true ] && [ "${WEB_OK}" = true ]; then
@@ -206,11 +222,16 @@ fi
 
 success "Servers are reachable from the local network."
 echo ""
-echo -e "${GREEN}Local:${NC}  http://localhost:5173"
-echo -e "${GREEN}LAN:${NC}   http://${LAN_IP}:5173"
+echo -e "${GREEN}Local:${NC}  ${SCHEME}://localhost:5173"
+echo -e "${GREEN}LAN:${NC}   ${SCHEME}://${LAN_IP}:5173"
 echo -e "${GREEN}API:${NC}   http://${LAN_IP}:3001"
 echo ""
 echo "Open the LAN URL on your iPhone. Both devices must be on the same Wi-Fi."
+if [ "${SCHEME}" = "https" ]; then
+  echo "First time only: AirDrop certs/local-ca.pem to the iPhone, install the"
+  echo "profile (Settings > Profile Downloaded), then enable it in Settings >"
+  echo "General > About > Certificate Trust Settings."
+fi
 echo "If the page does not load, check System Settings > Privacy & Security >"
 echo "Firewall and temporarily disable any VPN on this Mac."
 echo ""

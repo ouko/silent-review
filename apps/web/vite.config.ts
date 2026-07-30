@@ -1,6 +1,19 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import fs from "fs";
+
+// HTTPS is opt-in (DEV_HTTPS=1, set by scripts/dev-lan.sh) so plain `pnpm dev`
+// and the e2e suite keep working over HTTP. Requires certs from
+// scripts/dev-cert.sh; enables camera access from phones on the LAN.
+function httpsConfig(): { key: Buffer; cert: Buffer } | undefined {
+  if (process.env.DEV_HTTPS !== "1") return undefined;
+  const certsDir = path.resolve(__dirname, "../../certs");
+  const keyPath = path.join(certsDir, "dev-key.pem");
+  const certPath = path.join(certsDir, "dev-cert.pem");
+  if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) return undefined;
+  return { key: fs.readFileSync(keyPath), cert: fs.readFileSync(certPath) };
+}
 
 export default defineConfig({
   plugins: [react()],
@@ -22,6 +35,7 @@ export default defineConfig({
     // Bind to all interfaces so the app can be reached from other devices on
     // the same network (e.g. an iPhone during local mobile testing).
     host: true,
+    https: httpsConfig(),
     proxy: {
       "/api": {
         target: process.env.VITE_API_URL || "http://localhost:3001",

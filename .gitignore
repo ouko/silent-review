@@ -48,3 +48,6 @@ uploads/
 # Temporary verification artifacts
 tmp-verify/
 tmp-verify-screenshots.cjs
+
+# Local dev TLS certificates
+certs/
