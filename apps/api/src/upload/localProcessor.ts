@@ -1,9 +1,10 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { randomUUID } from "crypto";
-import { mkdir, writeFile, unlink } from "fs/promises";
+import { mkdir, writeFile, readFile, unlink } from "fs/promises";
 import { join } from "path";
 import { UPLOAD_DIR, UPLOAD_BASE_URL } from "./upload-helpers.js";
+import { encryptAtRest, isEncryptionEnabled } from "./storageCrypto.js";
 import { type ProcessedVideo } from "./upload.service.js";
 
 const execFileAsync = promisify(execFile);
@@ -33,6 +34,12 @@ export async function processVideoLocally(originalUrl: string, buffer: Buffer): 
       "2",
       thumbnailPath,
     ]);
+
+    // Encrypt the stored thumbnail at rest when a key is configured.
+    if (isEncryptionEnabled()) {
+      const encrypted = encryptAtRest(await readFile(thumbnailPath));
+      await writeFile(thumbnailPath, encrypted);
+    }
 
     // Variants are generated asynchronously by the moderation queue so the
     // upload response is not blocked by slow transcoding.

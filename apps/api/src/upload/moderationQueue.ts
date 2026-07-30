@@ -1,6 +1,7 @@
 import { prisma } from "../prisma.js";
 import { env } from "../config/index.js";
 import { runVideoModeration } from "./moderationEngine.js";
+import { withPlaintextCopy } from "./storageCrypto.js";
 import { Prisma } from "@silent-review/database";
 
 interface QueueItem {
@@ -35,7 +36,10 @@ export async function processQueue(): Promise<void> {
 
 async function runModeration(item: QueueItem): Promise<void> {
   try {
-    const result = await runVideoModeration(item.videoPath, item.duration);
+    // Files on disk may be encrypted at rest; hand ffmpeg a readable copy.
+    const result = await withPlaintextCopy(item.videoPath, (path) =>
+      runVideoModeration(path, item.duration)
+    );
 
     if (item.reviewId) {
       await prisma.videoModeration.upsert({

@@ -1,9 +1,10 @@
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { randomUUID } from "crypto";
-import { mkdir, writeFile, unlink } from "fs/promises";
+import { mkdir, writeFile, readFile, unlink } from "fs/promises";
 import { extname, join } from "path";
 import { UPLOAD_DIR, UPLOAD_BASE_URL, extensionForContentType } from "./upload-helpers.js";
+import { encryptAtRest } from "./storageCrypto.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -32,23 +33,30 @@ export async function saveVideoFile(
 
   const id = randomUUID();
   const ext = extname(originalName) || extensionForContentType(contentType);
-  let filename = `${id}${ext}`;
-  let filepath = join(UPLOAD_DIR, filename);
-
-  await writeFile(filepath, buffer);
+  let data = buffer;
+  let finalExt = ext;
 
   // macOS dev environments often receive QuickTime .mov files from iPhones.
   // Safari and other browsers play MP4 far more reliably, so transcode .mov
   // to H.264 MP4 when avconvert is available (ships with macOS).
   if (ext.toLowerCase() === ".mov" && (await isAvconvertAvailable())) {
-    const mp4Filename = `${id}.mp4`;
-    const mp4Path = join(UPLOAD_DIR, mp4Filename);
-    const transcoded = await transcodeMovToMp4(filepath, mp4Path);
-    if (transcoded) {
-      await unlink(filepath).catch(() => {});
-      filename = mp4Filename;
+    const tmpMov = join(UPLOAD_DIR, `transcode-${id}.mov`);
+    const tmpMp4 = join(UPLOAD_DIR, `transcode-${id}.mp4`);
+    await writeFile(tmpMov, buffer);
+    try {
+      if (await transcodeMovToMp4(tmpMov, tmpMp4)) {
+        data = await readFile(tmpMp4);
+        finalExt = ".mp4";
+      }
+    } finally {
+      await unlink(tmpMov).catch(() => {});
+      await unlink(tmpMp4).catch(() => {});
     }
   }
+
+  // Encrypt at rest when UPLOAD_ENCRYPTION_KEY is configured.
+  const filename = `${id}${finalExt}`;
+  await writeFile(join(UPLOAD_DIR, filename), encryptAtRest(data));
 
   return `${UPLOAD_BASE_URL}/${filename}`;
 }

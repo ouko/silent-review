@@ -22,6 +22,11 @@ jest.unstable_mockModule("../config/index.js", () => ({ env: mockEnv }));
 jest.unstable_mockModule("./moderationEngine.js", () => ({
   runVideoModeration: mockRunVideoModeration,
 }));
+// Pass paths straight through: these tests use fake video paths, so the
+// at-rest decryption file read would fail on them.
+jest.unstable_mockModule("./storageCrypto.js", () => ({
+  withPlaintextCopy: (path: string, fn: (p: string) => Promise<unknown>) => fn(path),
+}));
 
 const {
   enqueueModeration,

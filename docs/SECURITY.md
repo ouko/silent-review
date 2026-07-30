@@ -23,6 +23,10 @@ We will respond within 48 hours and work with you to resolve the issue responsib
 - **CORS:** Restricted to the configured `WEB_APP_URL`.
 - **Secrets:** Stored in environment variables, never committed.
 - **Dependency updates:** Automated via Dependabot.
+- **Encryption in transit:** HTTPS everywhere. Local LAN development uses a local CA (`scripts/dev-cert.sh`, certs in gitignored `certs/`); production must use valid certificates. Refresh cookies are marked `Secure` whenever the app is served over HTTPS.
+- **Encryption at rest:** Uploaded media (videos, thumbnails) is encrypted with AES-256-GCM when `UPLOAD_ENCRYPTION_KEY` (64 hex chars, generate with `openssl rand -hex 32`) is set. Files carry an `SRE1` header; legacy plaintext files are still served. The server decrypts transparently on read and for internal processing (moderation), with HTTP Range support for video playback. Without the key, stored uploads are unreadable.
+
+Note on end-to-end encryption: Silent Review is a public-content platform whose server must transcode, thumbnail, and moderate videos, so true client-to-client E2EE (Signal/WhatsApp-style) is architecturally incompatible with these features. The measures above protect content in transit and at rest without breaking the pipeline.
 
 ## Data Protection
 

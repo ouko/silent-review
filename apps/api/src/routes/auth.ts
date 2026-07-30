@@ -33,16 +33,18 @@ import { getEnabledProviders, isProviderEnabled } from "../services/features.js"
 
 export const authRouter = Router();
 
+const secureCookies = env.NODE_ENV === "production" || env.WEB_APP_URL.startsWith("https://");
+
 const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: env.NODE_ENV === "production",
+  secure: secureCookies,
   sameSite: "lax" as const,
   maxAge: 30 * 24 * 60 * 60 * 1000,
 };
 
 const CLEAR_REFRESH_COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: env.NODE_ENV === "production",
+  secure: secureCookies,
   sameSite: "lax" as const,
 };
 
