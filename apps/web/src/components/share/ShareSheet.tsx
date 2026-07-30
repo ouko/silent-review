@@ -41,11 +41,12 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
     const sheet = sheetRef.current;
     if (!sheet) return;
 
-    // Focus the first focusable element inside the sheet.
+    // Focus the first focusable element inside the sheet. preventScroll is
+    // essential: without it, focusing scrolls the sheet back to the top.
     const focusable = sheet.querySelectorAll<HTMLElement>(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     );
-    focusable[0]?.focus();
+    focusable[0]?.focus({ preventScroll: true });
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -76,10 +77,16 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      previousFocusRef.current?.focus();
+      previousFocusRef.current?.focus({ preventScroll: true });
+    };
+  }, [onClose]);
+
+  // Revoke the selected cover's object URL when it changes or the sheet closes.
+  useEffect(() => {
+    return () => {
       if (coverBlobUrl) URL.revokeObjectURL(coverBlobUrl);
     };
-  }, [onClose, coverBlobUrl]);
+  }, [coverBlobUrl]);
 
   async function handleExport() {
     await exportApi.generate({ videoUrl, platform: selectedPlatform, productName, rating });

@@ -97,10 +97,18 @@ export function Feed({
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
 
     if (onScrollDirection) {
-      const diff = scrollTop - lastScrollY.current;
-      if (Math.abs(diff) > 10) {
-        onScrollDirection(diff > 0 ? "down" : "up");
-        lastScrollY.current = scrollTop;
+      // Reaching the very top must always reveal the nav, even when iOS
+      // throttles scroll events during momentum and the touch fallback
+      // reported the fling direction instead.
+      if (scrollTop <= 0) {
+        onScrollDirection("up");
+        lastScrollY.current = 0;
+      } else {
+        const diff = scrollTop - lastScrollY.current;
+        if (Math.abs(diff) > 10) {
+          onScrollDirection(diff > 0 ? "down" : "up");
+          lastScrollY.current = scrollTop;
+        }
       }
     }
 
