@@ -38,7 +38,10 @@ source "${ENV_FILE}"
 set +a
 
 log "Pulling latest code..."
-git pull origin main
+# Pull the branch this checkout is on, not a hardcoded one — deploy boxes
+# may track a release branch.
+CURRENT_BRANCH="$(git branch --show-current)"
+git pull origin "${CURRENT_BRANCH}"
 
 log "Installing dependencies..."
 # .env.prod exports NODE_ENV=production, which makes pnpm skip devDependencies
