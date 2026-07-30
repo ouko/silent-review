@@ -1,8 +1,14 @@
 import { describe, it, expect, jest } from "@jest/globals";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
-import { readFile } from "fs/promises";
-import { validateVideoFile, stripAudioTrack } from "../videoValidator.js";
+import { readFile, unlink } from "fs/promises";
+import { execFile } from "child_process";
+import { promisify } from "util";
+import { tmpdir } from "os";
+import { randomUUID } from "crypto";
+import { validateVideoFile, stripAudioTrack, rectifyVideo } from "../videoValidator.js";
+
+const execFileAsync = promisify(execFile);
 
 // These tests assume ffmpeg/ffprobe are installed. In CI they are present.
 // Use small fixture files committed under apps/api/src/upload/__tests__/fixtures.
@@ -61,6 +67,32 @@ describe("stripAudioTrack", () => {
     const result = await validateVideoFile(stripped!, "video/mp4", "with-audio.mp4");
     expect(result.hasAudio).toBe(false);
     expect(result.errors.some((e) => e.includes("silent"))).toBe(false);
+  });
+});
+
+describe("rectifyVideo", () => {
+  jest.setTimeout(60000);
+
+  it("trims an over-long video with audio to a valid 5s silent clip", async () => {
+    // Realistic phone-style upload: 12s, 1080x1920, with an audio track.
+    const srcPath = join(tmpdir(), `rectify-src-${randomUUID()}.mp4`);
+    await execFileAsync("ffmpeg", [
+      "-y", "-v", "error",
+      "-f", "lavfi", "-i", "testsrc=duration=12:size=640x480:rate=30",
+      "-f", "lavfi", "-i", "sine=frequency=440:duration=12",
+      "-c:v", "libx264", "-c:a", "aac", "-shortest",
+      srcPath,
+    ]);
+    const buffer = await readFile(srcPath);
+    await unlink(srcPath).catch(() => {});
+
+    const rectified = await rectifyVideo(buffer, ".mp4", { trim: true });
+    expect(rectified).not.toBeNull();
+
+    const result = await validateVideoFile(rectified!, "video/mp4", "video.mp4");
+    expect(result.valid).toBe(true);
+    expect(result.hasAudio).toBe(false);
+    expect(Math.abs(result.duration - 5)).toBeLessThanOrEqual(0.5);
   });
 });
 

@@ -7,7 +7,7 @@ import { UPLOAD_DIR, UPLOAD_BASE_URL, extensionForContentType } from "./upload-h
 
 const execFileAsync = promisify(execFile);
 
-export { validateVideoFile, stripAudioTrack, type VideoValidationResult } from "./videoValidator.js";
+export { validateVideoFile, stripAudioTrack, rectifyVideo, TARGET_DURATION_SECONDS, type VideoValidationResult } from "./videoValidator.js";
 
 export interface ProcessedVideo {
   originalUrl: string;

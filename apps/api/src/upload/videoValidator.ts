@@ -22,7 +22,7 @@ export interface VideoValidationResult {
 }
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024;
-const TARGET_DURATION_SECONDS = 5.0;
+export const TARGET_DURATION_SECONDS = 5.0;
 const DURATION_TOLERANCE_SECONDS = 0.5;
 const ALLOWED_VIDEO_MIME_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
 const ALLOWED_CODECS = new Set(["h264", "hevc", "vp8", "vp9", "av1"]);
@@ -166,6 +166,50 @@ export async function stripAudioTrack(buffer: Buffer, ext: string): Promise<Buff
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     console.warn(`[videoValidator] audio strip failed: ${reason}`);
+    return null;
+  } finally {
+    await unlink(inputPath).catch(() => {});
+    await unlink(outputPath).catch(() => {});
+  }
+}
+
+/**
+ * Normalize a video so it passes validation: drop the audio track and, when
+ * `trim` is true, cut it down to the target duration (first 5 seconds).
+ * Trimming re-encodes (stream copy can only cut at keyframes, which would
+ * overshoot the ±0.5s tolerance); audio-only fixes use stream copy.
+ * Returns the rectified buffer, or null when ffmpeg is unavailable or fails.
+ */
+export async function rectifyVideo(
+  buffer: Buffer,
+  ext: string,
+  opts: { trim?: boolean } = {}
+): Promise<Buffer | null> {
+  if (!opts.trim) return stripAudioTrack(buffer, ext);
+  if (!(await isFFmpegAvailable())) return null;
+
+  await mkdir(UPLOAD_DIR, { recursive: true });
+  const inputPath = join(UPLOAD_DIR, `rectify-in-${randomUUID()}${ext}`);
+  const outputPath = join(UPLOAD_DIR, `rectify-out-${randomUUID()}${ext}`);
+  await writeFile(inputPath, buffer);
+
+  try {
+    const videoArgs =
+      ext === ".webm"
+        ? ["-c:v", "libvpx", "-b:v", "1M"]
+        : ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p"];
+    await execFileAsync("ffmpeg", [
+      "-y",
+      "-i", inputPath,
+      "-t", String(TARGET_DURATION_SECONDS),
+      "-an",
+      ...videoArgs,
+      outputPath,
+    ]);
+    return await readFile(outputPath);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    console.warn(`[videoValidator] video rectify failed: ${reason}`);
     return null;
   } finally {
     await unlink(inputPath).catch(() => {});

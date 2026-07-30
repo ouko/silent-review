@@ -46,6 +46,20 @@ test.describe("video moderation", () => {
     await expect(page).toHaveURL(/\/review\//, { timeout: 60000 });
   });
 
+  test("over-long video with audio is trimmed and uploads successfully", async ({ page }) => {
+    await registerFreshUser(page);
+    const videoPath = await generateVideoFixture("long-with-audio", {
+      duration: 12,
+      audio: true,
+      filter: "testsrc=duration=12:size=640x480:rate=30",
+    });
+
+    await createProductAndUpload(page, videoPath);
+
+    await page.getByRole("button", { name: /Post review/i }).click();
+    await expect(page).toHaveURL(/\/review\//, { timeout: 60000 });
+  });
+
   test("240p video is rejected for low resolution", async ({ page }) => {
     await registerFreshUser(page);
     const videoPath = await generateVideoFixture("lowres", {

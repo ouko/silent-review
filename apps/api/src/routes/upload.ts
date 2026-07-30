@@ -3,8 +3,9 @@ import multer from "multer";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import {
   validateVideoFile,
-  stripAudioTrack,
+  rectifyVideo,
   saveVideoFile,
+  TARGET_DURATION_SECONDS,
 } from "../upload/upload.service.js";
 import {
   isFFmpegAvailable,
@@ -13,6 +14,8 @@ import {
   extensionForContentType,
 } from "../upload/upload-helpers.js";
 import { processVideoLocally } from "../upload/localProcessor.js";
+
+const DURATION_TOLERANCE_SECONDS = 0.5;
 
 export const uploadRouter = Router();
 
@@ -41,16 +44,19 @@ uploadRouter.post("/", requireAuth, upload.single("file"), async (req: Authentic
     let buffer = file.buffer;
     let validation = await validateVideoFile(buffer, file.mimetype, file.originalname);
 
-    // Rectify instead of reject: some recorders (notably iOS Safari
-    // MediaRecorder) always mux an audio track. When audio is among the
-    // problems, strip it and re-validate so the upload can still be saved.
-    if (!validation.valid && validation.hasAudio) {
-      const stripped = await stripAudioTrack(buffer, extensionForContentType(file.mimetype));
-      if (stripped) {
-        const revalidation = await validateVideoFile(stripped, file.mimetype, file.originalname);
+    // Rectify instead of reject: recorders and gallery videos rarely match
+    // the rules exactly — iOS Safari MediaRecorder always muxes an audio
+    // track, and real-world clips are almost never exactly 5s. When audio
+    // and/or an over-long duration are among the problems, normalize the
+    // video (strip audio, trim to 5s) and re-validate so it can be saved.
+    const tooLong = validation.duration > TARGET_DURATION_SECONDS + DURATION_TOLERANCE_SECONDS;
+    if (!validation.valid && (validation.hasAudio || tooLong)) {
+      const rectified = await rectifyVideo(buffer, extensionForContentType(file.mimetype), { trim: tooLong });
+      if (rectified) {
+        const revalidation = await validateVideoFile(rectified, file.mimetype, file.originalname);
         validation = revalidation;
         if (revalidation.valid) {
-          buffer = stripped;
+          buffer = rectified;
         }
       }
     }
