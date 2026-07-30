@@ -30,15 +30,21 @@ export function Profile() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const isMe = currentUser?.id === userId;
   const reducedMotion = useReducedMotion();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  function scrollToTabs() {
+    // Bring the tab bar (sticky) to the top so the tab content is visible.
+    tabsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   function handleReviewsStatClick() {
-    if (activeTab === "reviews") {
-      // Already on the reviews tab: give feedback by scrolling back to the top.
-      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-    } else {
-      setActiveTab("reviews");
-    }
+    setActiveTab("reviews");
+    scrollToTabs();
+  }
+
+  function handleTabSelect(tabId: string) {
+    setActiveTab(tabId);
+    scrollToTabs();
   }
 
   if (isLoading || !profile) {
@@ -46,7 +52,7 @@ export function Profile() {
   }
 
   return (
-    <div ref={scrollRef} className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto">
       <div className="flex min-h-full flex-col">
       {/* Header card */}
       <motion.div
@@ -142,8 +148,8 @@ export function Profile() {
       )}
 
       {/* Tabs */}
-      <div className="sticky top-0 z-10 bg-black/80 px-3 pb-2 backdrop-blur-xl">
-        <FeedTabs tabs={TABS} activeId={activeTab} onSelect={(tabId) => setActiveTab(tabId)} />
+      <div ref={tabsRef} className="sticky top-0 z-10 bg-black/80 px-3 pb-2 backdrop-blur-xl">
+        <FeedTabs tabs={TABS} activeId={activeTab} onSelect={handleTabSelect} />
       </div>
 
       {/* Tab content */}
