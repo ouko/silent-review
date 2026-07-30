@@ -41,7 +41,10 @@ log "Pulling latest code..."
 git pull origin main
 
 log "Installing dependencies..."
-pnpm install --frozen-lockfile
+# .env.prod exports NODE_ENV=production, which makes pnpm skip devDependencies
+# — but tsc/vite are devDependencies and the build needs them. Install with
+# devDependencies included regardless.
+NODE_ENV=development pnpm install --frozen-lockfile
 
 log "Building web app..."
 # The SPA and API share an origin behind nginx, so the browser must use
