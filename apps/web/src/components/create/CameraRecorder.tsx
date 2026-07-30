@@ -20,6 +20,7 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
   const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedRef = useRef(false);
   const activeRef = useRef(true);
+  const timingStartedRef = useRef(false);
 
   const { stream, isReady, error, permission, start: startCamera, stop: stopCamera } = useCamera();
   const [phase, setPhase] = useState<"idle" | "countdown" | "recording" | "processing">("idle");
@@ -121,12 +122,27 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
 
     chunksRef.current = [];
     completedRef.current = false;
+    timingStartedRef.current = false;
     const mimeType = selectMimeType();
     const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     recorderRef.current = recorder;
 
     recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
+      if (e.data.size <= 0) return;
+      chunksRef.current.push(e.data);
+      if (!timingStartedRef.current) {
+        timingStartedRef.current = true;
+        // Arm the 5s capture window only when the encoder actually delivers
+        // data — iOS burns ~1s warming up after start(), so timing from
+        // start() would produce a ~4s file that fails validation.
+        stopTimeoutRef.current = setTimeout(() => {
+          if (recorder.state !== "inactive") {
+            completedRef.current = true;
+            setPhase("processing");
+            stopRecording();
+          }
+        }, COUNTDOWN_SECONDS * 1000);
+      }
     };
 
     recorder.onstop = () => {
@@ -163,18 +179,9 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
       remaining -= 1;
       setCountdown(remaining);
       if (remaining <= 0 && timerRef.current) {
-        completedRef.current = true;
         clearInterval(timerRef.current);
       }
     }, 1000);
-
-    stopTimeoutRef.current = setTimeout(() => {
-      if (recorder.state !== "inactive") {
-        completedRef.current = true;
-        setPhase("processing");
-        stopRecording();
-      }
-    }, COUNTDOWN_SECONDS * 1000);
   }, [isReady, stream, phase, isPressed, onRecorded, stopCamera]);
 
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
