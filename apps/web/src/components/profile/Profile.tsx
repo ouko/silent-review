@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { useProfile, useProfileAchievements, useProfileReviews } from "../../hooks/useProfile";
@@ -30,13 +30,24 @@ export function Profile() {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const isMe = currentUser?.id === userId;
   const reducedMotion = useReducedMotion();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  function handleReviewsStatClick() {
+    if (activeTab === "reviews") {
+      // Already on the reviews tab: give feedback by scrolling back to the top.
+      scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    } else {
+      setActiveTab("reviews");
+    }
+  }
 
   if (isLoading || !profile) {
     return <Loading />;
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div ref={scrollRef} className="h-full overflow-y-auto">
+      <div className="flex min-h-full flex-col">
       {/* Header card */}
       <motion.div
         data-profile-username={profile.username}
@@ -73,7 +84,7 @@ export function Profile() {
 
           {/* Stats */}
           <div className="mt-5 grid w-full max-w-sm grid-cols-3 gap-3">
-            <StatCard value={profile.reviewCount} label="Reviews" onClick={() => setActiveTab("reviews")} />
+            <StatCard value={profile.reviewCount} label="Reviews" onClick={handleReviewsStatClick} />
             <StatCard value={profile.followerCount} label="Followers" onClick={() => setSheetType("followers")} />
             <StatCard value={profile.followingCount} label="Following" onClick={() => setSheetType("following")} />
           </div>
@@ -131,16 +142,16 @@ export function Profile() {
       )}
 
       {/* Tabs */}
-      <div className="px-3 pb-2">
+      <div className="sticky top-0 z-10 bg-black/80 px-3 pb-2 backdrop-blur-xl">
         <FeedTabs tabs={TABS} activeId={activeTab} onSelect={(tabId) => setActiveTab(tabId)} />
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1">
         {activeTab === "reviews" && <ProfileReviews reviews={reviews?.reviews ?? []} />}
         {activeTab === "activity" && <ActivityFeed />}
         {activeTab === "badges" && (
-          <div className="h-full overflow-y-auto p-3">
+          <div className="p-3">
             <div className="grid grid-cols-2 gap-3">
               {achievements?.achievements.map((a) => (
                 <motion.div
@@ -166,6 +177,7 @@ export function Profile() {
           </div>
         )}
       </div>
+      </div>
     </div>
   );
 }
@@ -188,7 +200,10 @@ function StatCard({
 
   if (onClick) {
     return (
-      <button onClick={onClick} className="w-full text-left">
+      <button
+        onClick={onClick}
+        className="w-full text-left transition-transform active:scale-95"
+      >
         {content}
       </button>
     );

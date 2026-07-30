@@ -23,7 +23,7 @@ function ratingGlow(rating: number): string {
 
 export function ProfileReviews({ reviews }: ProfileReviewsProps) {
   return (
-    <div className="h-full overflow-y-auto p-3">
+    <div className="p-3">
       {reviews.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/5 ring-1 ring-white/10">

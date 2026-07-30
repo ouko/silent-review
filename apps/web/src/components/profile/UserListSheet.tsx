@@ -141,7 +141,7 @@ export function UserListSheet({ userId, username, type, onClose }: UserListSheet
             </button>
           </div>
 
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             {query.isLoading || !query.data ? (
               <Loading />
             ) : (

@@ -16,7 +16,7 @@ export function UserList({ users, emptyMessage }: UserListProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2 overflow-y-auto p-1">
+    <div className="flex flex-col gap-2 p-1">
       {users.map((user) => (
         <UserListItem key={user.id} user={user} />
       ))}
