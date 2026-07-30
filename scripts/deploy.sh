@@ -62,7 +62,10 @@ log "Building and deploying production stack..."
 docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" up -d --build --wait
 
 log "Running database migrations..."
-pnpm --filter database run deploy
+# Postgres is only reachable inside the Docker network, so run migrations
+# through the API container rather than from the host.
+docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" exec -T api \
+  node_modules/.bin/prisma migrate deploy --schema packages/database/prisma/schema.prisma
 
 HEALTH_URL="${WEB_APP_URL:-http://localhost}/api/health"
 log "Waiting for health check at ${HEALTH_URL}..."
