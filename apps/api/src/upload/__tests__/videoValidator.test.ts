@@ -2,7 +2,7 @@ import { describe, it, expect, jest } from "@jest/globals";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { readFile } from "fs/promises";
-import { validateVideoFile } from "../videoValidator.js";
+import { validateVideoFile, stripAudioTrack } from "../videoValidator.js";
 
 // These tests assume ffmpeg/ffprobe are installed. In CI they are present.
 // Use small fixture files committed under apps/api/src/upload/__tests__/fixtures.
@@ -47,6 +47,20 @@ describe("validateVideoFile", () => {
     const result = await validateVideoFile(buffer, "video/mp4", "black.mp4");
     expect(result.valid).toBe(false);
     expect(result.errors.some((e) => e.includes("dark"))).toBe(true);
+  });
+});
+
+describe("stripAudioTrack", () => {
+  jest.setTimeout(30000);
+
+  it("removes the audio track so the video passes validation", async () => {
+    const buffer = await fixtureBuffer("with-audio.mp4");
+    const stripped = await stripAudioTrack(buffer, ".mp4");
+    expect(stripped).not.toBeNull();
+
+    const result = await validateVideoFile(stripped!, "video/mp4", "with-audio.mp4");
+    expect(result.hasAudio).toBe(false);
+    expect(result.errors.some((e) => e.includes("silent"))).toBe(false);
   });
 });
 

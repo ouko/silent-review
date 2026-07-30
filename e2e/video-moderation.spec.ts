@@ -33,7 +33,7 @@ test.describe("video moderation", () => {
     await expect(page).toHaveURL(/\/review\//, { timeout: 60000 });
   });
 
-  test("video with audio is rejected", async ({ page }) => {
+  test("video with audio is stripped and uploads successfully", async ({ page }) => {
     await registerFreshUser(page);
     const videoPath = await generateVideoFixture("with-audio", {
       audio: true,
@@ -43,7 +43,7 @@ test.describe("video moderation", () => {
     await createProductAndUpload(page, videoPath);
 
     await page.getByRole("button", { name: /Post review/i }).click();
-    await expect(page.getByText(/must be silent/i)).toBeVisible({ timeout: 30000 });
+    await expect(page).toHaveURL(/\/review\//, { timeout: 60000 });
   });
 
   test("240p video is rejected for low resolution", async ({ page }) => {

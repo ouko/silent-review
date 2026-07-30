@@ -3,12 +3,14 @@ import multer from "multer";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import {
   validateVideoFile,
+  stripAudioTrack,
   saveVideoFile,
 } from "../upload/upload.service.js";
 import {
   isFFmpegAvailable,
   UPLOAD_BASE_URL,
   UPLOAD_DIR,
+  extensionForContentType,
 } from "../upload/upload-helpers.js";
 import { processVideoLocally } from "../upload/localProcessor.js";
 
@@ -36,13 +38,29 @@ uploadRouter.post("/", requireAuth, upload.single("file"), async (req: Authentic
       return;
     }
 
-    const validation = await validateVideoFile(file.buffer, file.mimetype, file.originalname);
+    let buffer = file.buffer;
+    let validation = await validateVideoFile(buffer, file.mimetype, file.originalname);
+
+    // Rectify instead of reject: some recorders (notably iOS Safari
+    // MediaRecorder) always mux an audio track. When audio is among the
+    // problems, strip it and re-validate so the upload can still be saved.
+    if (!validation.valid && validation.hasAudio) {
+      const stripped = await stripAudioTrack(buffer, extensionForContentType(file.mimetype));
+      if (stripped) {
+        const revalidation = await validateVideoFile(stripped, file.mimetype, file.originalname);
+        validation = revalidation;
+        if (revalidation.valid) {
+          buffer = stripped;
+        }
+      }
+    }
+
     if (!validation.valid) {
       res.status(422).json({ error: "Video validation failed", details: validation.errors });
       return;
     }
 
-    const originalUrl = await saveVideoFile(file.buffer, file.originalname, file.mimetype);
+    const originalUrl = await saveVideoFile(buffer, file.originalname, file.mimetype);
 
     let processed = {
       originalUrl,
@@ -52,7 +70,7 @@ uploadRouter.post("/", requireAuth, upload.single("file"), async (req: Authentic
     };
 
     if (await isFFmpegAvailable()) {
-      processed = await processVideoLocally(originalUrl, file.buffer);
+      processed = await processVideoLocally(originalUrl, buffer);
     }
 
     res.status(201).json({

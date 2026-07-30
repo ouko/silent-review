@@ -2,7 +2,7 @@ import { extname } from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { randomUUID } from "crypto";
-import { mkdir, writeFile, unlink } from "fs/promises";
+import { mkdir, writeFile, readFile, unlink } from "fs/promises";
 import { join } from "path";
 import { env } from "../config/index.js";
 import { UPLOAD_DIR, extensionForContentType, isFFmpegAvailable, isFFprobeAvailable } from "./upload-helpers.js";
@@ -143,6 +143,34 @@ interface VideoProbe {
   width?: number;
   height?: number;
   fps?: number;
+}
+
+/**
+ * Remove the audio track from a video without re-encoding (`-an -c:v copy`).
+ * Returns the stripped buffer, or null when ffmpeg is unavailable or fails.
+ * Used to rectify uploads that are otherwise valid but contain an audio
+ * track (e.g. iOS Safari MediaRecorder output always muxes a silent AAC
+ * track), so they can be saved instead of rejected.
+ */
+export async function stripAudioTrack(buffer: Buffer, ext: string): Promise<Buffer | null> {
+  if (!(await isFFmpegAvailable())) return null;
+
+  await mkdir(UPLOAD_DIR, { recursive: true });
+  const inputPath = join(UPLOAD_DIR, `strip-in-${randomUUID()}${ext}`);
+  const outputPath = join(UPLOAD_DIR, `strip-out-${randomUUID()}${ext}`);
+  await writeFile(inputPath, buffer);
+
+  try {
+    await execFileAsync("ffmpeg", ["-y", "-i", inputPath, "-an", "-c:v", "copy", outputPath]);
+    return await readFile(outputPath);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    console.warn(`[videoValidator] audio strip failed: ${reason}`);
+    return null;
+  } finally {
+    await unlink(inputPath).catch(() => {});
+    await unlink(outputPath).catch(() => {});
+  }
 }
 
 async function probeVideo(buffer: Buffer, ext: string): Promise<VideoProbe> {

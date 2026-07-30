@@ -13,6 +13,7 @@ const mockValidateVideoFile = jest.fn<
   }>
 >();
 const mockSaveVideoFile = jest.fn<(buffer: Buffer, originalName: string, contentType: string) => Promise<string>>();
+const mockStripAudioTrack = jest.fn<(buffer: Buffer, ext: string) => Promise<Buffer | null>>();
 const mockIsFFmpegAvailable = jest.fn<() => Promise<boolean>>();
 const mockIsFFprobeAvailable = jest.fn<() => Promise<boolean>>();
 
@@ -25,6 +26,7 @@ jest.unstable_mockModule("../middleware/auth.js", () => ({
 }));
 jest.unstable_mockModule("../upload/upload.service.js", () => ({
   validateVideoFile: mockValidateVideoFile,
+  stripAudioTrack: mockStripAudioTrack,
   saveVideoFile: mockSaveVideoFile,
 }));
 jest.unstable_mockModule("../upload/upload-helpers.js", () => ({
@@ -63,6 +65,7 @@ describe("POST /api/upload moderation queue integration", () => {
       errors: [],
     });
     mockSaveVideoFile.mockResolvedValue("/uploads/test-video.mp4");
+    mockStripAudioTrack.mockResolvedValue(null);
     mockIsFFmpegAvailable.mockResolvedValue(false);
     mockIsFFprobeAvailable.mockResolvedValue(false);
     mockEnqueueModeration.mockReturnValue(undefined);
@@ -122,5 +125,55 @@ describe("POST /api/upload moderation queue integration", () => {
 
     expect(response.status).toBe(201);
     expect(mockEnqueueModeration).not.toHaveBeenCalled();
+  });
+
+  it("strips the audio track and saves when the only problem is audio", async () => {
+    const strippedBuffer = Buffer.from("stripped-video-bytes");
+    mockValidateVideoFile
+      .mockResolvedValueOnce({
+        valid: false,
+        duration: 5,
+        hasAudio: true,
+        format: "video/mp4",
+        errors: ["Audio track detected. Silent Review videos must be silent"],
+      })
+      .mockResolvedValueOnce({
+        valid: true,
+        duration: 5,
+        hasAudio: false,
+        format: "video/mp4",
+        errors: [],
+      });
+    mockStripAudioTrack.mockResolvedValue(strippedBuffer);
+
+    const app = createApp();
+    const response = await request(app)
+      .post("/api/upload")
+      .set("Authorization", "Bearer fake-token")
+      .attach("file", Buffer.from("fake-video-bytes"), "video.mp4");
+
+    expect(response.status).toBe(201);
+    expect(mockStripAudioTrack).toHaveBeenCalledTimes(1);
+    expect(mockSaveVideoFile).toHaveBeenCalledWith(strippedBuffer, "video.mp4", "video/mp4");
+  });
+
+  it("still rejects with 422 when the audio strip fails", async () => {
+    mockValidateVideoFile.mockResolvedValue({
+      valid: false,
+      duration: 5,
+      hasAudio: true,
+      format: "video/mp4",
+      errors: ["Audio track detected. Silent Review videos must be silent"],
+    });
+    mockStripAudioTrack.mockResolvedValue(null);
+
+    const app = createApp();
+    const response = await request(app)
+      .post("/api/upload")
+      .set("Authorization", "Bearer fake-token")
+      .attach("file", Buffer.from("fake-video-bytes"), "video.mp4");
+
+    expect(response.status).toBe(422);
+    expect(mockSaveVideoFile).not.toHaveBeenCalled();
   });
 });
