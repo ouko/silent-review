@@ -17,6 +17,9 @@ test.describe("video moderation", () => {
 
     // Wait for the finalize step to render the preview video.
     await expect(page.locator("video").first()).toBeVisible({ timeout: 10000 });
+
+    // Step 3: pick a rating (posting requires an explicit 1–10 selection).
+    await page.getByRole("radio", { name: "7" }).click();
   }
 
   test("valid silent 720p video uploads successfully", async ({ page }) => {
