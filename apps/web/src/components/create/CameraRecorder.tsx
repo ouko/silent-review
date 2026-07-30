@@ -152,7 +152,9 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
       }
     };
 
-    recorder.start();
+    // Start with a 1s timeslice: without it, iOS Safari's MediaRecorder
+    // often emits nothing until stop() and finalizes with a near-empty file.
+    recorder.start(1000);
     setPhase("countdown");
     setCountdown(COUNTDOWN_SECONDS);
 
