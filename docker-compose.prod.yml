@@ -69,6 +69,16 @@ services:
       S3_BUCKET_NAME: ${S3_BUCKET_NAME:-silent-review-uploads}
       CLOUDFRONT_DOMAIN: ${CLOUDFRONT_DOMAIN:-}
       WEB_APP_URL: ${WEB_APP_URL}
+      # Required to read uploads encrypted at rest; media is unreadable
+      # without it once encryption is enabled.
+      UPLOAD_ENCRYPTION_KEY: ${UPLOAD_ENCRYPTION_KEY:?UPLOAD_ENCRYPTION_KEY is required}
+      VIDEO_MODERATION_ENABLED: ${VIDEO_MODERATION_ENABLED:-true}
+      VIDEO_MODERATION_FAIL_CLOSED: ${VIDEO_MODERATION_FAIL_CLOSED:-false}
+      # nginx is the single reverse proxy in front of the API.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1}
+    volumes:
+      # Uploaded media must survive container rebuilds (every deploy).
+      - uploads_data:/app/uploads
     networks:
       - backend
       - frontend
@@ -100,6 +110,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  uploads_data:
 
 networks:
   backend:

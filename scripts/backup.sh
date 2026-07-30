@@ -28,13 +28,14 @@ if [ -f "${ENV_FILE}" ]; then
   set +a
 fi
 
-DATABASE_URL="${DATABASE_URL:-}"
+POSTGRES_USER="${POSTGRES_USER:-postgres}"
+POSTGRES_DB="${POSTGRES_DB:-silent_review}"
 S3_BUCKET_NAME="${S3_BUCKET_NAME:-silent-review-backups}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 RETENTION_DAYS="${RETENTION_DAYS:-7}"
 
-if [ -z "${DATABASE_URL}" ]; then
-  error "DATABASE_URL is not set"
+if ! docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" ps --status running 2>/dev/null | grep -q postgres; then
+  error "Production postgres container is not running"
   exit 1
 fi
 
@@ -48,7 +49,11 @@ cleanup() {
 trap cleanup EXIT
 
 log "Creating PostgreSQL dump..."
-pg_dump "${DATABASE_URL}" --no-owner --no-acl | gzip > "${LOCAL_DUMP}"
+# In the production stack postgres is only reachable inside the Docker
+# network, so dump through the container rather than connecting from the host.
+docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" exec -T postgres \
+  pg_dump -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-silent_review}" --no-owner --no-acl \
+  | gzip > "${LOCAL_DUMP}"
 
 log "Uploading to s3://${S3_BUCKET_NAME}/backups/${DUMP_FILE}..."
 aws s3 cp "${LOCAL_DUMP}" "s3://${S3_BUCKET_NAME}/backups/${DUMP_FILE}" --region "${AWS_REGION}"

@@ -43,7 +43,16 @@ JWT_SECRET=<random-64-char-hex>
 JWT_REFRESH_SECRET=<random-64-char-hex>
 WEB_APP_URL=https://your-domain.com
 POSTGRES_PASSWORD=<strong-password>
+UPLOAD_ENCRYPTION_KEY=<openssl rand -hex 32>
 ```
+
+Notes:
+
+- `UPLOAD_ENCRYPTION_KEY` encrypts uploaded media at rest (AES-256-GCM).
+  Back it up somewhere safe: without it, existing uploads are unreadable.
+- `VITE_API_URL` is forced to empty by `scripts/deploy.sh` so the web bundle
+  uses same-origin relative URLs through nginx. Do not set it in `.env.prod`.
+- Uploaded media persists in the `uploads_data` Docker volume across deploys.
 
 ## SSL with Let's Encrypt
 

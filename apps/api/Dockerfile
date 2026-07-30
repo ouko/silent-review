@@ -28,6 +28,10 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
+# ffmpeg/ffprobe are required at runtime for video validation, normalization
+# (trim/upscale/audio strip), thumbnails, and moderation frame analysis.
+RUN apk add --no-cache ffmpeg
+
 # Copy the full built workspace so workspace symlinks resolve correctly.
 COPY --from=builder /app .
 
