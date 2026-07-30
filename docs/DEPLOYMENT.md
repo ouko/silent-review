@@ -59,24 +59,30 @@ Notes:
 1. Install Certbot on the host:
 
 ```bash
-sudo apt install certbot
+sudo apt install -y certbot
 ```
 
-2. Obtain certificates:
+2. Obtain the first certificate (the stack is not running yet, so standalone
+mode uses port 80 directly). Write it into the directory compose mounts:
 
 ```bash
-sudo certbot certonly --webroot -w ./data/certbot/www -d your-domain.com
+mkdir -p data/certbot/www data/certbot/conf
+sudo certbot certonly --standalone -d your-domain.com \
+  --config-dir "$PWD/data/certbot/conf" \
+  --work-dir /tmp/certbot-work --logs-dir /tmp/certbot-logs
 ```
 
-3. Update `nginx/nginx.conf`:
-   - Uncomment the SSL server block.
-   - Replace `example.com` with your domain.
-   - Uncomment the HTTP-to-HTTPS redirect.
-
-4. Reload nginx:
+3. Activate the HTTPS server block (one command, no manual editing):
 
 ```bash
-docker compose -f docker-compose.prod.yml exec nginx nginx -s reload
+sed 's/example.com/your-domain.com/g' nginx/conf.d/ssl.conf.template > nginx/conf.d/ssl.conf
+```
+
+4. Deploy (nginx now serves HTTPS; renewals use the webroot challenge that is
+already configured on port 80):
+
+```bash
+pnpm deploy
 ```
 
 ## Deploy
