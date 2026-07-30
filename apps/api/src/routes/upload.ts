@@ -13,7 +13,7 @@ import {
   UPLOAD_DIR,
   extensionForContentType,
 } from "../upload/upload-helpers.js";
-import { processVideoLocally } from "../upload/localProcessor.js";
+import { processVideoLocally, optimizeForFeed } from "../upload/localProcessor.js";
 import { env } from "../config/index.js";
 
 const DURATION_TOLERANCE_SECONDS = 0.5;
@@ -75,6 +75,21 @@ uploadRouter.post("/", requireAuth, upload.single("file"), async (req: Authentic
       return;
     }
 
+    // Optimize for fast feed playback: cap at 720p shortest side and mux
+    // with +faststart so videos start playing before the full download.
+    // Without this, multi-MB 1080p originals are served as-is.
+    const ext = extensionForContentType(file.mimetype);
+    const ffmpeg = await isFFmpegAvailable();
+    if (ffmpeg && (ext === ".mp4" || ext === ".mov")) {
+      const optimized = await optimizeForFeed(buffer, ext, {
+        width: validation.width,
+        height: validation.height,
+      });
+      if (optimized) {
+        buffer = optimized;
+      }
+    }
+
     const originalUrl = await saveVideoFile(buffer, file.originalname, file.mimetype);
 
     let processed = {
@@ -84,7 +99,7 @@ uploadRouter.post("/", requireAuth, upload.single("file"), async (req: Authentic
       duration: validation.duration,
     };
 
-    if (await isFFmpegAvailable()) {
+    if (ffmpeg) {
       processed = await processVideoLocally(originalUrl, buffer);
     }
 

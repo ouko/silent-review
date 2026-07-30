@@ -201,7 +201,7 @@ export async function rectifyVideo(
     const videoArgs =
       ext === ".webm"
         ? ["-c:v", "libvpx", "-b:v", "1M"]
-        : ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p"];
+        : ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p", "-movflags", "+faststart"];
     const filterArgs = opts.upscaleToMinSide
       ? [
           "-vf",
