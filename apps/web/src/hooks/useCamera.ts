@@ -57,7 +57,14 @@ export function useCamera(): UseCameraResult {
 
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "user" },
+        video: {
+          facingMode: "user",
+          // Request HD @ 30fps so recordings satisfy the upload quality
+          // rules (min 480px shortest side, min 24fps) by default.
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 },
+        },
         audio: false,
       });
       setStream(mediaStream);

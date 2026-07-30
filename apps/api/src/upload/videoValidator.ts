@@ -174,18 +174,22 @@ export async function stripAudioTrack(buffer: Buffer, ext: string): Promise<Buff
 }
 
 /**
- * Normalize a video so it passes validation: drop the audio track and, when
- * `trim` is true, cut it down to the target duration (first 5 seconds).
- * Trimming re-encodes (stream copy can only cut at keyframes, which would
- * overshoot the ±0.5s tolerance); audio-only fixes use stream copy.
+ * Normalize a video so it passes validation: drop the audio track and fix
+ * whatever else is rectifiable:
+ * - `trim`: cut down to the target duration (first 5 seconds)
+ * - `upscaleToMinSide`: scale up so the shortest side reaches this many px
+ * - `targetFps`: resample to this frame rate
+ * Any of these re-encodes (stream copy can only cut at keyframes and cannot
+ * scale/resample); a pure audio fix uses stream copy.
  * Returns the rectified buffer, or null when ffmpeg is unavailable or fails.
  */
 export async function rectifyVideo(
   buffer: Buffer,
   ext: string,
-  opts: { trim?: boolean } = {}
+  opts: { trim?: boolean; upscaleToMinSide?: number; targetFps?: number } = {}
 ): Promise<Buffer | null> {
-  if (!opts.trim) return stripAudioTrack(buffer, ext);
+  const reencode = opts.trim || opts.upscaleToMinSide || opts.targetFps;
+  if (!reencode) return stripAudioTrack(buffer, ext);
   if (!(await isFFmpegAvailable())) return null;
 
   await mkdir(UPLOAD_DIR, { recursive: true });
@@ -198,11 +202,24 @@ export async function rectifyVideo(
       ext === ".webm"
         ? ["-c:v", "libvpx", "-b:v", "1M"]
         : ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23", "-pix_fmt", "yuv420p"];
+    const filterArgs = opts.upscaleToMinSide
+      ? [
+          "-vf",
+          // Scale proportionally so the shortest side reaches the minimum,
+          // rounding to even dimensions as H.264 requires. Commas inside the
+          // expression are escaped so ffmpeg doesn't split the filter chain.
+          `scale=ceil(iw*${opts.upscaleToMinSide}/min(iw\\,ih)/2)*2:ceil(ih*${opts.upscaleToMinSide}/min(iw\\,ih)/2)*2`,
+        ]
+      : [];
+    const fpsArgs = opts.targetFps ? ["-r", String(opts.targetFps)] : [];
+    const trimArgs = opts.trim ? ["-t", String(TARGET_DURATION_SECONDS)] : [];
     await execFileAsync("ffmpeg", [
       "-y",
       "-i", inputPath,
-      "-t", String(TARGET_DURATION_SECONDS),
+      ...trimArgs,
       "-an",
+      ...filterArgs,
+      ...fpsArgs,
       ...videoArgs,
       outputPath,
     ]);

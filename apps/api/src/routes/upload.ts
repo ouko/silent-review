@@ -14,6 +14,7 @@ import {
   extensionForContentType,
 } from "../upload/upload-helpers.js";
 import { processVideoLocally } from "../upload/localProcessor.js";
+import { env } from "../config/index.js";
 
 const DURATION_TOLERANCE_SECONDS = 0.5;
 
@@ -46,12 +47,20 @@ uploadRouter.post("/", requireAuth, upload.single("file"), async (req: Authentic
 
     // Rectify instead of reject: recorders and gallery videos rarely match
     // the rules exactly — iOS Safari MediaRecorder always muxes an audio
-    // track, and real-world clips are almost never exactly 5s. When audio
-    // and/or an over-long duration are among the problems, normalize the
-    // video (strip audio, trim to 5s) and re-validate so it can be saved.
+    // track, real-world clips are almost never exactly 5s, and users cannot
+    // fix resolution or frame rate themselves. When the problems are
+    // normalizable (audio, duration, resolution, frame rate), normalize the
+    // video and re-validate so it can be saved.
     const tooLong = validation.duration > TARGET_DURATION_SECONDS + DURATION_TOLERANCE_SECONDS;
-    if (!validation.valid && (validation.hasAudio || tooLong)) {
-      const rectified = await rectifyVideo(buffer, extensionForContentType(file.mimetype), { trim: tooLong });
+    const minDim = Math.min(validation.width ?? 0, validation.height ?? 0);
+    const lowRes = validation.width != null && validation.height != null && minDim < env.VIDEO_MIN_RESOLUTION;
+    const lowFps = validation.fps != null && validation.fps < env.VIDEO_MIN_FPS;
+    if (!validation.valid && (validation.hasAudio || tooLong || lowRes || lowFps)) {
+      const rectified = await rectifyVideo(buffer, extensionForContentType(file.mimetype), {
+        trim: tooLong,
+        upscaleToMinSide: lowRes ? env.VIDEO_MIN_RESOLUTION : undefined,
+        targetFps: lowFps ? Math.max(30, env.VIDEO_MIN_FPS) : undefined,
+      });
       if (rectified) {
         const revalidation = await validateVideoFile(rectified, file.mimetype, file.originalname);
         validation = revalidation;

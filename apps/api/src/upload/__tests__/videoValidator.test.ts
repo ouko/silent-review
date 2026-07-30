@@ -94,6 +94,26 @@ describe("rectifyVideo", () => {
     expect(result.hasAudio).toBe(false);
     expect(Math.abs(result.duration - 5)).toBeLessThanOrEqual(0.5);
   });
+
+  it("upscales a low-resolution, low-fps video so it passes validation", async () => {
+    const srcPath = join(tmpdir(), `rectify-lowres-${randomUUID()}.mp4`);
+    await execFileAsync("ffmpeg", [
+      "-y", "-v", "error",
+      "-f", "lavfi", "-i", "testsrc=duration=5:size=320x240:rate=15",
+      "-c:v", "libx264", "-pix_fmt", "yuv420p",
+      srcPath,
+    ]);
+    const buffer = await readFile(srcPath);
+    await unlink(srcPath).catch(() => {});
+
+    const rectified = await rectifyVideo(buffer, ".mp4", { upscaleToMinSide: 480, targetFps: 30 });
+    expect(rectified).not.toBeNull();
+
+    const result = await validateVideoFile(rectified!, "video/mp4", "video.mp4");
+    expect(result.valid).toBe(true);
+    expect(Math.min(result.width ?? 0, result.height ?? 0)).toBeGreaterThanOrEqual(480);
+    expect(result.fps ?? 0).toBeGreaterThanOrEqual(24);
+  });
 });
 
 async function fixtureBuffer(name: string): Promise<Buffer> {
