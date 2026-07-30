@@ -19,7 +19,11 @@ api.interceptors.response.use(
   (res) => res,
   async (err) => {
     const original = err.config;
-    if (err.response?.status === 401 && !original._retry) {
+    // Never retry the refresh call itself: without a valid refresh cookie it
+    // also returns 401, which would otherwise re-enter this interceptor and
+    // loop forever (guests would be stuck on a blank page).
+    const isRefreshCall = original.url?.endsWith("/api/auth/refresh");
+    if (err.response?.status === 401 && !original._retry && !isRefreshCall) {
       original._retry = true;
       try {
         const { data } = await api.post<{ accessToken: string; user: User }>("/api/auth/refresh", {});
