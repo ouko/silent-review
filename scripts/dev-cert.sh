@@ -31,7 +31,9 @@ mkdir -p "${CERTS_DIR}"
 if [ ! -f "${CA_CERT}" ]; then
   openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
     -keyout "${CA_KEY}" -out "${CA_CERT}" \
-    -subj "/CN=Silent Review Local CA" 2>/dev/null
+    -subj "/CN=Silent Review Local CA" \
+    -addext "basicConstraints=critical,CA:TRUE" \
+    -addext "keyUsage=critical,keyCertSign,cRLSign,digitalSignature" 2>/dev/null
   echo "[dev-cert] Created local CA: ${CA_CERT}"
 fi
 
@@ -51,6 +53,8 @@ trap 'rm -rf "${TMPDIR_CERT}"' EXIT
 
 cat > "${TMPDIR_CERT}/ext.cnf" <<EOF
 subjectAltName=${SANS}
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature,keyEncipherment
 extendedKeyUsage=serverAuth
 EOF
 
@@ -58,7 +62,8 @@ openssl req -newkey rsa:2048 -nodes \
   -keyout "${SRV_KEY}" -out "${TMPDIR_CERT}/dev.csr" \
   -subj "/CN=silent-review-dev" 2>/dev/null
 
-openssl x509 -req -days 825 \
+# iOS rejects TLS server certificates with a validity over 398 days.
+openssl x509 -req -days 397 \
   -in "${TMPDIR_CERT}/dev.csr" \
   -CA "${CA_CERT}" -CAkey "${CA_KEY}" -CAcreateserial \
   -out "${SRV_CERT}" \
