@@ -1,10 +1,13 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import { Heart, MessageCircle, Play } from "lucide-react";
+import { Heart, MessageCircle, Play, Trash2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { api } from "../../lib/api";
 import type { ProfileReview } from "../../hooks/useProfile";
 
 interface ProfileReviewsProps {
   reviews: ProfileReview[];
+  isOwnProfile?: boolean;
 }
 
 function ratingGradient(rating: number): string {
@@ -21,7 +24,19 @@ function ratingGlow(rating: number): string {
   return "shadow-fuchsia-500/30";
 }
 
-export function ProfileReviews({ reviews }: ProfileReviewsProps) {
+export function ProfileReviews({ reviews, isOwnProfile }: ProfileReviewsProps) {
+  const queryClient = useQueryClient();
+  const deleteMutation = useMutation({
+    mutationFn: async (reviewId: string) => {
+      await api.delete(`/api/reviews/${reviewId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["profile-reviews"] });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["feed"] });
+    },
+  });
+
   return (
     <div className="p-3">
       {reviews.length === 0 && (
@@ -40,7 +55,21 @@ export function ProfileReviews({ reviews }: ProfileReviewsProps) {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.03, duration: 0.25 }}
+            className="relative"
           >
+            {isOwnProfile && (
+              <button
+                onClick={() => {
+                  if (window.confirm("Delete this review? This cannot be undone.")) {
+                    deleteMutation.mutate(review.id);
+                  }
+                }}
+                aria-label="Delete review"
+                className="absolute right-1.5 top-1.5 z-10 rounded-full bg-black/60 p-1.5 text-white/70 backdrop-blur-sm transition-colors hover:bg-rose-500/30 hover:text-rose-300"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
             <Link
               to={`/review/${review.id}`}
               className="group relative block aspect-[3/4] overflow-hidden rounded-2xl bg-gradient-to-br from-white/5 to-white/[0.02] ring-1 ring-white/10 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-rose-500/10 active:scale-95"

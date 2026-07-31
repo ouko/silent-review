@@ -154,7 +154,7 @@ export function Profile() {
 
       {/* Tab content */}
       <div className="flex-1">
-        {activeTab === "reviews" && <ProfileReviews reviews={reviews?.reviews ?? []} />}
+        {activeTab === "reviews" && <ProfileReviews reviews={reviews?.reviews ?? []} isOwnProfile={isMe} />}
         {activeTab === "activity" && <ActivityFeed />}
         {activeTab === "badges" && (
           <div className="p-3">

@@ -61,7 +61,12 @@ export function ActivityFeed() {
           </div>
         )}
         {!isLoading && data?.notifications.length === 0 && (
-          <p className="py-12 text-center text-sm text-white/50">No activity yet.</p>
+          <div className="px-6 py-12 text-center">
+            <p className="text-sm font-semibold text-white/70">No activity yet</p>
+            <p className="mt-2 text-sm leading-relaxed text-white/50">
+              When people like, comment on, or guess your reviews — or follow you — it will show up here.
+            </p>
+          </div>
         )}
         <ul className="divide-y divide-white/5" role="list">
           {data?.notifications.map((n) => (

@@ -19,7 +19,7 @@ usersRouter.get("/:id", optionalAuth, async (req: AuthenticatedRequest, res, nex
         avatarUrl: true,
         streakDays: true,
         createdAt: true,
-        _count: { select: { reviews: true, followers: true, following: true } },
+        _count: { select: { reviews: { where: { deletedAt: null } }, followers: true, following: true } },
       },
     });
     if (!user) {
@@ -72,8 +72,14 @@ usersRouter.get("/:id/reviews", optionalAuth, async (req: AuthenticatedRequest, 
   try {
     const cursor = req.query.cursor as string | undefined;
     const limit = LimitSchema.parse(req.query.limit);
+    const isOwner = req.user?.id === req.params.id;
     const reviews = await prisma.review.findMany({
-      where: { userId: req.params.id },
+      where: {
+        userId: req.params.id,
+        deletedAt: null,
+        // Others only see published reviews; the owner also sees pending ones.
+        ...(isOwner ? {} : { status: "PUBLISHED" }),
+      },
       take: limit,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,

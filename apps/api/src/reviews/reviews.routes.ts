@@ -45,6 +45,24 @@ reviewsRouter.get("/moderation", requireAuth, async (req: AuthenticatedRequest, 
   }
 });
 
+reviewsRouter.delete("/:id", requireAuth, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    // Owner-scoped soft delete: the review disappears from feed, profile,
+    // and counts, but the row stays for audit.
+    const result = await prisma.review.updateMany({
+      where: { id: req.params.id, userId: req.user!.id, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    if (result.count === 0) {
+      res.status(404).json({ error: "Review not found" });
+      return;
+    }
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 reviewsRouter.get("/:id", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const review = await getReviewById(req.params.id);
