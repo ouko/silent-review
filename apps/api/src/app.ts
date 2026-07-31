@@ -28,6 +28,7 @@ import { regionalMiddleware } from "./regional/regional.middleware.js";
 import { featuresMiddleware } from "./features/features.middleware.js";
 import { docsRouter } from "./docs/swagger.js";
 import { adminRouter } from "./admin/admin.routes.js";
+import { analyticsRouter } from "./analytics/analytics.routes.js";
 
 export function createApp() {
   const app = express();
@@ -89,6 +90,7 @@ export function createApp() {
   app.use("/api/shares", sharesRouter);
   app.use("/api/docs", docsRouter);
   app.use("/api/admin", adminRouter);
+  app.use("/api/analytics", analyticsRouter);
 
   app.use(errorHandler);
 

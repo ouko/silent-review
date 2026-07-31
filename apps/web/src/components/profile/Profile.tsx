@@ -9,7 +9,7 @@ import { ActivityFeed } from "../social/ActivityFeed";
 import { Loading } from "../common/Loading";
 import { FeedTabs } from "../feed/FeedTabs";
 import { UserListSheet } from "./UserListSheet";
-import { Flame, Award, User, Pencil, LogOut, ShieldCheck } from "lucide-react";
+import { Flame, Award, User, Pencil, LogOut, ShieldCheck, BarChart3 } from "lucide-react";
 import { logout } from "../../lib/auth";
 
 const TABS = [
@@ -117,6 +117,13 @@ export function Profile() {
               <FollowButton userId={userId} isFollowing={profile.isFollowing} />
             ) : (
               <div className="space-y-2">
+                <Link
+                  to="/analytics"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 font-bold text-white transition-colors hover:bg-white/10"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Analytics
+                </Link>
                 {currentUser?.role === "ADMIN" && (
                   <Link
                     to="/admin"
