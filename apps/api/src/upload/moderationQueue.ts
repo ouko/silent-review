@@ -106,7 +106,7 @@ async function runModeration(item: QueueItem): Promise<void> {
   }
 }
 
-async function clearFeedCache(): Promise<void> {
+export async function clearFeedCache(): Promise<void> {
   const redis = getRedis();
   if (!redis) return;
 

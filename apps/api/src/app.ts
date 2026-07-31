@@ -27,6 +27,7 @@ import { sharesRouter } from "./routes/shares.js";
 import { regionalMiddleware } from "./regional/regional.middleware.js";
 import { featuresMiddleware } from "./features/features.middleware.js";
 import { docsRouter } from "./docs/swagger.js";
+import { adminRouter } from "./admin/admin.routes.js";
 
 export function createApp() {
   const app = express();
@@ -87,6 +88,7 @@ export function createApp() {
   app.use("/api/export", exportRouter);
   app.use("/api/shares", sharesRouter);
   app.use("/api/docs", docsRouter);
+  app.use("/api/admin", adminRouter);
 
   app.use(errorHandler);
 

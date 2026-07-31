@@ -13,6 +13,7 @@ jest.unstable_mockModule("../prisma.js", () => ({
 jest.unstable_mockModule("../middleware/auth.js", () => ({
   requireAuth: (_req: unknown, _res: unknown, next: () => void) => next(),
   optionalAuth: (_req: unknown, _res: unknown, next: () => void) => next(),
+  requireRole: () => (_req: unknown, _res: unknown, next: () => void) => next(),
   signAccessToken: jest.fn(),
   findUserById: jest.fn(),
 }));
