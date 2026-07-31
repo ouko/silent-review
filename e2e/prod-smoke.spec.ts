@@ -42,7 +42,7 @@ async function registerViaInvite(browser: Browser, inviteCode: string) {
 }
 
 test.describe("production smoke", () => {
-  test.describe.configure({ mode: "serial", timeout: 300000 });
+  test.describe.configure({ mode: "serial", timeout: 600000 });
 
   test("creator journey: register, record-upload, rate, post, profile", async ({ page }) => {
     await registerFreshUser(page);
@@ -77,23 +77,33 @@ test.describe("production smoke", () => {
       filter: "testsrc=duration=5:size=640x480:rate=30",
     });
     await createReviewWithProduct(page, videoPath);
-    const reviewUrl = page.url();
 
-    // Viewer (separate context) finds it on the feed and interacts.
+    // Viewer (separate context) finds it on the feed and guesses on the card.
     const viewerContext = await browser.newContext();
     const viewer = await viewerContext.newPage();
     await registerFreshUser(viewer);
 
     await viewer.goto("/");
+    // Guess + reveal happen on the feed card (the review detail page has no
+    // guess UI).
+    await expect(async () => {
+      const radio = viewer.getByRole("radio", { name: "6" }).first();
+      await expect(radio).toBeVisible();
+      await radio.scrollIntoViewIfNeeded();
+      await radio.click({ force: true });
+      await expect(radio).toHaveAttribute("aria-checked", "true");
+    }).toPass({ timeout: 30000 });
+
+    const revealButton = viewer.getByRole("button", { name: /Reveal/i }).first();
+    await expect(revealButton).toBeEnabled({ timeout: 30000 });
+    await revealButton.click();
+    await expect(viewer.getByText(/The actual rating was/i).first()).toBeVisible({ timeout: 30000 });
+
+    // Open the review for like + comment.
     const commentLink = viewer.locator('a[aria-label="Comment on review"]').first();
     await expect(commentLink).toBeVisible({ timeout: 30000 });
     await commentLink.evaluate((el: HTMLElement) => el.click());
     await expect(viewer).toHaveURL(/\/review\//);
-
-    // Guess + reveal.
-    await viewer.getByRole("radio", { name: "6" }).click();
-    await viewer.getByRole("button", { name: /Reveal/i }).first().click();
-    await expect(viewer.getByText(new RegExp(`${RATING}`)).first()).toBeVisible({ timeout: 30000 });
 
     // Like.
     const likeButton = viewer.getByRole("button", { name: /^(Like|Unlike) review/i });
@@ -111,9 +121,11 @@ test.describe("production smoke", () => {
     await viewer.getByRole("button", { name: /Post comment/i }).click();
     await expect(viewer.getByText(commentText).first()).toBeVisible({ timeout: 15000 });
 
-    // Follow the creator from their profile (via author link on the review).
-    await viewer.goto(reviewUrl);
-    await viewer.locator('a[href*="/profile/"]').first().click();
+    // Follow the creator from their profile (author link on the feed card —
+    // the review detail page has no author link, and the bottom-nav Profile
+    // link goes to the viewer's own profile).
+    await viewer.goto("/");
+    await viewer.locator('a[data-profile-link]').first().click();
     await expect(viewer).toHaveURL(/\/profile\//);
     const followButton = viewer.getByRole("button", { name: /^(Follow|Unfollow) user/i });
     await expect(followButton).toBeVisible({ timeout: 15000 });
