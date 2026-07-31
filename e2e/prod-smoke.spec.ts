@@ -58,11 +58,11 @@ test.describe("production smoke", () => {
     await page.goto("/profile/me");
     await expect(page.locator("[data-profile-username]")).toBeVisible({ timeout: 15000 });
 
-    await page.getByRole("button", { name: /^followers$/i }).click();
+    await page.getByRole("button", { name: /followers/i }).click();
     await expect(page.getByRole("dialog", { name: /followers/i })).toBeVisible();
     await page.getByRole("button", { name: "Close" }).click();
 
-    await page.getByRole("button", { name: /^following$/i }).click();
+    await page.getByRole("button", { name: /following/i }).click();
     await expect(page.getByRole("dialog", { name: /following/i })).toBeVisible();
     await page.getByRole("button", { name: "Close" }).click();
   });
