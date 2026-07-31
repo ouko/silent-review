@@ -67,6 +67,10 @@ log "Running database migrations..."
 # Alpine and memory pressure on small hosts.
 bash scripts/migrate-psql.sh
 
+# Keep a copy of the operations runbook in the deploy user's home so it is
+# visible the moment anyone SSHs in.
+cp docs/RUNBOOK.md "${HOME}/RUNBOOK.md" 2>/dev/null || true
+
 HEALTH_URL="${WEB_APP_URL:-http://localhost}/api/health"
 log "Waiting for health check at ${HEALTH_URL}..."
 for i in {1..30}; do
