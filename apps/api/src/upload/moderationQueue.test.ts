@@ -151,7 +151,7 @@ describe("processQueue", () => {
     });
     expect(mockPrisma.review.update).toHaveBeenCalledWith({
       where: { id: "review-1" },
-      data: { status: "HIDDEN" },
+      data: { status: "HIDDEN", deletedAt: expect.any(Date) },
     });
   });
 

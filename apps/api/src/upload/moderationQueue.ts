@@ -61,9 +61,12 @@ async function runModeration(item: QueueItem): Promise<void> {
       });
 
       if (result.status === "REJECT") {
+        // Remove rejected content from the app entirely (soft delete) — the
+        // uploader gets a clear error at post time and the video must not
+        // linger on their profile or anywhere else.
         await prisma.review.update({
           where: { id: item.reviewId },
-          data: { status: "HIDDEN" },
+          data: { status: "HIDDEN", deletedAt: new Date() },
         });
       } else if (result.status === "PASS") {
         // Publish: without this transition reviews would stay UNDER_REVIEW
