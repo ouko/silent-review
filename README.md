@@ -12,6 +12,7 @@ deployed as a Docker Compose stack on a single VPS.
 ## Quick links
 
 - **Runbook (ops, prod access, deploys, backups, recovery):** [`docs/RUNBOOK.md`](docs/RUNBOOK.md)
+- **Final go-live report (latest):** [`docs/GO_LIVE_FINAL.md`](docs/GO_LIVE_FINAL.md)
 - **Go-live report (audit + issue history):** [`docs/GO_LIVE_REPORT.md`](docs/GO_LIVE_REPORT.md)
 - **Pre-launch checklist:** [`docs/PRELAUNCH.md`](docs/PRELAUNCH.md)
 - Deployment guide: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) · Architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · API: [`docs/API.md`](docs/API.md)
