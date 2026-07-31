@@ -190,6 +190,28 @@ adminRouter.post("/users/:id/role", async (req, res, next) => {
   }
 });
 
+adminRouter.get("/products", async (req, res, next) => {
+  try {
+    const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    const products = await prisma.product.findMany({
+      where: q ? { name: { contains: q, mode: "insensitive" } } : {},
+      orderBy: { createdAt: "desc" },
+      take: 20,
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        ownerId: true,
+        owner: { select: { id: true, username: true, displayName: true } },
+        _count: { select: { reviews: { where: { deletedAt: null } } } },
+      },
+    });
+    res.json({ products });
+  } catch (err) {
+    next(err);
+  }
+});
+
 adminRouter.post("/products/:id/owner", async (req, res, next) => {
   try {
     const userId = typeof req.body?.userId === "string" ? req.body.userId : "";

@@ -40,7 +40,7 @@ const envSchema = z.object({
   VIDEO_MIN_RESOLUTION: z.coerce.number().default(480),
   VIDEO_MIN_FPS: z.coerce.number().default(24),
   VIDEO_MODERATION_FRAME_COUNT: z.coerce.number().default(5),
-  VIDEO_MODERATION_SKIN_THRESHOLD: z.coerce.number().default(0.6),
+  VIDEO_MODERATION_SKIN_THRESHOLD: z.coerce.number().default(0.7),
   VIDEO_MODERATION_FAIL_CLOSED: z.string().default("false"),
   TRUSTED_PROXIES: z.string().optional(),
   // AES-256 key (hex) for encrypting uploaded media at rest. When unset,

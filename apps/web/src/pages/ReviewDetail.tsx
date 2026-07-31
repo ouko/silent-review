@@ -134,10 +134,18 @@ export function ReviewDetail() {
 
         <div className="flex items-center gap-5 text-sm font-bold text-white/80">
           <LikeButton reviewId={review.id} />
-          <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => {
+              const input = document.querySelector<HTMLInputElement>('input[aria-label="Add a comment"]');
+              input?.scrollIntoView({ behavior: "smooth", block: "center" });
+              input?.focus();
+            }}
+            className="flex items-center gap-1.5 transition-colors hover:text-white"
+            aria-label="Jump to comments"
+          >
             <MessageCircle className="h-5 w-5" />
             <span>{review.counts.comments}</span>
-          </div>
+          </button>
           <button
             onClick={handleShare}
             className="flex items-center gap-1.5 transition-colors hover:text-white"

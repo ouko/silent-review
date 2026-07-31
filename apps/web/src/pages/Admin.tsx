@@ -36,9 +36,19 @@ interface AdminUser {
   _count: { reviews: number; followers: number };
 }
 
+interface AdminProduct {
+  id: string;
+  name: string;
+  category: string;
+  ownerId: string | null;
+  owner: { id: string; username: string; displayName: string | null } | null;
+  _count: { reviews: number };
+}
+
 const TABS = [
   { id: "moderation", label: "Moderation" },
   { id: "users", label: "Users" },
+  { id: "products", label: "Products" },
 ];
 
 export function Admin() {
@@ -88,6 +98,7 @@ export function Admin() {
 
         {tab === "moderation" && <ModerationQueue onAction={invalidate} />}
         {tab === "users" && <UsersPanel onAction={invalidate} />}
+        {tab === "products" && <ProductsPanel />}
       </div>
     </div>
   );
@@ -181,6 +192,114 @@ function ModerationQueue({ onAction }: { onAction: () => void }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function ProductsPanel() {
+  const queryClient = useQueryClient();
+  const [q, setQ] = useState("");
+  const [submitted, setSubmitted] = useState("");
+  const [assigning, setAssigning] = useState<string | null>(null);
+  const [ownerQuery, setOwnerQuery] = useState("");
+
+  const { data, isLoading } = useQuery<{ products: AdminProduct[] }>({
+    queryKey: ["admin-products", submitted],
+    queryFn: async () => (await api.get("/api/admin/products", { params: { q: submitted } })).data,
+  });
+
+  const { data: merchants } = useQuery<{ users: AdminUser[] }>({
+    queryKey: ["admin-merchants", ownerQuery],
+    queryFn: async () => (await api.get("/api/admin/users", { params: { q: ownerQuery } })).data,
+    enabled: assigning !== null,
+  });
+
+  const assign = useMutation({
+    mutationFn: async ({ productId, userId }: { productId: string; userId: string }) => {
+      await api.post(`/api/admin/products/${productId}/owner`, { userId });
+    },
+    onSuccess: () => {
+      setAssigning(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+    },
+  });
+
+  const merchantOptions = (merchants?.users ?? []).filter((u) => u.role === "MERCHANT");
+
+  return (
+    <div className="flex flex-col gap-3">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setSubmitted(q.trim());
+        }}
+        className="flex gap-2"
+      >
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search products"
+            className="w-full rounded-2xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder-white/40 outline-none focus:border-white/20"
+          />
+        </div>
+        <button type="submit" className="rounded-2xl bg-white/10 px-4 text-sm font-bold text-white hover:bg-white/15">
+          Search
+        </button>
+      </form>
+
+      {isLoading || !data ? (
+        <Loading />
+      ) : data.products.length === 0 ? (
+        <p className="py-12 text-center text-sm text-white/50">No products found.</p>
+      ) : (
+        data.products.map((p) => (
+          <div key={p.id} className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-white">{p.name}</p>
+                <p className="text-xs text-white/50">
+                  {p.category} · {p._count.reviews} reviews ·{" "}
+                  {p.owner ? `owned by @${p.owner.username}` : "unassigned"}
+                </p>
+              </div>
+              <button
+                onClick={() => setAssigning(assigning === p.id ? null : p.id)}
+                className="shrink-0 rounded-xl bg-violet-500/20 px-3 py-2 text-xs font-bold text-violet-300 transition-colors hover:bg-violet-500/30"
+              >
+                {assigning === p.id ? "Cancel" : "Assign"}
+              </button>
+            </div>
+
+            {assigning === p.id && (
+              <div className="mt-3 border-t border-white/10 pt-3">
+                <input
+                  value={ownerQuery}
+                  onChange={(e) => setOwnerQuery(e.target.value)}
+                  placeholder="Search merchant users..."
+                  className="mb-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 outline-none"
+                />
+                {merchantOptions.length === 0 ? (
+                  <p className="text-xs text-white/40">No merchants match. Make a user a merchant from the Users tab first.</p>
+                ) : (
+                  merchantOptions.map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => assign.mutate({ productId: p.id, userId: u.id })}
+                      disabled={assign.isPending}
+                      className="mt-1 flex w-full items-center justify-between rounded-xl bg-white/5 px-3 py-2 text-left text-sm text-white transition-colors hover:bg-white/10 disabled:opacity-50"
+                    >
+                      <span>@{u.username}</span>
+                      <span className="text-xs text-white/50">{u.email}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        ))
+      )}
     </div>
   );
 }

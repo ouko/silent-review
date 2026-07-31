@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Eye, MessageCircle, Share2 } from "lucide-react";
+import { Eye, MessageCircle, Share2, X } from "lucide-react";
 import { useVideoFeed } from "../../hooks/useVideoFeed";
 import { LikeButton } from "../social/LikeButton";
 import { VideoPlayer } from "./VideoPlayer";
@@ -201,7 +201,16 @@ export function Feed({
                   onReveal={() => onReveal(review.id)}
                 />
               ) : (
-                <div className="mt-4 max-h-[60vh] overflow-auto rounded-3xl border border-white/10 bg-black/50 p-4 backdrop-blur-xl">
+                <div className="relative mt-4 max-h-[60vh] overflow-auto rounded-3xl border border-white/10 bg-black/50 p-4 backdrop-blur-xl">
+                  {onPlayAgain && (
+                    <button
+                      onClick={() => onPlayAgain(review.id)}
+                      aria-label="Close and keep scrolling"
+                      className="absolute right-2 top-2 z-10 rounded-full bg-white/10 p-1.5 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+                    >
+                      <X className="h-4 w-4" aria-hidden="true" />
+                    </button>
+                  )}
                   {(() => {
                     const data = revealData.get(review.id);
                     if (!data) {
