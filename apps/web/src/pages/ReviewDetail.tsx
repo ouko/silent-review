@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Share2 } from "lucide-react";
+import { ArrowLeft, MessageCircle, MessageCircleOff, Share2 } from "lucide-react";
 import { api } from "../lib/api";
 import { Loading } from "../components/common/Loading";
 import { LikeButton } from "../components/social/LikeButton";
 import { CommentsSection } from "../components/comments/CommentsSection";
 import { ShareSheet } from "../components/share/ShareSheet";
+import { useAuthStore } from "../stores/authStore";
 
 interface ReviewDetailData {
   id: string;
@@ -14,6 +15,7 @@ interface ReviewDetailData {
   productTag: string | null;
   rating: number;
   duration: number;
+  allowComments: boolean;
   createdAt: string;
   user: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
   viewerGuess: { guessedRating: number } | null;
@@ -27,6 +29,15 @@ export function ReviewDetail() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [showShare, setShowShare] = useState(false);
+  const currentUser = useAuthStore((s) => s.user);
+  const isOwner = currentUser?.id === review?.user.id;
+
+  async function toggleComments() {
+    if (!review) return;
+    const next = !review.allowComments;
+    await api.patch(`/api/reviews/${review.id}`, { allowComments: next });
+    setReview({ ...review, allowComments: next });
+  }
 
   const loadReview = async () => {
     if (!id) return;
@@ -134,11 +145,20 @@ export function ReviewDetail() {
           >
             <Share2 className="h-5 w-5" />
           </button>
+          {isOwner && (
+            <button
+              onClick={toggleComments}
+              className="flex items-center gap-1.5 transition-colors hover:text-white"
+              aria-label={review.allowComments ? "Turn comments off" : "Turn comments on"}
+            >
+              {review.allowComments ? <MessageCircleOff className="h-5 w-5" /> : <MessageCircle className="h-5 w-5" />}
+            </button>
+          )}
         </div>
       </div>
 
       <div className="flex-1">
-        <CommentsSection reviewId={id} />
+        <CommentsSection reviewId={id} allowComments={review.allowComments} />
       </div>
 
       {showShare && review && (

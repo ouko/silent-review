@@ -23,6 +23,7 @@ export interface ReviewInput {
   rating: number;
   caption: string;
   productTag?: string;
+  allowComments?: boolean;
   duetOfId?: string | null;
 }
 
@@ -56,6 +57,7 @@ export function useCreateReview(options?: { onSuccess?: (review: FeedReview) => 
         format: file.type,
         rating: review.rating,
         caption: review.caption,
+        ...(review.allowComments !== undefined ? { allowComments: review.allowComments } : {}),
         ...(review.productTag ? { productTag: review.productTag } : {}),
         ...(review.duetOfId ? { duetOfId: review.duetOfId } : {}),
       });

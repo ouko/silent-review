@@ -148,6 +148,8 @@ model Review {
   rating       Int
   caption      String?
   productTag   String?
+  // When false, the comment box is hidden and the comments API rejects new comments.
+  allowComments Boolean @default(true)
 
   // Engagement metrics (denormalized for fast feed queries)
   viewCount       Int @default(0)
