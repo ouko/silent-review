@@ -33,6 +33,7 @@ export function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editBio, setEditBio] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const queryClient = useQueryClient();
 
@@ -40,6 +41,7 @@ export function Profile() {
     if (!profile) return;
     setEditName(profile.displayName ?? "");
     setEditBio(profile.bio ?? "");
+    setAvatarFile(null);
     setIsEditing(true);
   }
 
@@ -47,8 +49,16 @@ export function Profile() {
     if (!profile) return;
     setIsSaving(true);
     try {
+      if (avatarFile) {
+        const form = new FormData();
+        form.append("file", avatarFile);
+        await api.post("/api/users/me/avatar", form, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
       await api.patch("/api/users/me", { displayName: editName, bio: editBio });
       await queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+      await queryClient.invalidateQueries({ queryKey: ["profile-reviews", userId] });
       setIsEditing(false);
     } finally {
       setIsSaving(false);
@@ -161,6 +171,26 @@ export function Profile() {
                 )}
                 {isEditing ? (
                   <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <label className="flex cursor-pointer items-center gap-3">
+                      {avatarFile ? (
+                        <img src={URL.createObjectURL(avatarFile)} alt="" className="h-12 w-12 rounded-full object-cover ring-2 ring-white/10" />
+                      ) : profile.avatarUrl ? (
+                        <img src={profile.avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover ring-2 ring-white/10" />
+                      ) : (
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-violet-500 ring-2 ring-white/10">
+                          <User className="h-6 w-6 text-white" />
+                        </div>
+                      )}
+                      <span className="text-sm font-semibold text-white/70">
+                        {avatarFile ? avatarFile.name : "Tap to change profile photo"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+                      />
+                    </label>
                     <input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
