@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { useProfile, useProfileAchievements, useProfileReviews } from "../../hooks/useProfile";
 import { useAuthStore } from "../../stores/authStore";
@@ -9,7 +9,7 @@ import { ActivityFeed } from "../social/ActivityFeed";
 import { Loading } from "../common/Loading";
 import { FeedTabs } from "../feed/FeedTabs";
 import { UserListSheet } from "./UserListSheet";
-import { Flame, Award, User, Pencil, LogOut } from "lucide-react";
+import { Flame, Award, User, Pencil, LogOut, ShieldCheck } from "lucide-react";
 import { logout } from "../../lib/auth";
 
 const TABS = [
@@ -117,6 +117,15 @@ export function Profile() {
               <FollowButton userId={userId} isFollowing={profile.isFollowing} />
             ) : (
               <div className="space-y-2">
+                {currentUser?.role === "ADMIN" && (
+                  <Link
+                    to="/admin"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-400/40 bg-violet-500/10 py-3 font-bold text-violet-300 transition-colors hover:bg-violet-500/20"
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    Admin
+                  </Link>
+                )}
                 <button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 font-bold text-white transition-colors hover:bg-white/10">
                   <Pencil className="h-4 w-4" />
                   Edit profile
