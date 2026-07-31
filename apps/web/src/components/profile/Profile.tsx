@@ -3,6 +3,8 @@ import { useParams, Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { useProfile, useProfileAchievements, useProfileReviews } from "../../hooks/useProfile";
 import { useAuthStore } from "../../stores/authStore";
+import { useQueryClient } from "@tanstack/react-query";
+import { api } from "../../lib/api";
 import { FollowButton } from "../social/FollowButton";
 import { ProfileReviews } from "./ProfileReviews";
 import { ActivityFeed } from "../social/ActivityFeed";
@@ -28,6 +30,30 @@ export function Profile() {
   const [activeTab, setActiveTab] = useState("reviews");
   const [sheetType, setSheetType] = useState<"followers" | "following" | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editBio, setEditBio] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const queryClient = useQueryClient();
+
+  function startEditing() {
+    if (!profile) return;
+    setEditName(profile.displayName ?? "");
+    setEditBio(profile.bio ?? "");
+    setIsEditing(true);
+  }
+
+  async function saveEditing() {
+    if (!profile) return;
+    setIsSaving(true);
+    try {
+      await api.patch("/api/users/me", { displayName: editName, bio: editBio });
+      await queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
+  }
   const isMe = currentUser?.id === userId;
   const reducedMotion = useReducedMotion();
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -133,10 +159,51 @@ export function Profile() {
                     Admin
                   </Link>
                 )}
-                <button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 font-bold text-white transition-colors hover:bg-white/10">
-                  <Pencil className="h-4 w-4" />
-                  Edit profile
-                </button>
+                {isEditing ? (
+                  <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      maxLength={50}
+                      placeholder="Display name"
+                      aria-label="Display name"
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-white/20"
+                    />
+                    <textarea
+                      value={editBio}
+                      onChange={(e) => setEditBio(e.target.value)}
+                      maxLength={160}
+                      rows={3}
+                      placeholder="Bio"
+                      aria-label="Bio"
+                      className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-white/20"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={saveEditing}
+                        disabled={isSaving}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                      >
+                        {isSaving ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        onClick={() => setIsEditing(false)}
+                        disabled={isSaving}
+                        className="rounded-xl border border-white/20 px-4 py-2.5 text-sm font-bold text-white/70 transition-colors hover:bg-white/10 disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={startEditing}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 font-bold text-white transition-colors hover:bg-white/10"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit profile
+                  </button>
+                )}
                 <button
                   onClick={async () => {
                     setIsLoggingOut(true);

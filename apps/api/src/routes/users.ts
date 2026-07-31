@@ -1,11 +1,33 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
-import { optionalAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { optionalAuth, requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 
 export const usersRouter = Router();
 
 const LimitSchema = z.coerce.number().int().min(1).max(50).default(10);
+
+usersRouter.patch("/me", requireAuth, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const displayName = typeof req.body?.displayName === "string" ? req.body.displayName.trim().slice(0, 50) : undefined;
+    const bio = typeof req.body?.bio === "string" ? req.body.bio.trim().slice(0, 160) : undefined;
+    if (displayName === undefined && bio === undefined) {
+      res.status(400).json({ error: "Provide displayName and/or bio" });
+      return;
+    }
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        ...(displayName !== undefined ? { displayName: displayName || null } : {}),
+        ...(bio !== undefined ? { bio: bio || null } : {}),
+      },
+      select: { id: true, displayName: true, bio: true },
+    });
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
 
 usersRouter.get("/:id", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
