@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
+import { useAuthStore } from "../stores/authStore";
 import { FeedTabs } from "../components/feed/FeedTabs";
 import { Loading } from "../components/common/Loading";
 import { StatsChart } from "../components/stats/StatsChart";
@@ -208,6 +209,14 @@ function CreatorPanel() {
 function ProductsPanel() {
   const [q, setQ] = useState("");
   const [selected, setSelected] = useState<ProductHit | null>(null);
+  const currentUser = useAuthStore((s) => s.user);
+  const isMerchant = currentUser?.role === "MERCHANT";
+
+  const { data: mine } = useQuery<{ products: (ProductHit & { _count: { reviews: number } })[] }>({
+    queryKey: ["analytics-my-products"],
+    queryFn: async () => (await api.get("/api/analytics/my-products")).data,
+    enabled: isMerchant,
+  });
 
   const { data: hits } = useQuery<{ products: ProductHit[] }>({
     queryKey: ["product-search", q],
@@ -225,12 +234,30 @@ function ProductsPanel() {
     <div className="flex flex-col gap-3">
       {!selected && (
         <>
+          {isMerchant && mine && mine.products.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-white/50">Your products</p>
+              {mine.products.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => setSelected(p)}
+                  className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-3 text-left transition-colors hover:bg-white/10"
+                >
+                  <div>
+                    <p className="text-sm font-bold text-white">{p.name}</p>
+                    <p className="text-xs text-white/50">{p.category}</p>
+                  </div>
+                  <span className="text-xs font-bold text-white/60">{p._count.reviews} reviews</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/40" />
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search a product to see its analytics"
+              placeholder={isMerchant ? "…or search any product" : "Search a product to see its analytics"}
               className="w-full rounded-2xl border border-white/10 bg-white/5 py-2.5 pl-9 pr-3 text-sm text-white placeholder-white/40 outline-none focus:border-white/20"
             />
           </div>

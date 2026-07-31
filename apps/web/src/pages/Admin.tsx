@@ -5,7 +5,7 @@ import { api } from "../lib/api";
 import { useAuthStore } from "../stores/authStore";
 import { FeedTabs } from "../components/feed/FeedTabs";
 import { Loading } from "../components/common/Loading";
-import { ShieldCheck, Check, X, Ban, Undo2, Search, Flag, Eye } from "lucide-react";
+import { ShieldCheck, Check, X, Search, Flag, Eye } from "lucide-react";
 
 interface AdminStats {
   users: number;
@@ -200,6 +200,13 @@ function UsersPanel({ onAction }: { onAction: () => void }) {
     onSuccess: onAction,
   });
 
+  const roleAction = useMutation({
+    mutationFn: async ({ id, role }: { id: string; role: "USER" | "MERCHANT" }) => {
+      await api.post(`/api/admin/users/${id}/role`, { role });
+    },
+    onSuccess: onAction,
+  });
+
   return (
     <div className="flex flex-col gap-3">
       <form
@@ -242,15 +249,30 @@ function UsersPanel({ onAction }: { onAction: () => void }) {
               </p>
             </div>
             {u.role !== "ADMIN" && (
-              <button
-                onClick={() => action.mutate({ id: u.id, decision: u.banned ? "unban" : "ban" })}
-                disabled={action.isPending}
-                className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors disabled:opacity-50 ${
-                  u.banned ? "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30" : "bg-rose-500/20 text-rose-300 hover:bg-rose-500/30"
-                }`}
-              >
-                {u.banned ? (<><Undo2 className="h-3.5 w-3.5" /> Unban</>) : (<><Ban className="h-3.5 w-3.5" /> Ban</>)}
-              </button>
+              <div className="flex shrink-0 flex-col gap-1.5">
+                <button
+                  onClick={() =>
+                    roleAction.mutate({ id: u.id, role: u.role === "MERCHANT" ? "USER" : "MERCHANT" })
+                  }
+                  disabled={action.isPending || roleAction.isPending}
+                  className={`rounded-xl px-3 py-2 text-xs font-bold transition-colors disabled:opacity-50 ${
+                    u.role === "MERCHANT"
+                      ? "bg-white/10 text-white/70 hover:bg-white/15"
+                      : "bg-violet-500/20 text-violet-300 hover:bg-violet-500/30"
+                  }`}
+                >
+                  {u.role === "MERCHANT" ? "Revoke merchant" : "Make merchant"}
+                </button>
+                <button
+                  onClick={() => action.mutate({ id: u.id, decision: u.banned ? "unban" : "ban" })}
+                  disabled={action.isPending || roleAction.isPending}
+                  className={`rounded-xl px-3 py-2 text-xs font-bold transition-colors disabled:opacity-50 ${
+                    u.banned ? "bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30" : "bg-rose-500/20 text-rose-300 hover:bg-rose-500/30"
+                  }`}
+                >
+                  {u.banned ? "Unban" : "Ban"}
+                </button>
+              </div>
             )}
           </div>
         ))

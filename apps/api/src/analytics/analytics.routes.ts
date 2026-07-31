@@ -79,6 +79,26 @@ analyticsRouter.get("/creator", requireAuth, async (req: AuthenticatedRequest, r
 });
 
 // Merchant analytics: how a product performs across all its reviews.
+analyticsRouter.get("/my-products", requireAuth, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const products = await prisma.product.findMany({
+      where: { ownerId: req.user!.id },
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        brand: true,
+        _count: { select: { reviews: { where: { deletedAt: null, status: "PUBLISHED" } } } },
+      },
+    });
+    res.json({ products });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Merchant analytics: how a product performs across all its reviews.
 analyticsRouter.get("/products/:productId", optionalAuth, async (req, res, next) => {
   try {
     const product = await prisma.product.findUnique({

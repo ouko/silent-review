@@ -166,3 +166,52 @@ adminRouter.post("/users/:id/unban", async (req, res, next) => {
     next(err);
   }
 });
+
+const ASSIGNABLE_ROLES = new Set(["USER", "CREATOR", "MERCHANT"]);
+
+adminRouter.post("/users/:id/role", async (req, res, next) => {
+  try {
+    const role = typeof req.body?.role === "string" ? req.body.role : "";
+    if (!ASSIGNABLE_ROLES.has(role)) {
+      res.status(400).json({ error: "Role must be USER, CREATOR, or MERCHANT" });
+      return;
+    }
+    const result = await prisma.user.updateMany({
+      where: { id: req.params.id, deletedAt: null },
+      data: { role: role as "USER" | "CREATOR" | "MERCHANT" },
+    });
+    if (result.count === 0) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    res.json({ status: "ok", role });
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.post("/products/:id/owner", async (req, res, next) => {
+  try {
+    const userId = typeof req.body?.userId === "string" ? req.body.userId : "";
+    const owner = await prisma.user.findUnique({ where: { id: userId }, select: { role: true } });
+    if (!owner) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    if (owner.role !== "MERCHANT") {
+      res.status(400).json({ error: "Owner must have the MERCHANT role" });
+      return;
+    }
+    const result = await prisma.product.updateMany({
+      where: { id: req.params.id },
+      data: { ownerId: userId },
+    });
+    if (result.count === 0) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    res.json({ status: "ok" });
+  } catch (err) {
+    next(err);
+  }
+});

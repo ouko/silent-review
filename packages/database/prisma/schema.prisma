@@ -42,6 +42,7 @@ model User {
   likes         Like[]
   comments      Comment[]
   shareEvents   ShareEvent[]
+  ownedProducts Product[]      @relation("OwnedProducts")
   followers     Follow[]       @relation("following")
   following     Follow[]       @relation("follower")
   refreshTokens RefreshToken[]
@@ -63,6 +64,7 @@ model User {
 enum UserRole {
   USER
   CREATOR
+  MERCHANT
   MODERATOR
   ADMIN
 }
@@ -103,6 +105,10 @@ model Product {
   tags        String[]
   metadata    Json?    @default("{}")
 
+  // The merchant account that owns this product (assigned by an admin).
+  ownerId String?
+  owner   User?   @relation("OwnedProducts", fields: [ownerId], references: [id], onDelete: SetNull)
+
   // Full-text search vector maintained by application layer or trigger
   searchVector String?
 
@@ -117,6 +123,7 @@ model Product {
 
   @@index([category])
   @@index([brand])
+  @@index([ownerId])
   @@index([deletedAt])
   @@index([searchVector])
   @@index([tags])
