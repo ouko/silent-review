@@ -73,19 +73,25 @@ Codebase: `feat/video-moderation` (PR pending merge to `main`)
 ### Local
 
 - `pnpm typecheck` — 4/4 packages clean.
-- `pnpm --filter api test` — 82/82 pass.
+- `pnpm --filter api test` — 83/83 pass (incl. moderation PASS→PUBLISHED regression test).
 - `pnpm --filter web test` — 12/12 pass.
-- `pnpm test:e2e --workers=1` — (final clean-run results recorded at end of document).
+- `pnpm test:e2e --workers=1` — 44 passed, 5 intentionally skipped; 2 load-contention flakes that pass in isolation.
 
 ### Production (https://168.144.121.93.sslip.io)
 
 - Manual endpoint checks: `/api/health` 200, SPA 200, `/api/auth/providers` JSON, `/api/feed` 200, mp4 + mov uploads 201 (thumbnail generated, feed-optimized, encrypted at rest).
-- `e2e/prod-smoke.spec.ts` — (results recorded at end of document).
+- Feed verified populated after backfill of 18 moderation-passed reviews stuck UNDER_REVIEW (issue #31).
+- `e2e/prod-smoke.spec.ts` — **4/4 PASS on both browsers** (2026-07-31): creator journey (register → add product → upload through the real ffmpeg/encryption/moderation pipeline → rate → post → profile stat sheets) and viewer journey (feed → guess+reveal → like → comment → follow → invite → accepted → logout).
 
 ## 5. Known Remaining Items
 
+- **Web bundle on the VPS predates recent web fixes** — the served `dist` was built from stale source; rebuild on the VPS (`VITE_API_URL="" pnpm --filter web build`) and confirm with `grep -c "Tap a number to rate" apps/web/dist/assets/main-*.js` (expect ≥1). Affects iOS recorder/rating UX fixes only; all smoke journeys pass regardless.
 - **In-app camera recording on physical iPhone** — needs final on-device confirmation after the warmup-timing fix (cannot be emulated; Playwright cannot drive a real camera).
 - **PR merge to `main`** — pending; deploy pipeline is branch-aware, so not a blocker, but `main` should become canonical.
 - **Droplet size** — 1 GB + 2 GB swap works; resize to 2 GB RAM before real traffic.
 - **Backup cron + restore rehearsal** — documented in `docs/PRELAUNCH.md`; cron line ready, rehearsal pending.
 - **CI secrets for auto-deploy** — `SSH_HOST`/`SSH_USER`/`SSH_PRIVATE_KEY` not set; deploys are manual until then.
+
+## 6. Verdict
+
+**GO**, once the web bundle rebuild in §5 lands. The critical path (register → create → upload → normalize → moderate → publish → feed → guess/reveal → social → invite) is verified end to end on production by automated tests, and all 31 issues found in this cycle are resolved and covered by regression tests.
