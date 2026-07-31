@@ -2,6 +2,7 @@ import { prisma } from "../prisma.js";
 import { env } from "../config/index.js";
 import { runVideoModeration } from "./moderationEngine.js";
 import { withPlaintextCopy } from "./storageCrypto.js";
+import { getRedis } from "../redis.js";
 import { Prisma } from "@silent-review/database";
 
 interface QueueItem {
@@ -64,7 +65,15 @@ async function runModeration(item: QueueItem): Promise<void> {
           where: { id: item.reviewId },
           data: { status: "HIDDEN" },
         });
+      } else if (result.status === "PASS") {
+        // Publish: without this transition reviews would stay UNDER_REVIEW
+        // forever and never reach the feed (feed only serves PUBLISHED).
+        await prisma.review.update({
+          where: { id: item.reviewId },
+          data: { status: "PUBLISHED" },
+        });
       }
+      await clearFeedCache();
     }
   } catch (err) {
     const failClosed = env.VIDEO_MODERATION_FAIL_CLOSED === "true";
@@ -91,6 +100,24 @@ async function runModeration(item: QueueItem): Promise<void> {
       }
     }
     console.error("Moderation failed", err);
+  }
+}
+
+async function clearFeedCache(): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
+
+  const stream = redis.scanStream({ match: "feed:*", count: 100 });
+  const keysToDelete: string[] = [];
+  stream.on("data", (keys: string[]) => {
+    if (keys.length) keysToDelete.push(...keys);
+  });
+  await new Promise<void>((resolve, reject) => {
+    stream.on("end", () => resolve());
+    stream.on("error", reject);
+  });
+  if (keysToDelete.length > 0) {
+    await redis.del(...keysToDelete);
   }
 }
 

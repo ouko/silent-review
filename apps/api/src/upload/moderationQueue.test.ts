@@ -27,6 +27,8 @@ jest.unstable_mockModule("./moderationEngine.js", () => ({
 jest.unstable_mockModule("./storageCrypto.js", () => ({
   withPlaintextCopy: (path: string, fn: (p: string) => Promise<unknown>) => fn(path),
 }));
+// No redis in unit tests: feed-cache clearing becomes a no-op.
+jest.unstable_mockModule("../redis.js", () => ({ getRedis: () => null }));
 
 const {
   enqueueModeration,
@@ -77,6 +79,17 @@ describe("enqueueModeration", () => {
     expect(mockRunVideoModeration).toHaveBeenCalledWith("/uploads/video.mp4", 5);
     expect(mockPrisma.videoModeration.upsert).toHaveBeenCalled();
   });
+
+  it("publishes the review when moderation passes", async () => {
+    mockRunVideoModeration.mockResolvedValue(passResult);
+    pushQueue({ videoPath: "/uploads/video.mp4", duration: 5, reviewId: "review-1" });
+    await processQueue();
+
+    expect(mockPrisma.review.update).toHaveBeenCalledWith({
+      where: { id: "review-1" },
+      data: { status: "PUBLISHED" },
+    });
+  });
 });
 
 describe("processQueue", () => {
@@ -109,7 +122,10 @@ describe("processQueue", () => {
         frameScores: [],
       },
     });
-    expect(mockPrisma.review.update).not.toHaveBeenCalled();
+    expect(mockPrisma.review.update).toHaveBeenCalledWith({
+      where: { id: "review-1" },
+      data: { status: "PUBLISHED" },
+    });
   });
 
   it("hides the review when moderation rejects", async () => {
