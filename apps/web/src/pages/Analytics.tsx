@@ -24,6 +24,12 @@ interface Rates {
   engagementRate: number | null;
 }
 
+interface Trend {
+  days: string[];
+  reviews: number[];
+  engagement: number[];
+}
+
 interface TopReview {
   id: string;
   rating: number;
@@ -36,6 +42,7 @@ interface TopReview {
 }
 
 interface CreatorAnalytics extends Rates {
+  trend: Trend;
   totalReviews: number;
   publishedReviews: number;
   averageRating: number;
@@ -46,6 +53,7 @@ interface CreatorAnalytics extends Rates {
 }
 
 interface ProductAnalytics extends Rates {
+  trend: Trend;
   product: { id: string; name: string; category: string; brand: string | null };
   totalReviews: number;
   averageRating: number;
@@ -125,6 +133,33 @@ function RatesRow({ rates }: { rates: Rates }) {
   );
 }
 
+function TrendChart({ trend }: { trend: Trend }) {
+  const max = Math.max(1, ...trend.engagement, ...trend.reviews);
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+      <p className="mb-3 text-xs font-bold uppercase tracking-widest text-white/50">Last 14 days</p>
+      <div className="flex h-20 items-end justify-between gap-1">
+        {trend.days.map((day, i) => (
+          <div key={day} className="flex flex-1 flex-col items-center justify-end gap-0.5" title={`${day}: ${trend.reviews[i]} reviews, ${trend.engagement[i]} engagement`}>
+            <div
+              className="w-full rounded-t bg-gradient-to-t from-rose-500/80 to-violet-500/80"
+              style={{ height: `${(trend.engagement[i] / max) * 100}%`, minHeight: trend.engagement[i] > 0 ? 2 : 0 }}
+            />
+            <div
+              className="w-full rounded-t bg-white/25"
+              style={{ height: `${(trend.reviews[i] / max) * 100}%`, minHeight: trend.reviews[i] > 0 ? 2 : 0 }}
+            />
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 flex gap-4 text-[10px] font-semibold text-white/50">
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-gradient-to-t from-rose-500 to-violet-500" /> engagement</span>
+        <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-white/25" /> reviews</span>
+      </div>
+    </div>
+  );
+}
+
 function SharesChips({ sharesByProvider }: { sharesByProvider: Record<string, number> }) {
   const entries = Object.entries(sharesByProvider);
   if (entries.length === 0) return null;
@@ -199,6 +234,7 @@ function CreatorPanel() {
       </div>
       <EngagementRow engagement={data.engagement} />
       <RatesRow rates={data} />
+      <TrendChart trend={data.trend} />
       <GuessAccuracy value={data.guessAccuracy} />
       <SharesChips sharesByProvider={data.sharesByProvider} />
       <TopReviews reviews={data.topReviews} />
@@ -306,6 +342,7 @@ function ProductsPanel() {
                 </div>
               </div>
               <StatsChart distribution={data.distribution} totalGuesses={data.engagement.guesses} />
+              <TrendChart trend={data.trend} />
               <EngagementRow engagement={data.engagement} />
               <RatesRow rates={data} />
               <GuessAccuracy value={data.guessAccuracy} />

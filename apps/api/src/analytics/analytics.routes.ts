@@ -29,6 +29,46 @@ function rates(v: { views: number; completes: number; likes: number; comments: n
   };
 }
 
+const TREND_DAYS = 14;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function trendDays(): string[] {
+  const days: string[] = [];
+  for (let i = TREND_DAYS - 1; i >= 0; i--) {
+    days.push(new Date(Date.now() - i * DAY_MS).toISOString().slice(0, 10));
+  }
+  return days;
+}
+
+function bucketByDay(days: string[], dates: Date[]): number[] {
+  const counts = new Map(days.map((d) => [d, 0]));
+  for (const dt of dates) {
+    const key = dt.toISOString().slice(0, 10);
+    if (counts.has(key)) counts.set(key, counts.get(key)! + 1);
+  }
+  return [...counts.values()];
+}
+
+async function buildTrend(scope: { userId?: string; productId?: string }) {
+  const days = trendDays();
+  const since = new Date(Date.now() - (TREND_DAYS - 1) * DAY_MS);
+  since.setHours(0, 0, 0, 0);
+  const reviewScope = scope.userId ? { userId: scope.userId } : { productId: scope.productId! };
+
+  const [reviews, likes, comments, guesses] = await Promise.all([
+    prisma.review.findMany({ where: { ...reviewScope, deletedAt: null, createdAt: { gte: since } }, select: { createdAt: true } }),
+    prisma.like.findMany({ where: { review: reviewScope, createdAt: { gte: since } }, select: { createdAt: true } }),
+    prisma.comment.findMany({ where: { review: reviewScope, createdAt: { gte: since }, deletedAt: null }, select: { createdAt: true } }),
+    prisma.guess.findMany({ where: { review: reviewScope, createdAt: { gte: since } }, select: { createdAt: true } }),
+  ]);
+
+  return {
+    days,
+    reviews: bucketByDay(days, reviews.map((r) => r.createdAt)),
+    engagement: bucketByDay(days, [...likes, ...comments, ...guesses].map((r) => r.createdAt)),
+  };
+}
+
 // Creator analytics: how the signed-in user's own content performs.
 analyticsRouter.get("/creator", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
@@ -67,6 +107,7 @@ analyticsRouter.get("/creator", requireAuth, async (req: AuthenticatedRequest, r
         guesses: totalGuesses,
       }),
       guessAccuracy: totalGuesses > 0 ? exactGuesses / totalGuesses : null,
+      trend: await buildTrend({ userId }),
       sharesByProvider: Object.fromEntries(sharesByProvider.map((s) => [s.provider, s._count._all])),
       topReviews: [...reviews]
         .sort((a, b) => engagement(b) - engagement(a))
@@ -149,6 +190,7 @@ analyticsRouter.get("/products/:productId", optionalAuth, async (req, res, next)
         guesses: totalGuesses,
       }),
       guessAccuracy: totalGuesses > 0 ? exactGuesses / totalGuesses : null,
+      trend: await buildTrend({ productId: product.id }),
       sharesByProvider: Object.fromEntries(sharesByProvider.map((s) => [s.provider, s._count._all])),
       topReviews: [...reviews]
         .sort((a, b) => engagement(b) - engagement(a))

@@ -3,7 +3,12 @@ import request from "supertest";
 
 const mockPrisma = {
   review: { findMany: jest.fn() as jest.Mock<(...args: any[]) => Promise<any>> },
-  guess: { count: jest.fn() as jest.Mock<(...args: any[]) => Promise<any>> },
+  guess: {
+    count: jest.fn() as jest.Mock<(...args: any[]) => Promise<any>>,
+    findMany: jest.fn() as jest.Mock<(...args: any[]) => Promise<any>>,
+  },
+  like: { findMany: jest.fn() as jest.Mock<(...args: any[]) => Promise<any>> },
+  comment: { findMany: jest.fn() as jest.Mock<(...args: any[]) => Promise<any>> },
   shareEvent: { groupBy: jest.fn() as jest.Mock<(...args: any[]) => Promise<any>> },
   product: { findUnique: jest.fn() as jest.Mock<(...args: any[]) => Promise<any>> },
 };
@@ -48,6 +53,9 @@ describe("analytics routes", () => {
     mockPrisma.review.findMany.mockResolvedValue([sampleReview]);
     mockPrisma.guess.count.mockResolvedValue(5);
     mockPrisma.shareEvent.groupBy.mockResolvedValue([{ provider: "tiktok", _count: { _all: 3 } }]);
+    mockPrisma.like.findMany.mockResolvedValue([]);
+    mockPrisma.comment.findMany.mockResolvedValue([]);
+    mockPrisma.guess.findMany.mockResolvedValue([]);
   });
 
   it("creator analytics aggregates the user's own reviews", async () => {
