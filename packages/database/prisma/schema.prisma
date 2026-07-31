@@ -144,6 +144,7 @@ model Review {
 
   // Engagement metrics (denormalized for fast feed queries)
   viewCount       Int @default(0)
+  completeCount   Int @default(0)
   likeCount       Int @default(0)
   guessCount      Int @default(0)
   commentCount    Int @default(0)

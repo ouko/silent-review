@@ -8,6 +8,8 @@ const REVIEW_SELECT = {
   id: true,
   rating: true,
   status: true,
+  viewCount: true,
+  completeCount: true,
   likeCount: true,
   guessCount: true,
   commentCount: true,
@@ -18,6 +20,13 @@ const REVIEW_SELECT = {
 
 function engagement(r: { likeCount: number; guessCount: number; commentCount: number }) {
   return r.likeCount + r.guessCount + r.commentCount;
+}
+
+function rates(v: { views: number; completes: number; likes: number; comments: number; guesses: number }) {
+  return {
+    completionRate: v.views > 0 ? v.completes / v.views : null,
+    engagementRate: v.views > 0 ? (v.likes + v.comments + v.guesses) / v.views : null,
+  };
 }
 
 // Creator analytics: how the signed-in user's own content performs.
@@ -50,6 +59,13 @@ analyticsRouter.get("/creator", requireAuth, async (req: AuthenticatedRequest, r
         guesses: totalGuesses,
         shares: sum((r) => r.shareCount),
       },
+      ...rates({
+        views: sum((r) => r.viewCount),
+        completes: sum((r) => r.completeCount),
+        likes: sum((r) => r.likeCount),
+        comments: sum((r) => r.commentCount),
+        guesses: totalGuesses,
+      }),
       guessAccuracy: totalGuesses > 0 ? exactGuesses / totalGuesses : null,
       sharesByProvider: Object.fromEntries(sharesByProvider.map((s) => [s.provider, s._count._all])),
       topReviews: [...reviews]
@@ -105,6 +121,13 @@ analyticsRouter.get("/products/:productId", optionalAuth, async (req, res, next)
         guesses: totalGuesses,
         shares: sum((r) => r.shareCount),
       },
+      ...rates({
+        views: sum((r) => r.viewCount),
+        completes: sum((r) => r.completeCount),
+        likes: sum((r) => r.likeCount),
+        comments: sum((r) => r.commentCount),
+        guesses: totalGuesses,
+      }),
       guessAccuracy: totalGuesses > 0 ? exactGuesses / totalGuesses : null,
       sharesByProvider: Object.fromEntries(sharesByProvider.map((s) => [s.provider, s._count._all])),
       topReviews: [...reviews]

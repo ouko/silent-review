@@ -18,6 +18,11 @@ interface Engagement {
   shares: number;
 }
 
+interface Rates {
+  completionRate: number | null;
+  engagementRate: number | null;
+}
+
 interface TopReview {
   id: string;
   rating: number;
@@ -29,7 +34,7 @@ interface TopReview {
   product: { id: string; name: string };
 }
 
-interface CreatorAnalytics {
+interface CreatorAnalytics extends Rates {
   totalReviews: number;
   publishedReviews: number;
   averageRating: number;
@@ -39,7 +44,7 @@ interface CreatorAnalytics {
   topReviews: TopReview[];
 }
 
-interface ProductAnalytics {
+interface ProductAnalytics extends Rates {
   product: { id: string; name: string; category: string; brand: string | null };
   totalReviews: number;
   averageRating: number;
@@ -96,6 +101,25 @@ function EngagementRow({ engagement }: { engagement: Engagement }) {
       <BigStat label="Comments" value={engagement.comments.toLocaleString()} />
       <BigStat label="Guesses" value={engagement.guesses.toLocaleString()} />
       <BigStat label="Shares" value={engagement.shares.toLocaleString()} />
+    </div>
+  );
+}
+
+function pct(v: number | null): string {
+  return v === null ? "—" : `${(v * 100).toFixed(0)}%`;
+}
+
+function RatesRow({ rates }: { rates: Rates }) {
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center backdrop-blur-sm">
+        <p className="text-xl font-black tracking-tighter gradient-text">{pct(rates.completionRate)}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Completion rate</p>
+      </div>
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-center backdrop-blur-sm">
+        <p className="text-xl font-black tracking-tighter gradient-text">{pct(rates.engagementRate)}</p>
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Engagement rate</p>
+      </div>
     </div>
   );
 }
@@ -173,6 +197,7 @@ function CreatorPanel() {
         <BigStat label="Avg rating" value={data.averageRating ? data.averageRating.toFixed(1) : "—"} />
       </div>
       <EngagementRow engagement={data.engagement} />
+      <RatesRow rates={data} />
       <GuessAccuracy value={data.guessAccuracy} />
       <SharesChips sharesByProvider={data.sharesByProvider} />
       <TopReviews reviews={data.topReviews} />
@@ -255,6 +280,7 @@ function ProductsPanel() {
               </div>
               <StatsChart distribution={data.distribution} totalGuesses={data.engagement.guesses} />
               <EngagementRow engagement={data.engagement} />
+              <RatesRow rates={data} />
               <GuessAccuracy value={data.guessAccuracy} />
               <SharesChips sharesByProvider={data.sharesByProvider} />
               <TopReviews reviews={data.topReviews} />

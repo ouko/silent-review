@@ -160,6 +160,7 @@ export function Feed({
                 shouldPlay={shouldPlay(index)}
                 preload={shouldPreload(index)}
                 poster={review.thumbnailUrl}
+                reviewId={review.id}
               />
             ) : (
               <div className="h-full w-full bg-black" aria-hidden="true" />
