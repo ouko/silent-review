@@ -14,7 +14,6 @@ export function Register() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const inviteCode = searchParams.get("invite") ?? undefined;
-  const channel = (searchParams.get("channel") ?? searchParams.get("utm_medium") ?? "challenge_link") as "organic" | "challenge_link" | "result_card" | "creator_link";
   const { setUser, setAccessToken, setLoading } = useAuthStore();
   const [form, setForm] = useState({
     email: "",
@@ -49,7 +48,7 @@ export function Register() {
       setAccessToken(accessToken);
       setLoading(false);
       if (inviteCode) {
-        trackEvent("invite_install_attributed", { inviteCode, channel });
+        trackEvent("invite_install_attributed", { inviteCode });
       }
       navigate("/");
     } catch (err) {

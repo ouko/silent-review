@@ -1,6 +1,3 @@
--- DropForeignKey
-ALTER TABLE "Product" DROP CONSTRAINT "Product_ownerId_fkey";
-
 -- CreateTable
 CREATE TABLE "Event" (
     "id" TEXT NOT NULL,
@@ -49,5 +46,4 @@ CREATE INDEX "MetricSnapshot_date_metric_idx" ON "MetricSnapshot"("date", "metri
 -- CreateIndex
 CREATE UNIQUE INDEX "MetricSnapshot_date_metric_dimension_key" ON "MetricSnapshot"("date", "metric", "dimension");
 
--- AddForeignKey
-ALTER TABLE "Product" ADD CONSTRAINT "Product_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+

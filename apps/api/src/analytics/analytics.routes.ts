@@ -3,7 +3,7 @@ import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { requireAuth, requireRole, optionalAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import { ingestEvents } from "./event.service.js";
-import { getDashboardData, runDailyRollup } from "./rollup.service.js";
+import { getDashboardData, runDailyRollup } from "@silent-review/database";
 
 export const analyticsRouter = Router();
 

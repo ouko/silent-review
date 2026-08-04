@@ -1,4 +1,4 @@
-import { prisma } from "../prisma.js";
+import { prisma } from "../client.js";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -68,13 +68,13 @@ export async function runDailyRollup(date?: Date): Promise<void> {
 
 export async function getDashboardData(days = 30): Promise<DashboardData> {
   const since = new Date(Date.now() - (days - 1) * DAY_MS);
-  since.setHours(0, 0, 0, 0);
+  since.setUTCHours(0, 0, 0, 0);
 
   const [cohorts, kFactor, shareRate, streakEstablishment, funnel] = await Promise.all([
     getRetentionCohorts(since),
-    getLatestSnapshotValue("k_factor"),
-    getLatestSnapshotValue("share_rate"),
-    getLatestSnapshotValue("streak_establishment"),
+    getLatestSnapshotValue("k_factor", since),
+    getLatestSnapshotValue("share_rate", since),
+    getLatestSnapshotValue("streak_establishment", since),
     getFunnelData(since),
   ]);
 
@@ -89,7 +89,7 @@ export async function getDashboardData(days = 30): Promise<DashboardData> {
 
 async function computeRetention(signupDate: Date, dayOffset: number): Promise<{ value: number; sampleSize: number }> {
   const start = new Date(signupDate);
-  start.setHours(0, 0, 0, 0);
+  start.setUTCHours(0, 0, 0, 0);
   const end = new Date(start.getTime() + DAY_MS);
 
   const activityStart = new Date(start.getTime() + dayOffset * DAY_MS);
@@ -123,7 +123,7 @@ async function computeRetention(signupDate: Date, dayOffset: number): Promise<{ 
 
 async function computeKFactor(date: Date): Promise<{ value: number; sampleSize: number }> {
   const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
+  start.setUTCHours(0, 0, 0, 0);
   const end = new Date(start.getTime() + DAY_MS);
 
   const [invitesSent, installs] = await Promise.all([
@@ -142,7 +142,7 @@ async function computeKFactor(date: Date): Promise<{ value: number; sampleSize: 
 
 async function computeShareRate(date: Date): Promise<{ value: number; sampleSize: number }> {
   const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
+  start.setUTCHours(0, 0, 0, 0);
   const end = new Date(start.getTime() + DAY_MS);
 
   const [players, sharers] = await Promise.all([
@@ -167,7 +167,7 @@ async function computeShareRate(date: Date): Promise<{ value: number; sampleSize
 
 async function computeStreakEstablishment(date: Date): Promise<{ value: number; sampleSize: number }> {
   const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
+  start.setUTCHours(0, 0, 0, 0);
   const end = new Date(start.getTime() + DAY_MS);
   const cutoff = new Date(start.getTime() + 14 * DAY_MS);
 
@@ -200,7 +200,7 @@ async function computeStreakEstablishment(date: Date): Promise<{ value: number; 
 
 async function computeFunnelAppOpen(date: Date): Promise<{ value: number; sampleSize: number }> {
   const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
+  start.setUTCHours(0, 0, 0, 0);
   const end = new Date(start.getTime() + DAY_MS);
 
   const rows = await prisma.event.groupBy({
@@ -214,7 +214,7 @@ async function computeFunnelAppOpen(date: Date): Promise<{ value: number; sample
 
 async function computeFunnelFirstRound(date: Date): Promise<{ value: number; sampleSize: number }> {
   const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
+  start.setUTCHours(0, 0, 0, 0);
   const end = new Date(start.getTime() + DAY_MS);
 
   const rows = await prisma.event.groupBy({
@@ -228,7 +228,7 @@ async function computeFunnelFirstRound(date: Date): Promise<{ value: number; sam
 
 async function computeFunnelD7Return(date: Date): Promise<{ value: number; sampleSize: number }> {
   const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
+  start.setUTCHours(0, 0, 0, 0);
   const end = new Date(start.getTime() + DAY_MS);
   const priorStart = new Date(start.getTime() - 7 * DAY_MS);
   const priorEnd = new Date(priorStart.getTime() + DAY_MS);
@@ -296,9 +296,9 @@ async function getRetentionCohorts(since: Date): Promise<RetentionCohort[]> {
   }));
 }
 
-async function getLatestSnapshotValue(metric: string): Promise<number | null> {
+async function getLatestSnapshotValue(metric: string, since: Date): Promise<number | null> {
   const row = await prisma.metricSnapshot.findFirst({
-    where: { metric },
+    where: { metric, date: { gte: since } },
     orderBy: { date: "desc" },
   });
   return row?.value ?? null;
@@ -334,7 +334,7 @@ async function getFunnelData(since: Date): Promise<FunnelData> {
   const d7Return: number[] = [];
 
   const now = new Date();
-  now.setHours(0, 0, 0, 0);
+  now.setUTCHours(0, 0, 0, 0);
   for (let d = new Date(since); d <= now; d = new Date(d.getTime() + DAY_MS)) {
     const dayLabel = d.toISOString().slice(0, 10);
     const entry = byDate.get(dayLabel) ?? {};
@@ -349,6 +349,6 @@ async function getFunnelData(since: Date): Promise<FunnelData> {
 
 function toDate(d: Date): Date {
   const copy = new Date(d);
-  copy.setHours(0, 0, 0, 0);
+  copy.setUTCHours(0, 0, 0, 0);
   return copy;
 }

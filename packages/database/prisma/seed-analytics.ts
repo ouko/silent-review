@@ -34,6 +34,7 @@ async function main() {
   console.log("Cleaning previous analytics seed data...");
   await prisma.event.deleteMany({});
   await prisma.metricSnapshot.deleteMany({});
+  await prisma.user.deleteMany({ where: { email: { startsWith: "analytics-" } } });
 
   const now = new Date();
   const start = new Date(now.getTime() - DAYS * DAY_MS);
@@ -233,7 +234,7 @@ async function main() {
   }
 
   console.log("Running nightly rollup for last 90 days...");
-  const { runDailyRollup } = await import("../../../apps/api/src/analytics/rollup.service.js");
+  const { runDailyRollup } = await import("../src/analytics/rollup.service.js");
   for (let d = 0; d < DAYS; d++) {
     const date = new Date(start.getTime() + d * DAY_MS);
     await runDailyRollup(date);

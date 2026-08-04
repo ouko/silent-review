@@ -25,6 +25,8 @@ export interface AnalyticsEvent {
 
 const SESSION_KEY = "sr_analytics_session_id";
 const CHANNEL_KEY = "sr_analytics_channel";
+const FIRST_ROUND_KEY = "sr_analytics_first_round";
+const DAILY_DROP_KEY = "sr_analytics_daily_drop_date";
 const BATCH_SIZE = 20;
 const FLUSH_INTERVAL_MS = 10_000;
 
@@ -168,6 +170,27 @@ export function getAnalyticsSessionId(): string {
 
 export function getAnalyticsChannel(): AnalyticsChannel {
   return currentChannel;
+}
+
+export function trackFirstRoundComplete(properties?: Record<string, unknown>) {
+  try {
+    if (localStorage.getItem(FIRST_ROUND_KEY)) return;
+    localStorage.setItem(FIRST_ROUND_KEY, "1");
+  } catch {
+    // ignore storage errors
+  }
+  trackEvent("first_round_complete", properties);
+}
+
+export function trackDailyDropPlayed(properties?: Record<string, unknown>) {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    if (localStorage.getItem(DAILY_DROP_KEY) === today) return;
+    localStorage.setItem(DAILY_DROP_KEY, today);
+  } catch {
+    // ignore storage errors
+  }
+  trackEvent("daily_drop_played", properties);
 }
 
 export function trackStreakMilestone(streakDays: number) {
