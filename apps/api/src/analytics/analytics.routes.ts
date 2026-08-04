@@ -1,8 +1,59 @@
 import { Router } from "express";
+import { z } from "zod";
 import { prisma } from "../prisma.js";
-import { requireAuth, optionalAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { requireAuth, requireRole, optionalAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { ingestEvents } from "./event.service.js";
+import { getDashboardData, runDailyRollup } from "./rollup.service.js";
 
 export const analyticsRouter = Router();
+
+const EventBatchSchema = z.object({
+  events: z.array(
+    z.object({
+      type: z.string(),
+      userId: z.string().nullable().optional(),
+      sessionId: z.string().nullable().optional(),
+      channel: z.string().optional(),
+      properties: z.record(z.unknown()).optional(),
+      timestamp: z.string().datetime().optional(),
+    })
+  ),
+});
+
+analyticsRouter.post("/events/batch", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const body = EventBatchSchema.parse(req.body);
+    const enriched = body.events.map((e) => ({
+      ...e,
+      userId: e.userId ?? req.user?.id ?? null,
+    }));
+    const result = await ingestEvents(enriched);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+analyticsRouter.get("/dashboard", requireAuth, requireRole("ADMIN"), async (req, res, next) => {
+  try {
+    const rawDays = Number(req.query.days);
+    const days = Number.isNaN(rawDays) ? 30 : Math.min(90, Math.max(1, rawDays));
+    const data = await getDashboardData(days);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
+analyticsRouter.post("/rollup", requireAuth, requireRole("ADMIN"), async (req, res, next) => {
+  try {
+    const date = req.body.date ? new Date(req.body.date) : undefined;
+    await runDailyRollup(date);
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
 
 const REVIEW_SELECT = {
   id: true,
