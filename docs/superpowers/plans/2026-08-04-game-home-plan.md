@@ -4,7 +4,7 @@
 
 **Goal:** Replace the review feed as the home screen with a game-first home (`PlayHome`) and move the feed to a secondary "Browse" tab, while keeping all existing deep links functional.
 
-**Architecture:** A new eagerly-loaded `PlayHome` composes small, focused subcomponents (`DailyDropCard`, `ChallengeInbox`, `StreakHeader`, `ContinuePlaying`) and derives today's drop from the existing feed API. A Zustand `playStore` tracks played/unplayed state client-side. The router remaps `/` → `/play`, `/browse` → existing feed, and adds `/activity`. `BottomNav` is updated to Play / Browse / Create / Activity / Profile.
+**Architecture:** A new eagerly-loaded `PlayHome` composes small, focused subcomponents (`DailyDropCard`, `ChallengeInbox`, `StreakHeader`, `ContinuePlaying`) and derives today's drop from the existing feed API. Tapping a round navigates to `/play/:id`, a new route that wraps the existing `Feed` component for single-review guessing. A Zustand `playStore` tracks played/unplayed state client-side. The router remaps `/` → `/play`, `/browse` → existing feed, and adds `/activity`. `BottomNav` is updated to Play / Browse / Create / Activity / Profile.
 
 **Tech Stack:** React 18, TypeScript, Vite, React Router v6, TanStack Query v5, Zustand, Tailwind CSS, Framer Motion, Lucide icons, Playwright.
 
@@ -150,7 +150,7 @@ git commit -m "feat(play): add playStore for daily drop and played-state trackin
 - [ ] **Step 1: Implement StreakHeader**
 
 ```tsx
-import { Flame, Snowflake, Star } from "lucide-react";
+import { Flame, Shield, Star } from "lucide-react";
 import { motion } from "framer-motion";
 import { useGamification } from "../../hooks/useGamification";
 
@@ -189,10 +189,10 @@ export function StreakHeader() {
       </div>
 
       <div className="flex items-center gap-3">
-        {longestStreak > streakDays && (
-          <div className="hidden flex-col items-end sm:flex">
-            <span className="text-xs font-bold text-white/40">Best</span>
-            <span className="text-sm font-black text-white/70">{longestStreak}</span>
+        {streakDays > 0 && (
+          <div className="flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-bold text-emerald-300 ring-1 ring-emerald-500/20">
+            <Shield className="h-3.5 w-3.5" />
+            Streak active
           </div>
         )}
         <div className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-rose-500/20 to-violet-500/20 px-3 py-1.5 text-sm font-bold text-rose-300 ring-1 ring-rose-500/30">
@@ -598,7 +598,7 @@ export function PlayHome() {
 
   function handlePlay(reviewId: string) {
     trackFirstRoundStart();
-    navigate(`/review/${reviewId}?from=play_home`);
+    navigate(`/play/${reviewId}`);
   }
 
   return (
@@ -696,6 +696,130 @@ git commit -m "feat(play): add PlayHome page composing game sections"
 
 ---
 
+## Task 3b: Create PlayRound page
+
+**Files:**
+- Create: `apps/web/src/pages/PlayRound.tsx`
+
+**Interfaces:**
+- Consumes: `useParams<{ id: string }>`, `api.get(`/api/reviews/${id}`)`, existing `Feed` component
+- Produces: `<PlayRound />` eagerly-loaded route component
+
+- [ ] **Step 1: Implement PlayRound**
+
+```tsx
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { api } from "../lib/api";
+import { Loading } from "../components/common/Loading";
+import { Feed } from "../components/feed/Feed";
+import { usePlayStore } from "../stores/playStore";
+import { trackFirstRoundComplete, trackDailyDropPlayed } from "../lib/analytics";
+import type { FeedReview } from "../hooks/useFeed";
+
+export function PlayRound() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [review, setReview] = useState<FeedReview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState<Set<string>>(new Set());
+  const [revealData, setRevealData] = useState<
+    Map<string, { rating: number; score: number; totalGuesses: number; distribution: number[] }>
+  >(new Map());
+  const [selectedRatings, setSelectedRatings] = useState<Map<string, number>>(new Map());
+  const markPlayed = usePlayStore((s) => s.markPlayed);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    setLoading(true);
+    api
+      .get(`/api/reviews/${id}`)
+      .then((res) => {
+        if (cancelled) return;
+        const data = res.data as FeedReview & { rating: number };
+        setReview({
+          ...data,
+          likeCount: data.likeCount ?? 0,
+          guessCount: data.guessCount ?? 0,
+          commentCount: data.commentCount ?? 0,
+          shareCount: data.shareCount ?? 0,
+          product: data.product ?? { id: "", name: data.productTag ?? "Product", category: "" },
+        });
+      })
+      .catch(() => setError("Could not load this round."))
+      .finally(() => setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  function selectRating(reviewId: string, rating: number) {
+    setSelectedRatings((prev) => new Map(prev).set(reviewId, rating));
+  }
+
+  async function handleReveal(reviewId: string) {
+    const guess = selectedRatings.get(reviewId);
+    if (guess === undefined) return;
+    try {
+      const guessRes = await api.post(`/api/guesses/${reviewId}`, { guessedRating: guess });
+      const revealRes = await api.get(`/api/guesses/${reviewId}/reveal`);
+      setRevealData((prev) =>
+        new Map(prev).set(reviewId, {
+          rating: revealRes.data.rating,
+          score: guessRes.data.guess.score,
+          totalGuesses: revealRes.data.totalGuesses,
+          distribution: revealRes.data.distribution,
+        })
+      );
+      trackFirstRoundComplete({ reviewId });
+      trackDailyDropPlayed({ reviewId });
+      markPlayed(reviewId);
+    } catch {
+      // ignore
+    } finally {
+      setRevealed((prev) => new Set(prev).add(reviewId));
+    }
+  }
+
+  function handlePlayAgain() {
+    navigate("/play");
+  }
+
+  if (loading) return <Loading />;
+  if (error || !review) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center p-4 text-center text-white">
+        <p className="text-lg font-bold">{error || "Round not found"}</p>
+        <button onClick={() => navigate("/play")} className="mt-4 text-rose-400">Back to Play</button>
+      </div>
+    );
+  }
+
+  return (
+    <Feed
+      reviews={[review]}
+      selectedRatings={selectedRatings}
+      onSelectRating={selectRating}
+      onReveal={handleReveal}
+      revealed={revealed}
+      revealData={revealData}
+      onPlayAgain={handlePlayAgain}
+    />
+  );
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add apps/web/src/pages/PlayRound.tsx
+git commit -m "feat(play): add PlayRound single-review guess route"
+```
+
+---
+
 ## Task 4: Create Activity placeholder page
 
 **Files:**
@@ -755,6 +879,7 @@ import { Suspense, lazy } from "react";
 import { MainLayout } from "./components/layout/MainLayout";
 import { AuthGuard } from "./components/AuthGuard";
 import { PlayHome } from "./pages/PlayHome"; // eager
+import { PlayRound } from "./pages/PlayRound"; // eager
 import { Home } from "./pages/Home"; // Browse / legacy feed
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
@@ -803,6 +928,7 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
         children: [
           { path: "/", element: <LegacyHomeRedirect /> },
           { path: "/play", element: <PlayHome /> },
+          { path: "/play/:id", element: <PlayRound /> },
           { path: "/browse", element: <LazyWrapper><Home /></LazyWrapper> },
           { path: "/record", element: <LazyWrapper><Record /></LazyWrapper> },
           { path: "/activity", element: <LazyWrapper><Activity /></LazyWrapper> },
@@ -895,32 +1021,57 @@ git commit -m "feat(nav): reorder BottomNav to Play/Browse/Create/Activity/Profi
 ## Task 6: Mark reviews as played after reveal
 
 **Files:**
-- Modify: `apps/web/src/pages/ReviewDetail.tsx` or guess flow entry point
+- Modify: `apps/web/src/pages/Home.tsx`
 
 **Interfaces:**
 - Consumes: `usePlayStore`
-- Produces: played state persisted when a round is completed
+- Produces: played state persisted when a round is completed in the Browse feed
 
-- [ ] **Step 1: Locate reveal completion in ReviewDetail**
+- [ ] **Step 1: Add markPlayed to Home.tsx handleReveal**
 
-Search for where the reveal/guess flow completes in `apps/web/src/pages/ReviewDetail.tsx` and add:
+Edit `apps/web/src/pages/Home.tsx`:
 
 ```tsx
 import { usePlayStore } from "../stores/playStore";
 
-const markPlayed = usePlayStore((s) => s.markPlayed);
+export function Home() {
+  const markPlayed = usePlayStore((s) => s.markPlayed);
+  // ... existing state ...
 
-// after successful reveal:
-markPlayed(reviewId);
+  async function handleReveal(reviewId: string) {
+    const guess = selectedRatings.get(reviewId);
+    try {
+      if (guess !== undefined) {
+        const guessRes = await api.post(`/api/guesses/${reviewId}`, { guessedRating: guess });
+        const revealRes = await api.get(`/api/guesses/${reviewId}/reveal`);
+        setRevealData((prev) =>
+          new Map(prev).set(reviewId, {
+            rating: revealRes.data.rating,
+            score: guessRes.data.guess.score,
+            totalGuesses: revealRes.data.totalGuesses,
+            distribution: revealRes.data.distribution,
+          })
+        );
+        markPlayed(reviewId);
+        trackFirstRoundComplete({ reviewId });
+        trackDailyDropPlayed({ reviewId });
+      }
+    } catch {
+      // ignore
+    } finally {
+      setRevealed((prev) => new Set(prev).add(reviewId));
+    }
+  }
+
+  // ... rest unchanged ...
+}
 ```
-
-If `ReviewDetail` does not have a clear reveal completion callback, also mark played in `Home.tsx`'s `handleReveal` for the browse feed path.
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add apps/web/src/pages/ReviewDetail.tsx
-git commit -m "feat(play): mark reviews as played after reveal"
+git add apps/web/src/pages/Home.tsx
+git commit -m "feat(play): mark reviews as played after reveal in browse feed"
 ```
 
 ---
@@ -945,15 +1096,16 @@ test("new user lands on Play home and starts a round within 2 taps", async ({ pa
   await page.goto("/");
 
   // Should redirect to /play
-  await expect(page).toHaveURL(/\/play/);
+  await expect(page).toHaveURL(/\/play$/);
   await expect(page.getByText("Daily Drop")).toBeVisible();
   await expect(page.getByText("Play today's guess")).toBeVisible();
 
   // Tap the Daily Drop card (tap 1)
   await page.getByRole("button", { name: /Play today's guess/i }).click();
 
-  // Should be on a review page (tap 2 would be selecting a rating)
-  await expect(page).toHaveURL(/\/review\//);
+  // Should be on the play round route with the guess UI visible
+  await expect(page).toHaveURL(/\/play\//);
+  await expect(page.getByText(/Guess the rating/i)).toBeVisible();
 });
 ```
 
@@ -1009,11 +1161,13 @@ git commit -m "fix(play): address type/test issues from game-home rollout" || tr
 ## Spec Coverage Checklist
 
 - [x] PlayHome page created with Daily Drop, Challenge Inbox, Streak Header, Continue Playing — Tasks 2, 3
+- [x] PlayRound route (`/play/:id`) wraps existing `Feed` for single-review guessing — Task 3b
 - [x] Router changes: `/` → `/play`, `/browse` → feed, `/activity` placeholder — Task 5
 - [x] BottomNav reordered to Play/Browse/Create/Activity/Profile — Task 5
-- [x] Lazy loading: only `PlayHome` eager; others lazy — Task 5
+- [x] Lazy loading: only `PlayHome` and `PlayRound` eager; others lazy — Task 5
 - [x] Existing Tailwind tokens used throughout — all component tasks
 - [x] Old feed route preserved for deep links — Task 5
 - [x] playStore for daily drop and played state — Task 1
 - [x] Analytics: tab switches and first-round-start time — Task 5, 3
+- [x] StreakHeader shows streak shield placeholder for freeze status (backend lacks freeze field) — Task 2a
 - [x] Playwright test for ≤2 taps — Task 7
