@@ -3,11 +3,13 @@ import { env } from "./config/index.js";
 import { createApp } from "./app.js";
 import { initSocketServer } from "./socket/index.js";
 import { recoverStuckReviews } from "./upload/moderationQueue.js";
+import { scheduleAnalyticsRollup } from "@silent-review/database";
 
 const app = createApp();
 const httpServer = createServer(app);
 
 initSocketServer(httpServer);
+scheduleAnalyticsRollup();
 
 const port = Number(env.PORT);
 httpServer.listen(port, () => {

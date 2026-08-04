@@ -26,7 +26,7 @@ function dateKey(d: Date): string {
 
 function toDate(d: Date): Date {
   const copy = new Date(d);
-  copy.setHours(0, 0, 0, 0);
+  copy.setUTCHours(0, 0, 0, 0);
   return copy;
 }
 
@@ -71,17 +71,7 @@ async function main() {
     const signupDay = toDate(user.createdAt);
     const sessionId = `sess-${user.id.slice(0, 8)}`;
 
-    // Attributed installs for users who came through a share or challenge link.
-    if (channel !== "organic" && chance(0.6)) {
-      events.push({
-        type: "invite_install_attributed",
-        userId: user.id,
-        sessionId,
-        channel,
-        properties: { source: channel },
-        createdAt: new Date(user.createdAt.getTime() + randomInt(0, 60_000)),
-      });
-    }
+
 
     // Simulate daily activity with decaying retention.
     let firstRoundDone = false;
@@ -192,8 +182,31 @@ async function main() {
       }
     }
 
-    // Challenge activity for a subset of users.
+    // Invite activity for a subset of users (mirrors the InviteFriends flow).
     if (chance(0.25)) {
+      const inviteCode = `invite-${user.id.slice(0, 8)}`;
+      events.push({
+        type: "invite_sent",
+        userId: user.id,
+        sessionId,
+        channel,
+        properties: { code: inviteCode },
+        createdAt: new Date(user.createdAt.getTime() + randomInt(1 * DAY_MS, 7 * DAY_MS)),
+      });
+      if (chance(0.4)) {
+        events.push({
+          type: "invite_install_attributed",
+          userId: user.id,
+          sessionId,
+          channel,
+          properties: { inviteCode },
+          createdAt: new Date(user.createdAt.getTime() + randomInt(2 * DAY_MS, 14 * DAY_MS)),
+        });
+      }
+    }
+
+    // Challenge activity for a subset of users.
+    if (chance(0.15)) {
       events.push({
         type: "challenge_sent",
         userId: user.id,
@@ -203,7 +216,7 @@ async function main() {
         createdAt: new Date(user.createdAt.getTime() + randomInt(1 * DAY_MS, 7 * DAY_MS)),
       });
     }
-    if (chance(0.15)) {
+    if (chance(0.1)) {
       events.push({
         type: "challenge_accepted",
         userId: user.id,

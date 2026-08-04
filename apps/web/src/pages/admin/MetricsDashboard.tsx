@@ -34,12 +34,26 @@ function formatPct(value: number | null): string {
 
 export function MetricsDashboard() {
   const [days, setDays] = useState(30);
-  const { data, isLoading, refetch } = useQuery<DashboardData>({
+  const { data, isLoading, isError, refetch } = useQuery<DashboardData>({
     queryKey: ["analytics-dashboard", days],
     queryFn: async () => (await api.get(`/api/analytics/dashboard?days=${days}`)).data,
   });
 
-  if (isLoading || !data) return <Loading />;
+  if (isLoading) return <Loading />;
+
+  if (isError || !data) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-4 text-center">
+        <p className="text-white/70">Couldn’t load metrics. Try again.</p>
+        <button
+          onClick={() => refetch()}
+          className="rounded-xl bg-white/10 px-4 py-2 text-sm font-bold text-white hover:bg-white/15"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   const latestCohort = data.cohorts[0];
   const funnelTotals = data.funnel.dates.length

@@ -3,6 +3,7 @@ import { useInvites } from "../../hooks/useInvites";
 import { Share2, Copy, Check, Users, MessageCircle, Mail, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useUIStore } from "../../stores/uiStore";
+import { trackEvent } from "../../lib/analytics";
 
 export function InviteFriends() {
   const { invites, isLoading, hasMore, loadMore, isLoadingMore, createInvite, isCreating, deleteInvite, isDeleting } = useInvites();
@@ -16,6 +17,7 @@ export function InviteFriends() {
     }
     try {
       const invite = await createInvite();
+      trackEvent("invite_sent", { code: invite.code, link: invite.link });
       setLastInviteLink(invite.link);
       return { link: invite.link, code: invite.code };
     } catch {

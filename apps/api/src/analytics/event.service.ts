@@ -51,6 +51,7 @@ function isValidEventType(type: string): boolean {
     "challenge_sent",
     "challenge_accepted",
     "streak_milestone",
+    "invite_sent",
     "invite_install_attributed",
   ]);
   return known.has(type);

@@ -12,6 +12,7 @@ export type AnalyticsEventType =
   | "challenge_sent"
   | "challenge_accepted"
   | "streak_milestone"
+  | "invite_sent"
   | "invite_install_attributed";
 
 export interface AnalyticsEvent {

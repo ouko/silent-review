@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { prisma } from "../prisma.js";
 import { requireAuth, requireRole, optionalAuth, type AuthenticatedRequest } from "../middleware/auth.js";
@@ -7,20 +8,32 @@ import { getDashboardData, runDailyRollup } from "@silent-review/database";
 
 export const analyticsRouter = Router();
 
+const MAX_BATCH_EVENTS = 100;
+
 const EventBatchSchema = z.object({
-  events: z.array(
-    z.object({
-      type: z.string(),
-      userId: z.string().nullable().optional(),
-      sessionId: z.string().nullable().optional(),
-      channel: z.string().optional(),
-      properties: z.record(z.unknown()).optional(),
-      timestamp: z.string().datetime().optional(),
-    })
-  ),
+  events: z
+    .array(
+      z.object({
+        type: z.string(),
+        userId: z.string().nullable().optional(),
+        sessionId: z.string().nullable().optional(),
+        channel: z.string().optional(),
+        properties: z.record(z.unknown()).optional(),
+        timestamp: z.string().datetime().optional(),
+      })
+    )
+    .max(MAX_BATCH_EVENTS),
 });
 
-analyticsRouter.post("/events/batch", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
+const batchIngestLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many analytics batch requests" },
+});
+
+analyticsRouter.post("/events/batch", batchIngestLimiter, optionalAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const body = EventBatchSchema.parse(req.body);
     const enriched = body.events.map((e) => ({

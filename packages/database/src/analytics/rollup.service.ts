@@ -101,24 +101,22 @@ async function computeRetention(signupDate: Date, dayOffset: number): Promise<{ 
 
   if (signups === 0) return { value: 0, sampleSize: 0 };
 
-  const cohortUserIds = await prisma.user
-    .findMany({
-      where: { createdAt: { gte: start, lt: end }, deletedAt: null },
-      select: { id: true },
-    })
-    .then((rows) => rows.map((r) => r.id));
+  const result = await prisma.$queryRaw<{ active: number }[]>`
+    SELECT COUNT(DISTINCT e."userId")::integer AS active
+    FROM "Event" e
+    WHERE e."userId" IN (
+      SELECT u.id FROM "User" u
+      WHERE u."createdAt" >= ${start}
+        AND u."createdAt" < ${end}
+        AND u."deletedAt" IS NULL
+    )
+    AND e."createdAt" >= ${activityStart}
+    AND e."createdAt" < ${activityEnd}
+    AND e.type IN ('app_open', 'guess_submitted', 'daily_drop_played')
+  `;
+  const active = result[0]?.active ?? 0;
 
-  const activeRows = await prisma.event.groupBy({
-    by: ["userId"],
-    where: {
-      userId: { in: cohortUserIds },
-      createdAt: { gte: activityStart, lt: activityEnd },
-      type: { in: ["app_open", "guess_submitted", "daily_drop_played"] },
-    },
-    _count: true,
-  });
-
-  return { value: activeRows.length / signups, sampleSize: signups };
+  return { value: active / signups, sampleSize: signups };
 }
 
 async function computeKFactor(date: Date): Promise<{ value: number; sampleSize: number }> {
@@ -128,7 +126,7 @@ async function computeKFactor(date: Date): Promise<{ value: number; sampleSize: 
 
   const [invitesSent, installs] = await Promise.all([
     prisma.event.count({
-      where: { type: "challenge_sent", createdAt: { gte: start, lt: end } },
+      where: { type: "invite_sent", createdAt: { gte: start, lt: end } },
     }),
     prisma.event.count({
       where: { type: "invite_install_attributed", createdAt: { gte: start, lt: end } },
@@ -177,25 +175,23 @@ async function computeStreakEstablishment(date: Date): Promise<{ value: number; 
 
   if (signups === 0) return { value: 0, sampleSize: 0 };
 
-  const cohortUserIds = await prisma.user
-    .findMany({
-      where: { createdAt: { gte: start, lt: end }, deletedAt: null },
-      select: { id: true },
-    })
-    .then((rows) => rows.map((r) => r.id));
+  const result = await prisma.$queryRaw<{ streakUsers: number }[]>`
+    SELECT COUNT(DISTINCT e."userId")::integer AS "streakUsers"
+    FROM "Event" e
+    WHERE e."userId" IN (
+      SELECT u.id FROM "User" u
+      WHERE u."createdAt" >= ${start}
+        AND u."createdAt" < ${end}
+        AND u."deletedAt" IS NULL
+    )
+    AND e.type = 'streak_milestone'
+    AND e."createdAt" >= ${start}
+    AND e."createdAt" < ${cutoff}
+    AND e.properties->>'milestone' = '7'
+  `;
+  const streakUsers = result[0]?.streakUsers ?? 0;
 
-  const streakRows = await prisma.event.groupBy({
-    by: ["userId"],
-    where: {
-      type: "streak_milestone",
-      userId: { in: cohortUserIds },
-      createdAt: { gte: start, lt: cutoff },
-      properties: { path: ["milestone"], equals: 7 },
-    },
-    _count: true,
-  });
-
-  return { value: streakRows.length / signups, sampleSize: signups };
+  return { value: streakUsers / signups, sampleSize: signups };
 }
 
 async function computeFunnelAppOpen(date: Date): Promise<{ value: number; sampleSize: number }> {
@@ -230,8 +226,8 @@ async function computeFunnelD7Return(date: Date): Promise<{ value: number; sampl
   const start = new Date(date);
   start.setUTCHours(0, 0, 0, 0);
   const end = new Date(start.getTime() + DAY_MS);
-  const priorStart = new Date(start.getTime() - 7 * DAY_MS);
-  const priorEnd = new Date(priorStart.getTime() + DAY_MS);
+  const returnStart = new Date(start.getTime() + 7 * DAY_MS);
+  const returnEnd = new Date(returnStart.getTime() + DAY_MS);
 
   const currentRows = await prisma.event.groupBy({
     by: ["userId"],
@@ -247,7 +243,7 @@ async function computeFunnelD7Return(date: Date): Promise<{ value: number; sampl
     where: {
       type: "app_open",
       userId: { in: userIds },
-      createdAt: { gte: priorStart, lt: priorEnd },
+      createdAt: { gte: returnStart, lt: returnEnd },
     },
     _count: true,
   });
@@ -351,4 +347,30 @@ function toDate(d: Date): Date {
   const copy = new Date(d);
   copy.setUTCHours(0, 0, 0, 0);
   return copy;
+}
+
+/**
+ * Schedule a lightweight nightly rollup job. Runs at midnight UTC and then
+ * every 24 hours. No external scheduler dependency.
+ */
+export function scheduleAnalyticsRollup(): void {
+  function msUntilNextMidnightUTC(): number {
+    const now = new Date();
+    const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0));
+    return next.getTime() - now.getTime();
+  }
+
+  async function runOnce(): Promise<void> {
+    try {
+      await runDailyRollup();
+      console.log("[analytics] nightly rollup complete");
+    } catch (err) {
+      console.error("[analytics] nightly rollup failed", err);
+    }
+  }
+
+  setTimeout(() => {
+    void runOnce();
+    setInterval(() => void runOnce(), 24 * 60 * 60 * 1000);
+  }, msUntilNextMidnightUTC());
 }
