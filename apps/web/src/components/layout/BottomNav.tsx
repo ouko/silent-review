@@ -1,16 +1,17 @@
-import { Home, PlusCircle, Users, User } from "lucide-react";
+import { Gamepad, Compass, PlusCircle, Bell, User } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 
 const LINKS = [
-  { to: "/", icon: Home, label: "Home" },
+  { to: "/", icon: Gamepad, label: "Play" },
+  { to: "/browse", icon: Compass, label: "Browse" },
   { to: "/record", icon: PlusCircle, label: "Create" },
-  { to: "/viral", icon: Users, label: "Grow" },
+  { to: "/activity", icon: Bell, label: "Activity" },
   { to: "/profile/me", icon: User, label: "Profile" },
 ];
 
 function isLinkActive(pathname: string, to: string): boolean {
-  if (to === "/") return pathname === "/";
+  if (to === "/") return pathname === "/" || pathname.startsWith("/play/");
   if (to === "/profile/me") return pathname.startsWith("/profile");
   return pathname.startsWith(to);
 }

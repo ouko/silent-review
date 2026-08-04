@@ -4,6 +4,7 @@ export type AnalyticsChannel = "organic" | "challenge_link" | "result_card" | "c
 
 export type AnalyticsEventType =
   | "app_open"
+  | "first_round_start_time"
   | "first_round_complete"
   | "guess_submitted"
   | "daily_drop_played"

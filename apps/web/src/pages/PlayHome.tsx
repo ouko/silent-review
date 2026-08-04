@@ -16,7 +16,6 @@ export function PlayHome() {
   const navigate = useNavigate();
   const { data, isLoading: feedLoading } = useFeed("for-you");
   const { discoverChallenges } = useChallenges();
-  const markPlayed = usePlayStore((s) => s.markPlayed);
   const setDailyDrop = usePlayStore((s) => s.setDailyDrop);
   const setPendingChallengeCount = usePlayStore((s) => s.setPendingChallengeCount);
   const isPlayed = usePlayStore((s) => s.isPlayed);
