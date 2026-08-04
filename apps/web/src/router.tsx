@@ -33,6 +33,10 @@ function DeepLinkRedirect() {
   return <Navigate to={`/review/${id}`} replace />;
 }
 
+function LegacyHomeRedirect() {
+  return <Navigate to="/play" replace />;
+}
+
 export const router: ReturnType<typeof createBrowserRouter> = createBrowserRouter([
   {
     element: <MainLayout />,
@@ -46,7 +50,8 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
       {
         element: <ProtectedRoute><Outlet /></ProtectedRoute>,
         children: [
-          { path: "/", element: <PlayHome /> },
+          { path: "/", element: <LegacyHomeRedirect /> },
+          { path: "/play", element: <PlayHome /> },
           { path: "/play/:id", element: <PlayRound /> },
           { path: "/browse", element: <LazyWrapper><Browse /></LazyWrapper> },
           { path: "/record", element: <LazyWrapper><Record /></LazyWrapper> },

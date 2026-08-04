@@ -5,6 +5,7 @@ import { Feed } from "../components/feed/Feed";
 import { FeedTabs } from "../components/feed/FeedTabs";
 import { BrandSpinner } from "../components/ui/BrandSpinner";
 import { useUIStore } from "../stores/uiStore";
+import { usePlayStore } from "../stores/playStore";
 import { api } from "../lib/api";
 import { trackEvent, trackFirstRoundComplete, trackDailyDropPlayed } from "../lib/analytics";
 
@@ -19,6 +20,7 @@ function isFeedType(value: string | null): value is FeedType {
 }
 
 export function Home() {
+  const markPlayed = usePlayStore((s) => s.markPlayed);
   const [searchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
   const initialTab = isFeedType(tabParam) ? tabParam : "for-you";
@@ -65,6 +67,7 @@ export function Home() {
           actualRating: revealRes.data.rating,
           score: guessRes.data.guess.score,
         });
+        markPlayed(reviewId);
         trackFirstRoundComplete({ reviewId });
         trackDailyDropPlayed({ reviewId });
       }

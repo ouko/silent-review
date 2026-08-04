@@ -1,9 +1,11 @@
-import { Gamepad, Compass, PlusCircle, Bell, User } from "lucide-react";
+import { Gamepad2, Compass, PlusCircle, Bell, User } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useRef } from "react";
+import { trackEvent } from "../../lib/analytics";
 
 const LINKS = [
-  { to: "/", icon: Gamepad, label: "Play" },
+  { to: "/play", icon: Gamepad2, label: "Play" },
   { to: "/browse", icon: Compass, label: "Browse" },
   { to: "/record", icon: PlusCircle, label: "Create" },
   { to: "/activity", icon: Bell, label: "Activity" },
@@ -11,7 +13,7 @@ const LINKS = [
 ];
 
 function isLinkActive(pathname: string, to: string): boolean {
-  if (to === "/") return pathname === "/" || pathname.startsWith("/play/");
+  if (to === "/play") return pathname === "/play" || pathname.startsWith("/play/");
   if (to === "/profile/me") return pathname.startsWith("/profile");
   return pathname.startsWith(to);
 }
@@ -30,6 +32,15 @@ function scrollPageToTop() {
 
 export function BottomNav() {
   const location = useLocation();
+  const previousPathRef = useRef(location.pathname);
+
+  function handleNavClick(to: string) {
+    const from = previousPathRef.current;
+    if (to !== from) {
+      trackEvent("tab_switched", { from, to });
+      previousPathRef.current = to;
+    }
+  }
 
   return (
     <nav
@@ -41,6 +52,7 @@ export function BottomNav() {
           key={link.to}
           to={link.to}
           onClick={(e) => {
+            handleNavClick(link.to);
             if (isLinkActive(location.pathname, link.to)) {
               // Already on this page: give feedback instead of a no-op.
               e.preventDefault();

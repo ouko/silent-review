@@ -14,7 +14,8 @@ export type AnalyticsEventType =
   | "challenge_accepted"
   | "streak_milestone"
   | "invite_sent"
-  | "invite_install_attributed";
+  | "invite_install_attributed"
+  | "tab_switched";
 
 export interface AnalyticsEvent {
   type: AnalyticsEventType;
