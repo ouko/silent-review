@@ -7,6 +7,40 @@ import { usePlayStore } from "../stores/playStore";
 import { trackFirstRoundComplete, trackDailyDropPlayed } from "../lib/analytics";
 import type { FeedReview } from "../hooks/useFeed";
 
+interface ReviewDetailData {
+  id: string;
+  videoUrl: string;
+  thumbnailUrl: string | null;
+  caption: string | null;
+  productTag: string | null;
+  rating: number;
+  duration: number;
+  createdAt: string;
+  user: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
+  product?: { id: string; name: string; category: string } | null;
+  viewerGuess: { guessedRating: number } | null;
+  counts: { likes: number; comments: number; guesses: number };
+}
+
+function mapToFeedReview(data: ReviewDetailData): FeedReview {
+  return {
+    id: data.id,
+    videoUrl: data.videoUrl,
+    thumbnailUrl: data.thumbnailUrl,
+    caption: data.caption,
+    productTag: data.productTag,
+    rating: data.rating,
+    duration: data.duration,
+    createdAt: data.createdAt,
+    user: data.user,
+    product: data.product ?? { id: "", name: data.productTag ?? "Review", category: "" },
+    likeCount: data.counts.likes,
+    guessCount: data.counts.guesses,
+    commentCount: data.counts.comments,
+    shareCount: 0,
+  };
+}
+
 export function PlayRound() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -25,18 +59,10 @@ export function PlayRound() {
     let cancelled = false;
     setLoading(true);
     api
-      .get(`/api/reviews/${id}`)
+      .get<ReviewDetailData>(`/api/reviews/${id}`)
       .then((res) => {
         if (cancelled) return;
-        const data = res.data as FeedReview & { rating: number };
-        setReview({
-          ...data,
-          likeCount: data.likeCount ?? 0,
-          guessCount: data.guessCount ?? 0,
-          commentCount: data.commentCount ?? 0,
-          shareCount: data.shareCount ?? 0,
-          product: data.product ?? { id: "", name: data.productTag ?? "Product", category: "" },
-        });
+        setReview(mapToFeedReview(res.data));
       })
       .catch(() => setError("Could not load this round."))
       .finally(() => setLoading(false));
