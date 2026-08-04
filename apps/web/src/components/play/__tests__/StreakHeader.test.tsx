@@ -26,7 +26,7 @@ describe("StreakHeader", () => {
       isError: false,
       isSuccess: true,
       status: "success",
-    } as ReturnType<typeof useGamification.useGamification>);
+    } as unknown as ReturnType<typeof useGamification.useGamification>);
 
     render(<StreakHeader />);
     expect(screen.getByText("5")).toBeInTheDocument();

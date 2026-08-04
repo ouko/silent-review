@@ -17,7 +17,7 @@ export function StreakHeader() {
     );
   }
 
-  const { streakDays, longestStreak, totalPoints } = data;
+  const { streakDays, totalPoints } = data;
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl">

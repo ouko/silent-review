@@ -11,10 +11,6 @@ interface PlayState {
   isPlayed: (reviewId: string) => boolean;
 }
 
-function buildStorageKey(userId: string | null | undefined) {
-  return userId ? `sr-play-store-${userId}` : "sr-play-store-anon";
-}
-
 export const usePlayStore = create<PlayState>()(
   persist(
     (set, get) => ({
@@ -42,7 +38,7 @@ export const usePlayStore = create<PlayState>()(
   )
 );
 
-export function setPlayStoreUser(userId: string | null | undefined) {
+export function setPlayStoreUser(_userId: string | null | undefined) {
   // Zustand persist uses a static key; to scope per user we rely on
   // the consumer reading `user?.id` and passing it to helpers where needed.
   // This function is a placeholder hook location for future user scoping.
