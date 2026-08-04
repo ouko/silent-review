@@ -1,138 +1,98 @@
-# Game Home Redesign — Design Spec
+# Game-First Home Redesign
 
-**Date:** 2026-08-04  
-**Scope:** MVP repositioning of the `/` route from a scrollable review feed to a focused, single-review guessing game. The existing feed is preserved at `/feed`.
+## Overview
+Replace the review feed as the default landing screen with a game-first home. The existing feed becomes a secondary "Browse" tab. The first thing every user sees after opening the app is the game: today's Daily Drop, pending challenges, streak status, and a continue-playing strip.
 
-## Product Context
+## Success Criteria
+1. First open after update lands on `/play`; the video feed lives at `/browse`.
+2. A new user can start their first round within 2 taps of app open.
+3. Pending challenges and streak status are visible above the fold on a 375px viewport.
+4. Old feed route remains fully functional for deep links (`/review/:id`, `/s/:id`).
 
-SilentReview is repositioning from a review platform to a retention-first social guessing game. The review content is the engine; the game is the face.
-
-> *"Watch a video where people secretly review stuff, guess what rating they gave it, and beat your friends to prove you know what's actually good."*
-
-Currently, opening `/` lands the user on the `Home` feed (`Home.tsx`) with `For You / Following / Trending` tabs and an infinitely scrollable list of review cards. This redesign makes `/` a game screen where the user immediately plays one review at a time.
-
-## Goals
-
-1. Make the first action after login **playing the game**, not browsing a feed.
-2. Reuse the existing 10-point guess, reveal, scoring, and share systems.
-3. Keep the feed accessible for users who want to browse.
-4. Ship behind the existing feature-flag system so the rollout is reversible.
-
-## Non-Goals
-
-- Swipe-based vertical stack (TikTok-style) for this MVP.
-- New backend models or daily-match sessions.
-- Monetization hooks (rewarded ads, battle pass) — those come after the game home is live.
-- Replacing the bottom navigation.
-
-## User Flow
-
-1. User logs in and is redirected to `/`.
-2. A single review autoplays in a full-viewport player.
-3. Overlay text: **"Guess the rating"** with the existing 1–10 `RatingBar`.
-4. User taps a rating, then taps **"Reveal rating"**.
-5. The existing `RevealScreen` slides in, showing:
-   - Actual rating
-   - Points earned (10/5/2/0)
-   - Total guesses and distribution
-   - Share / Play again / Next actions
-6. Tapping **"Next"** loads another review.
-7. Liking, commenting, and sharing remain available via the existing action row.
-8. A top-bar link opens `/feed` for users who want the old browse experience.
+## Defaults Chosen (auto mode)
+- **Activity tab:** lightweight placeholder (`/activity`) with a "Coming soon" state. No backend notifications system is introduced in this change.
+- **Daily Drop:** sourced from the existing `/api/feed` endpoint. The first unplayed review is treated as today's Daily Drop; subsequent feed items populate the "Continue playing" strip. Played/unplayed state is tracked locally per user/session.
 
 ## Architecture
 
-### Routing Changes
+### New Components
+| Component | File | Responsibility |
+|-----------|------|----------------|
+| `PlayHome` | `apps/web/src/pages/PlayHome.tsx` | Composes the game home sections, owns data fetching via `useFeed` and `useGamification`. |
+| `DailyDropCard` | `apps/web/src/components/play/DailyDropCard.tsx` | Shows today's review thumbnail, CTA, and played/unplayed badge. Navigates to `/review/:id` on tap. |
+| `ChallengeInbox` | `apps/web/src/components/play/ChallengeInbox.tsx` | Lists pending challenge invites with sender avatar, accept/decline actions. Uses existing `useChallenges`. |
+| `StreakHeader` | `apps/web/src/components/play/StreakHeader.tsx` | Displays current streak, freeze status, and points. Consumes `useGamification`. |
+| `ContinuePlaying` | `apps/web/src/components/play/ContinuePlaying.tsx` | Horizontal strip of next unplayed rounds. Tapping an item navigates to the review. |
+| `Activity` | `apps/web/src/pages/Activity.tsx` | Placeholder page for the new Activity tab. |
 
-| Route | Current | New |
-|---|---|---|
-| `/` | `Home` (feed) | `GameHome` |
-| `/feed` | — | `Home` (existing feed) |
-| `/review/:id` | Review detail | Unchanged |
-| `/record`, `/viral`, `/profile/me` | Unchanged | Unchanged |
+### State Management
+- `playStore.ts` (Zustand) holds lightweight client state:
+  - `dailyDropReviewId: string | null`
+  - `playedReviewIds: Set<string>`
+  - `pendingChallengeCount: number`
+  - Actions: `markPlayed(reviewId)`, `setDailyDrop(reviewId)`, `setPendingChallengeCount(n)`
+- The store is hydrated from `useFeed`/`useChallenges` and persists played IDs to `localStorage` per user.
 
-The bottom nav "Home" item continues to point to `/`.
+### Routing
+```
+/           -> redirect to /play (preserve legacy behavior)
+/play       -> PlayHome (eagerly loaded)
+/browse     -> Home (existing feed, lazy loaded)
+/record     -> Record (lazy)
+/activity   -> Activity (lazy)
+/profile/:id-> Profile (lazy)
+/review/:id -> ReviewDetail (existing deep-link support)
+/s/:id      -> short-link redirect to /review/:id
+```
 
-### Components
+### Navigation (BottomNav)
+Reorder tabs: Play, Browse, Create, Activity, Profile.
+- Keep the existing `BottomNav` component, only change the `LINKS` array.
+- Active-state logic remains; `/profile/me` still matches `/profile/*`.
+- Tapping an active tab scrolls to top (existing behavior).
 
-- **`pages/GameHome.tsx`** (new)  
-  Container for the single-review game screen. Manages game state (`currentReview`, `selectedRating`, `revealed`, `revealData`) and fetches the next review via `useGameReview`.
+### Analytics
+Instrument via existing `trackEvent` in `apps/web/src/lib/analytics.ts`:
+- `tab_switched` when user taps a bottom-nav item (properties: `to`, `from`).
+- `first_round_start_time` computed in `PlayHome`: time from `app_open` to first Daily Drop / Continue Playing tap; emitted once per session.
+- Re-use existing `first_round_complete`, `daily_drop_played`, `challenge_accepted`, `guess_submitted` events inside the play flow.
 
-- **`components/game/GameCard.tsx`** (new)  
-  Full-viewport card for one review. Composes:
-  - `VideoPlayer` (existing)
-  - `VideoInfo` (existing)
-  - `LikeButton`, comment link, share button (existing action row)
-  - `FeedGuessOverlay` logic extracted/reused for the rating bar + reveal button
-  - `RevealScreen` (existing)
+### Lazy Loading
+- Only `PlayHome` is eagerly loaded.
+- `Browse`, `Record`, `Activity`, `Profile`, and all other pages remain `React.lazy`.
 
-- **`hooks/useGameReview.ts`** (new)  
-  TanStack Query hook wrapping `GET /api/game/next`. Refetches when the user requests the next card.
-
-- **`components/feed/Feed.tsx`** — unchanged; moved to `/feed`.
-- **`pages/Home.tsx`** — unchanged; becomes the `/feed` page.
-
-### Backend Changes
-
-- **`GET /api/game/next`** (new route in `apps/api/src/feed/feed.routes.ts` or new `apps/api/src/game/game.routes.ts`)  
-  Returns one review for the authenticated user to play.
-
-  Behavior:
-  1. Query for a `PUBLISHED`, non-deleted review the user has **not** guessed, using the same scoring/diversity logic as `getForYouFeed` but limited to one result.
-  2. If no unguessed review exists, return a random already-guessed review with an `alreadyGuessed: true` hint so the UI can show a "Play again" state.
-  3. No Redis caching, so a fresh review is returned immediately after each guess.
-
-  Response shape matches `FeedReview` from the existing feed.
-
-- **Cache invalidation** — existing guess endpoint should clear `feed:fyp:*` Redis keys for the user so the old feed also stays fresh.
-
-### Feature Flag
-
-- Add `gameHome` to the `FeatureFlag` table (seed + migration if required).
-- Wrap the route switch in a runtime check:
-  - If `gameHome` is enabled: `/` → `GameHome`, `/feed` → old `Home`.
-  - If disabled: `/` → old `Home` (current behavior), `/feed` can 404 or redirect to `/`.
-- Because `react-router` routes are static, the flag will be read at app bootstrap; a page reload is required to toggle. Alternatively, the `GameHome` component can render the old `Home` as its own fallback when the flag is off.
+### Styling
+- Use existing Tailwind tokens: `bg-black`, `text-white`, `rounded-2xl/3xl`, `border-white/10`, `bg-white/5`, gradient backgrounds (`from-rose-500 via-pink-500 to-violet-500`), glassmorphism (`backdrop-blur-xl`).
+- Layout must keep StreakHeader + DailyDropCard + ChallengeInbox visible without scrolling on 375px height (iPhone SE class) by making ContinuePlaying the scrollable lower section or collapsing empty states.
 
 ## Data Flow
-
-```
-User opens /
-  -> GameHome mounts
-  -> useGameReview fetches /api/game/next
-  -> GameCard renders VideoPlayer + overlay
-  -> User selects rating
-  -> GameHome calls POST /api/guesses/:id + GET /api/guesses/:id/reveal
-  -> RevealScreen shown with score
-  -> User taps Next
-  -> useGameReview refetches /api/game/next
-  -> New GameCard animates in
-```
+1. `MainLayout` mounts, analytics initialized, `app_open` tracked.
+2. `PlayHome` mounts and concurrently fetches:
+   - `useFeed("for-you")` for Daily Drop + Continue Playing candidates.
+   - `useGamification` for streak/points.
+   - `useChallenges` for pending challenges.
+3. `playStore` is updated with the first unplayed review ID and pending challenge count.
+4. User taps Daily Drop card → navigates to `/review/:id` with `from=play_home` query param.
+5. On reveal completion, `markPlayed(reviewId)` is called in the store and persisted.
+6. Returning to `/play` re-evaluates; the next unplayed item becomes the Daily Drop.
 
 ## Error Handling
-
-- Empty database / no reviews: show friendly empty state with a CTA to create a review (`/record`).
-- Guess submission failure: show existing toast via `useUIStore`.
-- Video load failure: reuse `VideoPlayer` error state; allow "Next" to skip.
+- If feed fails, show inline error card in DailyDropCard with retry.
+- If gamification fails, StreakHeader falls back to cached values or hides points.
+- If challenges fail, ChallengeInbox shows empty state.
 
 ## Testing
+- Playwright spec `e2e/play-home.spec.ts`:
+  - New (registered) user lands on `/play`.
+  - Daily Drop card is visible.
+  - Tapping the card navigates to a review.
+  - Assert ≤ 2 taps from app open to first round start.
 
-- **Unit:** `useGameReview` hook test with MSW.
-- **E2E (Playwright):**
-  - New user lands on `/`, sees a review, guesses, reveals, taps Next, sees another review.
-  - `/feed` still renders the old scrollable feed.
-  - Feature flag off restores old `/` behavior.
+## Scope Exclusions
+- No new backend endpoints. Daily Drop is derived from existing feed.
+- No real-time notifications backend. Activity tab is a placeholder.
+- No changes to feed internals, review detail, or guess/reveal logic.
 
-## Open Questions / Future Work
-
-1. Should `/` remember the last played review across reloads, or always fetch fresh? (Start fresh; add persistence if users complain.)
-2. Should the daily streak be explicitly surfaced on this screen? (Yes, likely in the top bar, but out of MVP scope.)
-3. Swipe-to-advance and preloaded stack for v2.
-4. Battle-pass / rewarded-ad integration points: add placeholder hooks in `GameHome` state machine for future rewarded lives or double-points bonuses.
-
-## Success Criteria
-
-- `/` shows a single playable review within 2 seconds on a 4G connection.
-- A user can guess, reveal, and move to the next review without scrolling.
-- `/feed` remains reachable and functional.
-- All existing E2E smoke tests pass, plus a new game-home happy-path test.
+## Migration Notes
+- Existing `/` route redirect preserves any bookmarks or hard-coded links.
+- `BottomNav` order change is purely client-side.
