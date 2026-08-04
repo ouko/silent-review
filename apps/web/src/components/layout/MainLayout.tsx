@@ -1,15 +1,31 @@
 import { Outlet, useLocation } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { BottomNav } from "./BottomNav";
 import { ToastContainer } from "../common/Toast";
 import { useUIStore } from "../../stores/uiStore";
+import { useAuthStore } from "../../stores/authStore";
+import { initAnalytics, setAnalyticsUser, trackEvent } from "../../lib/analytics";
 
 export function MainLayout() {
   const showBottomNav = useUIStore((s) => s.showBottomNav);
   const setShowBottomNav = useUIStore((s) => s.setShowBottomNav);
   const location = useLocation();
   const reducedMotion = useReducedMotion();
+  const user = useAuthStore((s) => s.user);
+  const openedRef = useRef(false);
+
+  useEffect(() => {
+    initAnalytics(user?.id);
+    if (!openedRef.current) {
+      openedRef.current = true;
+      trackEvent("app_open", { path: location.pathname });
+    }
+  }, []);
+
+  useEffect(() => {
+    setAnalyticsUser(user?.id ?? null);
+  }, [user?.id]);
 
   useEffect(() => {
     setShowBottomNav(true);

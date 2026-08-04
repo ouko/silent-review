@@ -263,6 +263,7 @@ async function main() {
     ["challenges", true, "Enable friend challenges"],
     ["creator_tipping", false, "Enable creator tipping"],
     ["leaderboard_friends", true, "Enable friends tab on leaderboard"],
+    ["analytics", true, "Enable event ingestion and analytics dashboard"],
   ] as const;
 
   const flags = [];

@@ -1,5 +1,7 @@
 import { motion } from "framer-motion";
 import { Flame } from "lucide-react";
+import { useEffect } from "react";
+import { trackStreakMilestone } from "../../lib/analytics";
 
 interface StreakTrackerProps {
   streakDays: number;
@@ -7,6 +9,10 @@ interface StreakTrackerProps {
 }
 
 export function StreakTracker({ streakDays, longestStreak }: StreakTrackerProps) {
+  useEffect(() => {
+    trackStreakMilestone(streakDays);
+  }, [streakDays]);
+
   return (
     <div className="rounded-2xl bg-gradient-to-br from-orange-500/20 to-red-500/20 p-4">
       <div className="flex items-center gap-3">

@@ -48,6 +48,10 @@ analyticsRouter.get("/dashboard", requireAuth, requireRole("ADMIN"), async (req,
 analyticsRouter.post("/rollup", requireAuth, requireRole("ADMIN"), async (req, res, next) => {
   try {
     const date = req.body.date ? new Date(req.body.date) : undefined;
+    if (date && Number.isNaN(date.getTime())) {
+      res.status(400).json({ error: "Invalid date" });
+      return;
+    }
     await runDailyRollup(date);
     res.json({ ok: true });
   } catch (err) {

@@ -6,6 +6,7 @@ import { FeedTabs } from "../components/feed/FeedTabs";
 import { BrandSpinner } from "../components/ui/BrandSpinner";
 import { useUIStore } from "../stores/uiStore";
 import { api } from "../lib/api";
+import { trackEvent } from "../lib/analytics";
 
 const TABS: { id: FeedType; label: string }[] = [
   { id: "for-you", label: "For You" },
@@ -58,6 +59,13 @@ export function Home() {
             distribution: revealRes.data.distribution,
           })
         );
+        trackEvent("guess_submitted", {
+          reviewId,
+          guessedRating: guess,
+          actualRating: revealRes.data.rating,
+          score: guessRes.data.guess.score,
+        });
+        trackEvent("daily_drop_played", { reviewId });
       }
     } catch {
       // ignore

@@ -8,6 +8,7 @@ import { listPlatforms, type PlatformId } from "../../lib/export/platformTemplat
 import { generateCaption } from "../../lib/export/captionGenerator";
 import { buildShareUrl, type ShareUrlOptions } from "../../lib/share/urlBuilder";
 import { copyToClipboard } from "../../lib/share/copyToClipboard";
+import { trackEvent } from "../../lib/analytics";
 import { X, Download, Share2, Link2, Copy } from "lucide-react";
 
 interface ShareSheetProps {
@@ -91,6 +92,7 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
 
   async function handleExport() {
     await exportApi.generate({ videoUrl, platform: selectedPlatform, productName, rating });
+    trackEvent("share_card_created", { reviewId, platform: selectedPlatform });
     trackShare(selectedPlatform);
     setVideoSaved(false);
   }
@@ -103,7 +105,10 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
           text: `Can you guess the rating for ${productName}?`,
           url: deepLinkUrl,
         })
-        .then(() => trackShare("native"))
+        .then(() => {
+          trackEvent("share_card_clicked", { reviewId, provider: "native" });
+          trackShare("native");
+        })
         .catch(() => {});
     }
   }
@@ -114,6 +119,7 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
       await copyToClipboard(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      trackEvent("share_card_clicked", { reviewId, provider: "copy" });
       trackShare("copy");
     } catch {
       // Ignore copy failures (e.g. user denied permission).
@@ -338,6 +344,7 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
             <button
               onClick={() => {
                 exportApi.download(`silent-review-${reviewId}-${selectedPlatform}.webm`);
+                trackEvent("share_card_clicked", { reviewId, provider: "download" });
                 trackShare("download");
                 setVideoSaved(true);
               }}

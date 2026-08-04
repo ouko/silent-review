@@ -3,12 +3,14 @@ import { useChallenges, type Challenge } from "../../hooks/useChallenges";
 import { Trophy, Calendar, Plus, User, TrendingUp, Share2, Check, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useUIStore } from "../../stores/uiStore";
+import { trackEvent } from "../../lib/analytics";
 
 function ChallengeShareButton({ challenge }: { challenge: Challenge }) {
   const [copied, setCopied] = useState(false);
   const link = `${window.location.origin}/viral?join=${challenge.id}`;
 
   async function handleShare() {
+    trackEvent("challenge_sent", { challengeId: challenge.id, channel: "challenge_link" });
     const shareData = {
       title: `Join my "${challenge.name}" challenge on Silent Review`,
       text: challenge.description ?? "Guess ratings and compete with me!",
@@ -154,6 +156,7 @@ export function ChallengeList() {
     setJoiningId(challengeId);
     try {
       await joinChallenge(challengeId);
+      trackEvent("challenge_accepted", { challengeId });
       addToast("You joined the challenge!", "success");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not join challenge";

@@ -5,6 +5,7 @@ import { api } from "../lib/api";
 import { useAuthStore } from "../stores/authStore";
 import { FeedTabs } from "../components/feed/FeedTabs";
 import { Loading } from "../components/common/Loading";
+import { MetricsDashboard } from "./admin/MetricsDashboard";
 import { ShieldCheck, Check, X, Search, Flag, Eye } from "lucide-react";
 
 interface AdminStats {
@@ -49,6 +50,7 @@ const TABS = [
   { id: "moderation", label: "Moderation" },
   { id: "users", label: "Users" },
   { id: "products", label: "Products" },
+  { id: "metrics", label: "Metrics" },
 ];
 
 export function Admin() {
@@ -99,6 +101,7 @@ export function Admin() {
         {tab === "moderation" && <ModerationQueue onAction={invalidate} />}
         {tab === "users" && <UsersPanel onAction={invalidate} />}
         {tab === "products" && <ProductsPanel />}
+        {tab === "metrics" && <MetricsDashboard />}
       </div>
     </div>
   );
