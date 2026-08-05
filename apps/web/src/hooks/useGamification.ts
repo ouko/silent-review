@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 export interface GamificationState {
   streakDays: number;
   longestStreak: number;
+  freezeHeld: number;
   totalPoints: number;
   totalReviews: number;
   totalGuesses: number;
