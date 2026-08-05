@@ -265,6 +265,11 @@ async function main() {
     ["leaderboard_friends", true, "Enable friends tab on leaderboard"],
     ["analytics", true, "Enable event ingestion and analytics dashboard"],
     ["result_card_layout_v2", false, "Enable dial layout A/B variant for result cards"],
+    ["streak_freeze_ad_reward", false, "Earn streak freezes via rewarded ads (Phase 2)"],
+    ["streak_freeze_purchase", false, "Purchase streak freezes (Phase 2)"],
+    ["leagues", false, "Weekly leagues and leaderboards (Phase 2)"],
+    ["rewarded_ads", false, "Rewarded ad placements (Phase 2)"],
+    ["battle_pass", false, "Seasonal battle pass (Phase 3)"],
   ] as const;
 
   const flags = [];

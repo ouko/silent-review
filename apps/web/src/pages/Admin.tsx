@@ -7,6 +7,7 @@ import { FeedTabs } from "../components/feed/FeedTabs";
 import { Loading } from "../components/common/Loading";
 import { MetricsDashboard } from "./admin/MetricsDashboard";
 import { DailyDropSchedule } from "./admin/DailyDropSchedule";
+import { ContentQueue } from "./admin/ContentQueue";
 import { ShieldCheck, Check, X, Search, Flag, Eye } from "lucide-react";
 
 interface AdminStats {
@@ -51,6 +52,7 @@ const TABS = [
   { id: "moderation", label: "Moderation" },
   { id: "users", label: "Users" },
   { id: "products", label: "Products" },
+  { id: "content-queue", label: "Content Queue" },
   { id: "metrics", label: "Metrics" },
   { id: "dailydrop", label: "Daily Drop" },
 ];
@@ -103,6 +105,7 @@ export function Admin() {
         {tab === "moderation" && <ModerationQueue onAction={invalidate} />}
         {tab === "users" && <UsersPanel onAction={invalidate} />}
         {tab === "products" && <ProductsPanel />}
+        {tab === "content-queue" && <ContentQueue />}
         {tab === "metrics" && <MetricsDashboard />}
         {tab === "dailydrop" && <DailyDropSchedule />}
       </div>

@@ -11,6 +11,7 @@ import { ReviewDetail } from "./pages/ReviewDetail";
 import { ChallengeLanding } from "./pages/ChallengeLanding";
 import { Status } from "./pages/Status";
 import { Loading } from "./components/common/Loading";
+import { NotificationSettings } from "./components/notifications/NotificationSettings";
 
 const Browse = lazy(() => import("./pages/Home").then((m) => ({ default: m.Home })));
 const Record = lazy(() => import("./pages/Record").then((m) => ({ default: m.Record })));
@@ -65,6 +66,7 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
           { path: "/profile/:id", element: <LazyWrapper><Profile /></LazyWrapper> },
           { path: "/admin", element: <LazyWrapper><Admin /></LazyWrapper> },
           { path: "/analytics", element: <LazyWrapper><Analytics /></LazyWrapper> },
+          { path: "/notifications/settings", element: <NotificationSettings /> },
         ],
       },
     ],

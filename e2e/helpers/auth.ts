@@ -17,7 +17,7 @@ function uniqueSuffix(): string {
 export async function registerFreshUser(
   page: Page,
   opts: { password?: string } = {}
-): Promise<{ email: string; username: string }> {
+): Promise<{ email: string; username: string; token: string }> {
   const suffix = uniqueSuffix();
   const email = `e2e-${suffix}@silentreview.app`;
   const username = `e2euser${suffix}`;
@@ -42,7 +42,15 @@ export async function registerFreshUser(
   await expect(page).toHaveURL("/play", { timeout: 20000 });
   await expect(page.getByText("Daily Drop")).toBeVisible({ timeout: 15000 });
 
-  return { email, username };
+  // Log in via API so callers have a Bearer token for authenticated endpoints.
+  const loginRes = await page.context().request.post("/api/auth/login", {
+    data: { email, password },
+    headers: { "Content-Type": "application/json" },
+  });
+  await expect(loginRes.ok()).toBeTruthy();
+  const loginBody = (await loginRes.json()) as { accessToken: string };
+
+  return { email, username, token: loginBody.accessToken };
 }
 
 export async function loginDemoUser(

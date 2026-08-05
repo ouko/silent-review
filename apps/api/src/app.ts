@@ -31,6 +31,7 @@ import { adminRouter } from "./admin/admin.routes.js";
 import { analyticsRouter } from "./analytics/analytics.routes.js";
 import { viewsRouter } from "./views/views.routes.js";
 import { dailyDropRouter } from "./dailydrop/dailydrop.routes.js";
+import { notificationPreferencesRouter } from "./notifications/notificationPreferences.routes.js";
 
 export function createApp() {
   const app = express();
@@ -95,6 +96,7 @@ export function createApp() {
   app.use("/api/analytics", analyticsRouter);
   app.use("/api/views", viewsRouter);
   app.use("/api/dailydrop", dailyDropRouter);
+  app.use("/api/notifications/preferences", notificationPreferencesRouter);
 
   app.use(errorHandler);
 

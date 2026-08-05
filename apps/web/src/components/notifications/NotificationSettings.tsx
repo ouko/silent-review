@@ -3,23 +3,74 @@ import { motion } from "framer-motion";
 import { getPushPreferences, savePushPreferences, type PushPreferences } from "../../lib/push";
 import { PushPermission } from "./PushPermission";
 import { Bell } from "lucide-react";
+import { api } from "../../lib/api";
+
+interface GamePreferences {
+  dailyLive: boolean;
+  streakAtRisk: boolean;
+  challengeReceived: boolean;
+  scoreBeaten: boolean;
+}
+
+const defaultGamePrefs: GamePreferences = {
+  dailyLive: true,
+  streakAtRisk: true,
+  challengeReceived: true,
+  scoreBeaten: true,
+};
 
 export function NotificationSettings() {
   const [prefs, setPrefs] = useState<PushPreferences>(getPushPreferences());
+  const [gamePrefs, setGamePrefs] = useState<GamePreferences>(defaultGamePrefs);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     savePushPreferences(prefs);
   }, [prefs]);
 
-  function toggle(key: keyof PushPreferences) {
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ preferences: GamePreferences }>("/api/notifications/preferences")
+      .then((res) => {
+        if (!cancelled) setGamePrefs(res.data.preferences);
+      })
+      .catch(() => {
+        if (!cancelled) setGamePrefs(defaultGamePrefs);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function togglePush(key: keyof PushPreferences) {
     setPrefs((p) => ({ ...p, [key]: !p[key] }));
   }
 
-  const options: { key: keyof PushPreferences; label: string }[] = [
+  function toggleGame(key: keyof GamePreferences) {
+    const next = { ...gamePrefs, [key]: !gamePrefs[key] };
+    setGamePrefs(next);
+    api.patch("/api/notifications/preferences", { [key]: next[key] }).catch(() => {
+      // Revert on failure so the UI stays honest.
+      setGamePrefs((p) => ({ ...p, [key]: !p[key] }));
+    });
+  }
+
+  const pushOptions: { key: keyof PushPreferences; label: string }[] = [
     { key: "likes", label: "Likes on my reviews" },
     { key: "comments", label: "Comments on my reviews" },
     { key: "follows", label: "New followers" },
     { key: "guesses", label: "Guesses on my reviews" },
+  ];
+
+  const gameOptions: { key: keyof GamePreferences; label: string }[] = [
+    { key: "dailyLive", label: "Daily Drop is live" },
+    { key: "streakAtRisk", label: "Streak at risk" },
+    { key: "challengeReceived", label: "New challenges" },
+    { key: "scoreBeaten", label: "My score was beaten" },
   ];
 
   return (
@@ -46,7 +97,7 @@ export function NotificationSettings() {
         >
           <p className="mb-3 text-xs font-bold uppercase tracking-widest text-white/40">Notify me about</p>
           <div className="space-y-3">
-            {options.map((opt) => (
+            {pushOptions.map((opt) => (
               <label
                 key={opt.key}
                 className="flex items-center justify-between text-sm font-semibold text-white/90"
@@ -54,11 +105,35 @@ export function NotificationSettings() {
                 {opt.label}
                 <Toggle
                   checked={prefs[opt.key]}
-                  onChange={() => toggle(opt.key)}
+                  onChange={() => togglePush(opt.key)}
                   disabled={!prefs.enabled}
                 />
               </label>
             ))}
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm"
+        >
+          <p className="mb-3 text-xs font-bold uppercase tracking-widest text-white/40">Game notifications</p>
+          <div className="space-y-3">
+            {loading ? (
+              <p className="text-sm text-white/50">Loading preferences…</p>
+            ) : (
+              gameOptions.map((opt) => (
+                <label
+                  key={opt.key}
+                  className="flex items-center justify-between text-sm font-semibold text-white/90"
+                >
+                  {opt.label}
+                  <Toggle checked={gamePrefs[opt.key]} onChange={() => toggleGame(opt.key)} />
+                </label>
+              ))
+            )}
           </div>
         </motion.div>
       </div>

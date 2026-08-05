@@ -14,6 +14,9 @@ const mockPrisma: any = {
   user: {
     update: jest.fn(),
   },
+  challenge: {
+    findFirst: jest.fn().mockResolvedValue(null),
+  },
 };
 
 jest.unstable_mockModule("../prisma.js", () => ({

@@ -10,6 +10,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./copy.js": {
+      "import": "./dist/copy.js",
+      "types": "./dist/copy.d.ts"
     }
   },
   "scripts": {

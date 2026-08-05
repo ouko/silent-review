@@ -26,6 +26,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "deploy": "ENV_FILE=.env.prod ./scripts/deploy.sh",
+    "audit:flags": "dotenv -e .env -- node scripts/audit-feature-flags.mjs",
+    "curate:launch": "dotenv -e .env -- node scripts/curate-launch-content.mjs",
     "clean": "pnpm -r clean && rm -rf node_modules"
   },
   "devDependencies": {

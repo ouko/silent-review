@@ -2,6 +2,7 @@ import { prisma } from "../prisma.js"
 import { updateStreak } from "../gamification/streaks.service.js"
 import { calculateGuessScore } from "../guesses/guesses.service.js"
 import { computeGuessabilityScore } from "./guessability.js"
+import { getApprovedSchedule } from "../content-curation/contentCuration.service.js"
 import { Prisma } from "@silent-review/database"
 import type { Guess, Product, Review, User } from "@silent-review/database"
 
@@ -270,56 +271,106 @@ export async function scheduleDailyDrops(daysAhead = 90): Promise<{ scheduled: n
     return { scheduled: 0 }
   }
 
-  const candidateWhere: {
-    status: "PUBLISHED"
-    deletedAt: null
-    id?: { notIn: string[] }
-  } = { status: "PUBLISHED", deletedAt: null }
+  const curated = await getApprovedSchedule(daysAhead)
+  const curatedReviewIds = new Set(curated.map((c) => c.reviewId))
 
-  if (existingReviewIds.size > 0) {
-    candidateWhere.id = { notIn: [...existingReviewIds] }
-  }
+  const curatedAssignments = curated
+    .slice(0, dates.length)
+    .map((curation, idx) => ({ curation, date: dates[idx] }))
 
-  const candidates = await prisma.review.findMany({
-    where: candidateWhere,
-    include: {
-      product: true,
-      _count: { select: { guesses: true } },
-    },
-  })
+  const fallbackDates = dates.slice(curatedAssignments.length)
+  const usedReviewIds = new Set([...existingReviewIds, ...curatedReviewIds])
 
-  if (candidates.length === 0) {
-    return { scheduled: 0 }
-  }
+  let fallbackAssignments: { review: Review & { product: Product; _count: { guesses: number } }; score: number; date: Date }[] = []
 
-  const candidateIds = candidates.map((r) => r.id)
-  const distributions = await buildGuessDistributions(candidateIds)
+  if (fallbackDates.length > 0) {
+    const candidateWhere: {
+      status: "PUBLISHED"
+      deletedAt: null
+      id?: { notIn: string[] }
+    } = { status: "PUBLISHED", deletedAt: null }
 
-  const scored = candidates
-    .map((review) => ({
-      review,
-      score: computeGuessabilityScore(review, distributions.get(review.id)),
-    }))
-    .sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score
-      return (
-        new Date(a.review.createdAt).getTime() -
-        new Date(b.review.createdAt).getTime()
-      )
+    if (usedReviewIds.size > 0) {
+      candidateWhere.id = { notIn: [...usedReviewIds] }
+    }
+
+    const candidates = await prisma.review.findMany({
+      where: candidateWhere,
+      include: {
+        product: true,
+        _count: { select: { guesses: true } },
+      },
     })
 
-  const data = dates.slice(0, scored.length).map((date, idx) => ({
-    date,
-    reviewId: scored[idx].review.id,
-    isOverride: false,
-  }))
+    if (candidates.length > 0) {
+      const candidateIds = candidates.map((r) => r.id)
+      const distributions = await buildGuessDistributions(candidateIds)
 
-  if (data.length === 0) {
+      const scored = candidates
+        .map((review) => ({
+          review,
+          score: computeGuessabilityScore(review, distributions.get(review.id)),
+        }))
+        .sort((a, b) => {
+          if (b.score !== a.score) return b.score - a.score
+          return (
+            new Date(a.review.createdAt).getTime() -
+            new Date(b.review.createdAt).getTime()
+          )
+        })
+
+      fallbackAssignments = fallbackDates.slice(0, scored.length).map((date, idx) => ({
+        date,
+        review: scored[idx].review,
+        score: scored[idx].score,
+      }))
+    }
+  }
+
+  const totalScheduled = curatedAssignments.length + fallbackAssignments.length
+  if (totalScheduled === 0) {
     return { scheduled: 0 }
   }
 
-  await prisma.dailyDrop.createMany({ data })
-  return { scheduled: data.length }
+  await prisma.$transaction(async (tx) => {
+    for (const { curation, date } of curatedAssignments) {
+      await tx.contentCuration.update({
+        where: { id: curation.id },
+        data: { status: "SCHEDULED", scheduledDate: date },
+      })
+      await tx.dailyDrop.create({
+        data: { date, reviewId: curation.reviewId, isOverride: false },
+      })
+    }
+
+    for (const { review, score, date } of fallbackAssignments) {
+      await tx.dailyDrop.create({
+        data: { date, reviewId: review.id, isOverride: false },
+      })
+
+      const existingCuration = await tx.contentCuration.findFirst({
+        where: { reviewId: review.id },
+      })
+
+      if (existingCuration) {
+        await tx.contentCuration.update({
+          where: { id: existingCuration.id },
+          data: { status: "SCHEDULED", scheduledDate: date },
+        })
+      } else {
+        await tx.contentCuration.create({
+          data: {
+            reviewId: review.id,
+            guessabilityScore: score,
+            status: "SCHEDULED",
+            scheduledDate: date,
+          },
+        })
+      }
+    }
+  })
+
+  return { scheduled: totalScheduled }
 }
 
 async function buildGuessDistributions(

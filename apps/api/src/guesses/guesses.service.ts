@@ -75,7 +75,7 @@ export async function submitGuess(userId: string, reviewId: string, input: Submi
   checkAchievements(userId).catch(() => {});
 
   // Update any active per-video challenge for this review.
-  recordChallengeGuess(reviewId, userId, score).catch(() => {});
+  await recordChallengeGuess(reviewId, userId, score);
 
   return { guess, review };
 }

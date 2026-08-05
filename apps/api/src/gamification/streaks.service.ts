@@ -1,4 +1,5 @@
 import { prisma } from "../prisma.js";
+import { scheduleStreakAtRiskNotifications } from "../notifications/notificationScheduler.js";
 import { checkStreakMilestones, type MilestoneAward } from "./milestones.service.js";
 
 function startOfDayUTC(d: Date): Date {
@@ -149,52 +150,8 @@ export async function processMissedStreaks(): Promise<{ protected: number; reset
 }
 
 export async function notifyStreakAtRisk(): Promise<{ notified: number }> {
-  const now = new Date();
-  const startOfToday = startOfDayUTC(now);
-  const startOfTomorrow = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
-
-  const alreadyNotified = await prisma.notification.findMany({
-    where: {
-      type: "STREAK_AT_RISK",
-      createdAt: { gte: startOfToday, lt: startOfTomorrow },
-    },
-    select: { userId: true },
-  });
-  const notifiedSet = new Set(alreadyNotified.map((n) => n.userId));
-
-  const users = await prisma.user.findMany({
-    where: {
-      deletedAt: null,
-      streakDays: { gt: 0 },
-      lastActiveAt: { lt: startOfToday },
-      ...(notifiedSet.size > 0 ? { id: { notIn: [...notifiedSet] } } : {}),
-    },
-    select: { id: true, streakDays: true },
-  });
-
-  if (users.length === 0) return { notified: 0 };
-
-  await prisma.notification.createMany({
-    data: users.map((u) => ({
-      userId: u.id,
-      type: "STREAK_AT_RISK" as const,
-      title: `Your ${u.streakDays}-day streak ends tonight`,
-      body: "Play today's Daily Drop before midnight to keep it alive.",
-      data: { streakDays: u.streakDays },
-    })),
-  });
-
-  await prisma.event.createMany({
-    data: users.map((u) => ({
-      type: "streak_at_risk" as const,
-      userId: u.id,
-      sessionId: "server",
-      channel: "organic",
-      properties: { streakDays: u.streakDays },
-    })),
-  });
-
-  return { notified: users.length };
+  const result = await scheduleStreakAtRiskNotifications();
+  return { notified: result.created };
 }
 
 function msUntilNextUTC(hour: number): number {

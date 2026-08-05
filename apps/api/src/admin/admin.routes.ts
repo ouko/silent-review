@@ -2,6 +2,14 @@ import { Router } from "express";
 import { prisma } from "../prisma.js";
 import { requireAuth, requireRole, type AuthenticatedRequest } from "../middleware/auth.js";
 import { clearFeedCache } from "../upload/moderationQueue.js";
+import { scheduleDailyLiveNotifications } from "../notifications/notificationScheduler.js";
+import { notifyStreakAtRisk } from "../gamification/streaks.service.js";
+import {
+  curateNextCandidates,
+  listContentQueue,
+  updateCurationStatus,
+} from "../content-curation/contentCuration.service.js";
+import type { CurationStatus } from "@silent-review/database";
 
 /**
  * Bare-minimum admin platform:
@@ -190,6 +198,42 @@ adminRouter.post("/users/:id/role", async (req, res, next) => {
   }
 });
 
+adminRouter.post("/run-daily-live", async (_req, res, next) => {
+  try {
+    const today = new Date(
+      Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate(), 0, 0, 0, 0)
+    );
+    const dailyDrop = await prisma.dailyDrop.findUnique({
+      where: { date: today },
+      select: { id: true },
+    });
+    if (!dailyDrop) {
+      res.status(400).json({ error: "No Daily Drop scheduled for today" });
+      return;
+    }
+
+    const activeSince = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const users = await prisma.user.findMany({
+      where: { deletedAt: null, lastActiveAt: { not: null, gte: activeSince } },
+      select: { id: true, lastActiveAt: true },
+    });
+
+    const result = await scheduleDailyLiveNotifications(dailyDrop.id, users);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.post("/run-streak-at-risk", async (_req, res, next) => {
+  try {
+    const result = await notifyStreakAtRisk();
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 adminRouter.get("/products", async (req, res, next) => {
   try {
     const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
@@ -233,6 +277,74 @@ adminRouter.post("/products/:id/owner", async (req, res, next) => {
       return;
     }
     res.json({ status: "ok" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+const CURATION_STATUSES: Set<string> = new Set(["CANDIDATE", "APPROVED", "REJECTED", "SCHEDULED"]);
+
+function isCurationStatus(value: unknown): value is CurationStatus {
+  return typeof value === "string" && CURATION_STATUSES.has(value);
+}
+
+function serializeCuration(value: unknown): unknown {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (Array.isArray(value)) {
+    return value.map(serializeCuration);
+  }
+  if (value !== null && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
+      out[key] = serializeCuration(val);
+    }
+    return out;
+  }
+  return value;
+}
+
+adminRouter.get("/content-queue", async (req, res, next) => {
+  try {
+    const status = isCurationStatus(req.query.status) ? req.query.status : undefined;
+    const cursor = typeof req.query.cursor === "string" ? req.query.cursor : undefined;
+    const rawLimit = typeof req.query.limit === "string" ? parseInt(req.query.limit, 10) : 20;
+    const limit = Number.isNaN(rawLimit) ? 20 : Math.min(Math.max(1, rawLimit), 50);
+
+    const result = await listContentQueue({ status, cursor, limit });
+    res.json(serializeCuration(result));
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.post("/content-queue/curate", async (req, res, next) => {
+  try {
+    const rawLimit = typeof req.body?.limit === "number" ? req.body.limit : 20;
+    const limit = Number.isNaN(rawLimit) ? 20 : Math.min(Math.max(1, rawLimit), 100);
+    const result = await curateNextCandidates(limit);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.patch("/content-queue/:id/status", async (req, res, next) => {
+  try {
+    const status = req.body?.status;
+    if (!isCurationStatus(status)) {
+      res.status(400).json({ error: "Invalid or missing status" });
+      return;
+    }
+
+    const scheduledDate =
+      typeof req.body?.scheduledDate === "string" && req.body.scheduledDate.length > 0
+        ? new Date(`${req.body.scheduledDate}T00:00:00.000Z`)
+        : undefined;
+
+    const result = await updateCurationStatus(req.params.id, status, scheduledDate);
+    res.json(serializeCuration(result));
   } catch (err) {
     next(err);
   }

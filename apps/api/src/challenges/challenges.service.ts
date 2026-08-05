@@ -1,4 +1,8 @@
 import { prisma } from "../prisma.js";
+import {
+  scheduleChallengeReceivedNotification,
+  scheduleScoreBeatenNotification,
+} from "../notifications/notificationScheduler.js";
 
 const CHALLENGE_TTL_HOURS = 24;
 const MAX_ACTIVE_PER_VIDEO_CHALLENGES = 10;
@@ -88,15 +92,15 @@ export async function createPerVideoChallenge(input: CreatePerVideoChallengeInpu
 
   if (challengedId) {
     const challengerName = challenge.challenger?.displayName ?? challenge.challenger?.username ?? "Someone";
-    await prisma.notification.create({
-      data: {
-        userId: challengedId,
-        type: "CHALLENGE_RECEIVED",
-        title: "You've been challenged",
-        body: `${challengerName} challenged you to beat their ${existingGuess.score}/10 score`,
-        data: { challengeId: challenge.id, reviewId },
+    await scheduleChallengeReceivedNotification(
+      {
+        id: challenge.id,
+        challengerId: challenge.challengerId!,
+        challengedId: challenge.challengedId,
+        reviewId: challenge.reviewId,
       },
-    });
+      challengerName
+    );
   }
 
   return challenge;
@@ -169,20 +173,19 @@ export async function recordChallengeGuess(reviewId: string, userId: string, sco
           ? updated.challengerId
           : null;
 
-    if (winnerId === updated.challengedId && updated.challengedId) {
-      const loserId = updated.challengerId;
-      if (loserId) {
-        const challengerName = updated.challenger?.displayName ?? updated.challenger?.username ?? "Someone";
-        await prisma.notification.create({
-          data: {
-            userId: loserId,
-            type: "CHALLENGE_BEAT",
-            title: `${challengerName} beat your score`,
-            body: `They scored ${updated.challengedScore}/10 vs your ${updated.challengerScore}/10. Tap for a rematch!`,
-            data: { challengeId: challenge.id, reviewId },
-          },
-        });
-      }
+    if (winnerId && winnerId !== updated.challengerId) {
+      const beaterName =
+        updated.challenged?.displayName ?? updated.challenged?.username ?? "Someone";
+      await scheduleScoreBeatenNotification(
+        {
+          id: updated.id,
+          challengerId: updated.challengerId!,
+          challengedId: updated.challengedId,
+          challengerScore: updated.challengerScore,
+          challengedScore: updated.challengedScore,
+        },
+        beaterName
+      );
     }
   }
 
@@ -300,15 +303,18 @@ export async function generateRematch(challengeId: string, userId: string) {
 
   // Notify the opponent that a rematch has started.
   const opponentId = userId === challengerId ? challengedId : challengerId;
-  await prisma.notification.create({
-    data: {
-      userId: opponentId,
-      type: "CHALLENGE_RECEIVED",
-      title: "Rematch started",
-      body: `${rematch.challenger?.displayName ?? rematch.challenger?.username ?? "Someone"} sent you a rematch`,
-      data: { challengeId: rematch.id, reviewId: rematch.reviewId },
-    },
-  });
+  if (opponentId) {
+    const challengerName = rematch.challenger?.displayName ?? rematch.challenger?.username ?? "Someone";
+    await scheduleChallengeReceivedNotification(
+      {
+        id: rematch.id,
+        challengerId: rematch.challengerId!,
+        challengedId: rematch.challengedId,
+        reviewId: rematch.reviewId,
+      },
+      challengerName
+    );
+  }
 
   return rematch;
 }

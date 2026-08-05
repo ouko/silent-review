@@ -12,6 +12,9 @@ export const DEFAULT_FEATURE_FLAGS = [
   { key: "share_export", enabled: true, description: "Enable video share/export" },
   { key: "streak_freeze_ad_reward", enabled: false, description: "Earn streak freezes via rewarded ads (Phase 2)" },
   { key: "streak_freeze_purchase", enabled: false, description: "Purchase streak freezes (Phase 2)" },
+  { key: "leagues", enabled: false, description: "Weekly leagues and leaderboards (Phase 2)" },
+  { key: "rewarded_ads", enabled: false, description: "Rewarded ad placements (Phase 2)" },
+  { key: "battle_pass", enabled: false, description: "Seasonal battle pass (Phase 3)" },
 ];
 
 export async function seedFeatureFlags(): Promise<void> {

@@ -3,6 +3,7 @@ import { Prisma } from '@silent-review/database'
 import { computeGuessabilityScore } from './guessability.js'
 
 const mockPrisma: any = {
+  $transaction: jest.fn(async (fn: any) => fn(mockPrisma)),
   dailyDrop: {
     findUnique: jest.fn(),
     findFirst: jest.fn(),
@@ -25,6 +26,15 @@ const mockPrisma: any = {
     findMany: jest.fn(),
     update: jest.fn(),
     groupBy: jest.fn(),
+  },
+  contentCuration: {
+    findUnique: jest.fn(),
+    findFirst: jest.fn(),
+    findMany: jest.fn(),
+    create: jest.fn(),
+    createMany: jest.fn(),
+    update: jest.fn(),
+    updateMany: jest.fn(),
   },
   user: {
     findUnique: jest.fn(),
@@ -59,10 +69,7 @@ function uniqueConstraintError() {
 }
 
 function totalCreatedDailyDrops() {
-  const createManyData = mockPrisma.dailyDrop.createMany.mock.calls[0]?.[0]?.data
-  const createManyCount = Array.isArray(createManyData) ? createManyData.length : 0
-  const createCount = mockPrisma.dailyDrop.create.mock.calls.length
-  return createManyCount + createCount
+  return mockPrisma.dailyDrop.create.mock.calls.length
 }
 
 describe('dailydrop service', () => {
@@ -185,7 +192,10 @@ describe('dailydrop service', () => {
       }))
       mockPrisma.review.findMany.mockResolvedValue(candidates)
       mockPrisma.guess.groupBy.mockResolvedValue([])
-      mockPrisma.dailyDrop.createMany.mockResolvedValue({ count: 88 })
+      mockPrisma.contentCuration.findMany.mockResolvedValue([])
+      mockPrisma.contentCuration.findFirst.mockResolvedValue(null)
+      mockPrisma.contentCuration.create.mockResolvedValue({})
+      mockPrisma.dailyDrop.create.mockResolvedValue({})
 
       const result = await service.scheduleDailyDrops()
 
