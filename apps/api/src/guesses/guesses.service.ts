@@ -1,5 +1,4 @@
 import { prisma } from "../prisma.js";
-import { updateStreak } from "../gamification/streaks.service.js";
 import { checkAchievements } from "../gamification/achievements.service.js";
 import type { SubmitGuessInput } from "./guesses.validation.js";
 
@@ -72,9 +71,7 @@ export async function submitGuess(userId: string, reviewId: string, input: Submi
   }
 
   // Gamification updates (fire-and-forget)
-  updateStreak(userId)
-    .then(() => checkAchievements(userId))
-    .catch(() => {});
+  checkAchievements(userId).catch(() => {});
 
   return { guess, review };
 }

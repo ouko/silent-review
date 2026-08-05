@@ -2,7 +2,6 @@ import { join } from "path";
 import { prisma } from "../prisma.js";
 import { getRedis } from "../redis.js";
 import { notifyFollowersOfReview } from "../socket/index.js";
-import { updateStreak } from "../gamification/streaks.service.js";
 import { checkAchievements } from "../gamification/achievements.service.js";
 import { addPoints } from "../gamification/points.service.js";
 import { enqueueModeration } from "../upload/moderationQueue.js";
@@ -89,8 +88,7 @@ export async function createReview(userId: string, input: CreateReviewInput) {
   });
 
   // Gamification updates (fire-and-forget)
-  updateStreak(userId)
-    .then(() => addPoints(userId, 10))
+  addPoints(userId, 10)
     .then(() => checkAchievements(userId))
     .catch(() => {});
 
