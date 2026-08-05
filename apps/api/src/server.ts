@@ -5,6 +5,7 @@ import { initSocketServer } from "./socket/index.js";
 import { recoverStuckReviews } from "./upload/moderationQueue.js";
 import { scheduleAnalyticsRollup } from "@silent-review/database";
 import { startDailyDropScheduler } from "./dailydrop/dailydrop.scheduler.js";
+import { scheduleStreakJobs } from "./gamification/streaks.service.js";
 
 const app = createApp();
 const httpServer = createServer(app);
@@ -12,6 +13,7 @@ const httpServer = createServer(app);
 initSocketServer(httpServer);
 scheduleAnalyticsRollup();
 startDailyDropScheduler();
+scheduleStreakJobs();
 
 const port = Number(env.PORT);
 httpServer.listen(port, () => {
