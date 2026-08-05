@@ -6,6 +6,7 @@ import { ToastContainer } from "../common/Toast";
 import { useUIStore } from "../../stores/uiStore";
 import { useAuthStore } from "../../stores/authStore";
 import { initAnalytics, setAnalyticsUser, trackEvent } from "../../lib/analytics";
+import { ChallengeNotificationToast } from "../notifications/ChallengeNotificationToast";
 
 export function MainLayout() {
   const showBottomNav = useUIStore((s) => s.showBottomNav);
@@ -36,6 +37,7 @@ export function MainLayout() {
 
   return (
     <div className="flex h-dvh flex-col bg-black text-white">
+      <ChallengeNotificationToast />
       <main className="relative flex-1 overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
