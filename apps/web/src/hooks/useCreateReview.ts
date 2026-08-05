@@ -23,6 +23,7 @@ export interface ReviewInput {
   rating: number;
   caption: string;
   productTag?: string;
+  allowComments?: boolean;
   duetOfId?: string | null;
 }
 
@@ -56,6 +57,7 @@ export function useCreateReview(options?: { onSuccess?: (review: FeedReview) => 
         format: file.type,
         rating: review.rating,
         caption: review.caption,
+        ...(review.allowComments !== undefined ? { allowComments: review.allowComments } : {}),
         ...(review.productTag ? { productTag: review.productTag } : {}),
         ...(review.duetOfId ? { duetOfId: review.duetOfId } : {}),
       });
@@ -63,7 +65,7 @@ export function useCreateReview(options?: { onSuccess?: (review: FeedReview) => 
       if (data.status === "UNDER_REVIEW") {
         const moderation = await waitForModeration(uploadResult.url);
         if (moderation?.status === "REJECT") {
-          throw new Error("This video couldn't be uploaded because it may violate community guidelines.");
+          throw new Error(moderationMessage(moderation.reasons));
         }
       }
 
@@ -142,6 +144,20 @@ export function useCreateReview(options?: { onSuccess?: (review: FeedReview) => 
     error: rawError ? new Error(formatUserError(rawError)) : null,
     reset: mutation.reset,
   };
+}
+
+function moderationMessage(reasons?: string[]): string {
+  const joined = (reasons ?? []).join(" ").toLowerCase();
+  if (joined.includes("skin")) {
+    return "This video looks mostly skin-toned. Please record the product itself, clearly, instead of yourself.";
+  }
+  if (joined.includes("entropy") || joined.includes("identical") || joined.includes("still")) {
+    return "This video looks like a still image. Please record a real 5-second video of the product.";
+  }
+  if (joined.includes("dark")) {
+    return "This video is too dark to review. Please record again with better lighting.";
+  }
+  return "This video couldn't be uploaded because it may violate community guidelines. Please record the product clearly and try again.";
 }
 
 async function waitForModeration(

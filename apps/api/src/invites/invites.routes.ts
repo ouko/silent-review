@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
-import { createInvite, getInviteByCode, getInvitesForUser, trackInviteClick } from "./invites.service.js";
+import { createInvite, deleteInvite, getInviteByCode, getInvitesForUser, trackInviteClick } from "./invites.service.js";
 
 export const invitesRouter = Router();
 
@@ -16,14 +16,31 @@ invitesRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res, next
 
 invitesRouter.get("/me", requireAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
-    const invites = await getInvitesForUser(req.user!.id);
+    const parsedLimit = Number(req.query.limit);
+    const limit = Number.isInteger(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 50) : 10;
+    const cursor = typeof req.query.cursor === "string" && req.query.cursor ? req.query.cursor : undefined;
+    const { invites, nextCursor } = await getInvitesForUser(req.user!.id, { cursor, limit });
     const baseUrl = process.env.WEB_APP_URL || `${req.protocol}://${req.get("host")}`;
     res.json({
       invites: invites.map((invite) => ({
         ...invite,
         link: `${baseUrl}/invite/${invite.code}`,
       })),
+      nextCursor,
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+invitesRouter.delete("/:id", requireAuth, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const deleted = await deleteInvite(req.params.id, req.user!.id);
+    if (!deleted) {
+      res.status(404).json({ error: "Invite not found" });
+      return;
+    }
+    res.status(204).end();
   } catch (err) {
     next(err);
   }

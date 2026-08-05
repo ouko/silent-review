@@ -7,11 +7,12 @@ interface VideoPlayerProps {
   shouldPlay: boolean;
   preload?: boolean;
   poster?: string | null;
+  reviewId?: string;
   onClick?: () => void;
 }
 
-export function VideoPlayer({ src, shouldPlay, preload, poster, onClick }: VideoPlayerProps) {
-  const { videoRef, isBuffering, error, reload } = useVideoPlayer({ src, shouldPlay, preload });
+export function VideoPlayer({ src, shouldPlay, preload, poster, reviewId, onClick }: VideoPlayerProps) {
+  const { videoRef, isBuffering, error, reload } = useVideoPlayer({ src, shouldPlay, preload, reviewId });
 
   return (
     <div className="relative h-full w-full bg-black" onClick={onClick}>

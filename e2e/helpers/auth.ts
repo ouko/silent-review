@@ -39,8 +39,8 @@ export async function registerFreshUser(
   await submitButton.click();
   await registerResponse;
 
-  await expect(page).toHaveURL("/", { timeout: 20000 });
-  await expect(page.getByText("For You")).toBeVisible({ timeout: 15000 });
+  await expect(page).toHaveURL("/play", { timeout: 20000 });
+  await expect(page.getByText("Daily Drop")).toBeVisible({ timeout: 15000 });
 
   return { email, username };
 }
@@ -63,6 +63,6 @@ export async function loginDemoUser(
   await submitButton.click();
   await loginResponse;
 
-  await expect(page).toHaveURL("/", { timeout: 20000 });
-  await expect(page.getByText("For You")).toBeVisible();
+  await expect(page).toHaveURL("/play", { timeout: 20000 });
+  await expect(page.getByText("Daily Drop")).toBeVisible();
 }

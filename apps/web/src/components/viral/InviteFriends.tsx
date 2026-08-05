@@ -1,11 +1,12 @@
 import { motion } from "framer-motion";
 import { useInvites } from "../../hooks/useInvites";
-import { Share2, Copy, Check, Users, MessageCircle, Mail } from "lucide-react";
+import { Share2, Copy, Check, Users, MessageCircle, Mail, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useUIStore } from "../../stores/uiStore";
+import { trackEvent } from "../../lib/analytics";
 
 export function InviteFriends() {
-  const { invites, isLoading, createInvite, isCreating } = useInvites();
+  const { invites, isLoading, hasMore, loadMore, isLoadingMore, createInvite, isCreating, deleteInvite, isDeleting } = useInvites();
   const addToast = useUIStore((s) => s.addToast);
   const [lastInviteLink, setLastInviteLink] = useState<string | null>(null);
 
@@ -16,6 +17,7 @@ export function InviteFriends() {
     }
     try {
       const invite = await createInvite();
+      trackEvent("invite_sent", { code: invite.code, link: invite.link });
       setLastInviteLink(invite.link);
       return { link: invite.link, code: invite.code };
     } catch {
@@ -155,9 +157,29 @@ export function InviteFriends() {
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                 )}
+                <button
+                  onClick={async () => {
+                    await deleteInvite(invite.id);
+                    addToast("Invite removed", "success");
+                  }}
+                  disabled={isDeleting}
+                  className="rounded-full bg-white/10 p-1.5 text-white/50 transition-colors hover:bg-rose-500/20 hover:text-rose-300 disabled:opacity-50"
+                  aria-label="Delete invite"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
           ))}
+          {hasMore && (
+            <button
+              onClick={() => loadMore()}
+              disabled={isLoadingMore}
+              className="w-full rounded-2xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/70 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+            >
+              {isLoadingMore ? "Loading..." : `Show more invites`}
+            </button>
+          )}
         </div>
       )}
     </section>

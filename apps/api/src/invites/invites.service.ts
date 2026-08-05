@@ -33,9 +33,22 @@ export async function acceptInvite(code: string, inviteeId: string) {
   });
 }
 
-export async function getInvitesForUser(inviterId: string) {
-  return prisma.invite.findMany({
+export async function getInvitesForUser(
+  inviterId: string,
+  opts: { cursor?: string; limit: number } = { limit: 10 }
+) {
+  const invites = await prisma.invite.findMany({
     where: { inviterId },
     orderBy: { createdAt: "desc" },
+    take: opts.limit,
+    ...(opts.cursor ? { cursor: { id: opts.cursor }, skip: 1 } : {}),
   });
+  const nextCursor = invites.length === opts.limit ? invites[invites.length - 1].id : undefined;
+  return { invites, nextCursor };
+}
+
+/** Owner-scoped delete so users can weed out stale invites. */
+export async function deleteInvite(id: string, inviterId: string): Promise<boolean> {
+  const result = await prisma.invite.deleteMany({ where: { id, inviterId } });
+  return result.count > 0;
 }

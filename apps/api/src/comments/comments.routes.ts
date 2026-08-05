@@ -57,9 +57,16 @@ commentsRouter.post("/reviews/:reviewId/comments", requireAuth, async (req: Auth
     const reviewId = req.params.reviewId;
     const { text, parentId } = CreateCommentSchema.parse(req.body);
 
-    const review = await prisma.review.findUnique({ where: { id: reviewId }, select: { userId: true } });
+    const review = await prisma.review.findUnique({
+      where: { id: reviewId },
+      select: { userId: true, allowComments: true },
+    });
     if (!review) {
       res.status(404).json({ error: "Review not found" });
+      return;
+    }
+    if (!review.allowComments) {
+      res.status(403).json({ error: "Comments are turned off for this review" });
       return;
     }
 

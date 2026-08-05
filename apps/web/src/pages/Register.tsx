@@ -8,6 +8,7 @@ import { AuthLayout } from "../components/auth/AuthLayout";
 import { AuthInput } from "../components/auth/AuthInput";
 import { AuthButton } from "../components/auth/AuthButton";
 import { SocialButton, PROVIDER_LABELS } from "../components/auth/SocialButton";
+import { trackEvent } from "../lib/analytics";
 
 export function Register() {
   const navigate = useNavigate();
@@ -46,6 +47,9 @@ export function Register() {
       setUser(user);
       setAccessToken(accessToken);
       setLoading(false);
+      if (inviteCode) {
+        trackEvent("invite_install_attributed", { inviteCode });
+      }
       navigate("/");
     } catch (err) {
       setError(formatUserError(err));

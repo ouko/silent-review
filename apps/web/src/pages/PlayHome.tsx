@@ -1,0 +1,86 @@
+import { useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useFeed } from "../hooks/useFeed";
+import { useTodaysDailyDrop } from "../hooks/useDailyDrop";
+import { useChallenges } from "../hooks/useChallenges";
+import { usePlayStore } from "../stores/playStore";
+import { StreakHeader } from "../components/play/StreakHeader";
+import { DailyDropCard } from "../components/play/DailyDropCard";
+import { ChallengeInbox } from "../components/play/ChallengeInbox";
+import { ContinuePlaying } from "../components/play/ContinuePlaying";
+import { trackEvent } from "../lib/analytics";
+
+const APP_OPEN_TIME_KEY = "sr_app_open_time";
+const FIRST_ROUND_TRACKED_KEY = "sr_first_round_tracked";
+
+export function PlayHome() {
+  const navigate = useNavigate();
+  const { data: feedData } = useFeed("for-you");
+  const { data: dailyDropData, isLoading: dailyDropLoading } = useTodaysDailyDrop();
+  const { discoverChallenges } = useChallenges();
+  const setDailyDrop = usePlayStore((s) => s.setDailyDrop);
+  const setPendingChallengeCount = usePlayStore((s) => s.setPendingChallengeCount);
+  const playedIds = usePlayStore((s) => s.playedReviewIds);
+
+  const reviews = feedData?.pages.flatMap((page) => page.reviews) ?? [];
+
+  const continueList = reviews.filter((r) => r.id !== dailyDropData?.dailyDrop.review.id).slice(0, 10);
+
+  useEffect(() => {
+    setDailyDrop(dailyDropData?.dailyDrop.review.id ?? null);
+  }, [dailyDropData?.dailyDrop.review.id, setDailyDrop]);
+
+  useEffect(() => {
+    setPendingChallengeCount(discoverChallenges.length);
+  }, [discoverChallenges.length, setPendingChallengeCount]);
+
+  const appOpenTimeRef = useRef<number | null>(null);
+  useEffect(() => {
+    const stored = sessionStorage.getItem(APP_OPEN_TIME_KEY);
+    appOpenTimeRef.current = stored ? Number(stored) : Date.now();
+    if (!stored) {
+      sessionStorage.setItem(APP_OPEN_TIME_KEY, String(appOpenTimeRef.current));
+    }
+  }, []);
+
+  function trackFirstRoundStart() {
+    const tracked = sessionStorage.getItem(FIRST_ROUND_TRACKED_KEY);
+    if (tracked || appOpenTimeRef.current == null) return;
+    const elapsedMs = Date.now() - appOpenTimeRef.current;
+    trackEvent("first_round_start_time", { elapsedMs });
+    sessionStorage.setItem(FIRST_ROUND_TRACKED_KEY, "1");
+  }
+
+  function handlePlayDailyDrop() {
+    trackFirstRoundStart();
+    navigate("/dailydrop");
+  }
+
+  function handlePlay(reviewId: string) {
+    trackFirstRoundStart();
+    navigate(`/play/${reviewId}`);
+  }
+
+  return (
+    <div className="flex h-full flex-col gap-4 overflow-y-auto px-4 pb-6 pt-4" style={{ scrollbarWidth: "none" }}>
+      <StreakHeader />
+
+      <section className="space-y-2">
+        <DailyDropCard
+          dailyDrop={dailyDropData?.dailyDrop}
+          alreadyGuessed={dailyDropData?.alreadyGuessed}
+          onPlay={handlePlayDailyDrop}
+          isLoading={dailyDropLoading}
+        />
+      </section>
+
+      <ChallengeInbox />
+
+      <ContinuePlaying
+        reviews={continueList}
+        playedReviewIds={playedIds}
+        onSelect={(review) => handlePlay(review.id)}
+      />
+    </div>
+  );
+}

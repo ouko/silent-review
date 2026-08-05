@@ -67,7 +67,7 @@ export function CreateReview() {
     setStep("record");
   }
 
-  async function handleSubmit(input: { rating: number; caption: string; tag?: string }) {
+  async function handleSubmit(input: { rating: number; caption: string; tag?: string; allowComments: boolean }) {
     if (!recordedBlob || !selectedProduct) return;
 
     setUploadError(null);
@@ -100,6 +100,7 @@ export function CreateReview() {
         rating: input.rating,
         caption: input.caption,
         productTag: input.tag,
+        allowComments: input.allowComments,
         duetOfId,
       },
     });

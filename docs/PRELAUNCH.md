@@ -18,7 +18,9 @@ current as items are completed.
    runs migrations, health-checks, auto-rolls-back on failure).
 6. **Smoke test in prod:** register, upload a >5s video with audio (should be
    normalized and appear on the profile), feed loads, follow/unfollow,
-   comments, realtime notifications.
+   comments, realtime notifications. For an automated gate, run the smoke
+   suite against the live URL:
+   `PLAYWRIGHT_BASE_URL=https://your-domain pnpm test:e2e e2e/prod-smoke.spec.ts`
 7. **Set up the backup cron and rehearse a restore once** (see Backups).
 
 ## `.env.prod` requirements

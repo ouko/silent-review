@@ -2,6 +2,9 @@ import { prisma } from "../prisma.js";
 import { env } from "../config/index.js";
 import { runVideoModeration } from "./moderationEngine.js";
 import { withPlaintextCopy } from "./storageCrypto.js";
+import { getRedis } from "../redis.js";
+import { UPLOAD_BASE_URL, UPLOAD_DIR } from "./upload-helpers.js";
+import { join } from "path";
 import { Prisma } from "@silent-review/database";
 
 interface QueueItem {
@@ -17,6 +20,38 @@ export function enqueueModeration(videoPath: string, duration: number, reviewId?
   if (env.VIDEO_MODERATION_ENABLED !== "true") return;
   queue.push({ videoPath, duration, reviewId });
   void processQueue();
+}
+
+/**
+ * The queue is in-memory, so API restarts strand reviews in UNDER_REVIEW
+ * forever. On boot, re-enqueue anything stuck (older than a few minutes so
+ * in-flight work isn't double-processed).
+ */
+export async function recoverStuckReviews(): Promise<void> {
+  if (env.VIDEO_MODERATION_ENABLED !== "true") return;
+  try {
+    const cutoff = new Date(Date.now() - 5 * 60 * 1000);
+    const stuck = await prisma.review.findMany({
+      where: { status: "UNDER_REVIEW", deletedAt: null, createdAt: { lt: cutoff } },
+      select: { id: true, videoUrl: true, duration: true },
+      take: 50,
+    });
+    for (const review of stuck) {
+      const path = videoUrlToAbsolutePath(review.videoUrl);
+      if (path) {
+        console.warn(`[moderationQueue] recovering stuck review ${review.id}`);
+        enqueueModeration(path, review.duration, review.id);
+      }
+    }
+  } catch (err) {
+    console.error("[moderationQueue] stuck-review recovery failed", err);
+  }
+}
+
+function videoUrlToAbsolutePath(videoUrl: string): string | null {
+  const uploadPrefix = `${UPLOAD_BASE_URL}/`;
+  if (!videoUrl.startsWith(uploadPrefix)) return null;
+  return join(UPLOAD_DIR, videoUrl.slice(uploadPrefix.length));
 }
 
 export async function processQueue(): Promise<void> {
@@ -60,11 +95,22 @@ async function runModeration(item: QueueItem): Promise<void> {
       });
 
       if (result.status === "REJECT") {
+        // Remove rejected content from the app entirely (soft delete) — the
+        // uploader gets a clear error at post time and the video must not
+        // linger on their profile or anywhere else.
         await prisma.review.update({
           where: { id: item.reviewId },
-          data: { status: "HIDDEN" },
+          data: { status: "HIDDEN", deletedAt: new Date() },
+        });
+      } else if (result.status === "PASS") {
+        // Publish: without this transition reviews would stay UNDER_REVIEW
+        // forever and never reach the feed (feed only serves PUBLISHED).
+        await prisma.review.update({
+          where: { id: item.reviewId },
+          data: { status: "PUBLISHED" },
         });
       }
+      await clearFeedCache();
     }
   } catch (err) {
     const failClosed = env.VIDEO_MODERATION_FAIL_CLOSED === "true";
@@ -91,6 +137,24 @@ async function runModeration(item: QueueItem): Promise<void> {
       }
     }
     console.error("Moderation failed", err);
+  }
+}
+
+export async function clearFeedCache(): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
+
+  const stream = redis.scanStream({ match: "feed:*", count: 100 });
+  const keysToDelete: string[] = [];
+  stream.on("data", (keys: string[]) => {
+    if (keys.length) keysToDelete.push(...keys);
+  });
+  await new Promise<void>((resolve, reject) => {
+    stream.on("end", () => resolve());
+    stream.on("error", reject);
+  });
+  if (keysToDelete.length > 0) {
+    await redis.del(...keysToDelete);
   }
 }
 

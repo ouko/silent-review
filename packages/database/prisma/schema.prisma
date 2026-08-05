@@ -1,5 +1,8 @@
 generator client {
   provider = "prisma-client-js"
+  // The production image is Alpine (musl) with OpenSSL 3; without this target
+  // Prisma ships the OpenSSL 1.1 engine and crashes with libssl.so.1.1 missing.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
 datasource db {
@@ -23,9 +26,11 @@ model User {
   totalGuesses  Int   @default(0)
   totalPoints   Int   @default(0)
   totalLikes    Int   @default(0)
-  streakDays    Int   @default(0)
-  longestStreak Int   @default(0)
-  lastActiveAt  DateTime?
+  streakDays         Int       @default(0)
+  longestStreak      Int       @default(0)
+  freezeHeld         Int       @default(0)
+  lastFreezeEarnedAt DateTime?
+  lastActiveAt       DateTime?
 
   // Preferences stored as JSONB for flexibility
   preferences Json? @default("{}")
@@ -39,6 +44,7 @@ model User {
   likes         Like[]
   comments      Comment[]
   shareEvents   ShareEvent[]
+  ownedProducts Product[]      @relation("OwnedProducts")
   followers     Follow[]       @relation("following")
   following     Follow[]       @relation("follower")
   refreshTokens RefreshToken[]
@@ -60,6 +66,7 @@ model User {
 enum UserRole {
   USER
   CREATOR
+  MERCHANT
   MODERATOR
   ADMIN
 }
@@ -100,6 +107,10 @@ model Product {
   tags        String[]
   metadata    Json?    @default("{}")
 
+  // The merchant account that owns this product (assigned by an admin).
+  ownerId String?
+  owner   User?   @relation("OwnedProducts", fields: [ownerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
   // Full-text search vector maintained by application layer or trigger
   searchVector String?
 
@@ -114,6 +125,7 @@ model Product {
 
   @@index([category])
   @@index([brand])
+  @@index([ownerId])
   @@index([deletedAt])
   @@index([searchVector])
   @@index([tags])
@@ -138,9 +150,12 @@ model Review {
   rating       Int
   caption      String?
   productTag   String?
+  // When false, the comment box is hidden and the comments API rejects new comments.
+  allowComments Boolean @default(true)
 
   // Engagement metrics (denormalized for fast feed queries)
   viewCount       Int @default(0)
+  completeCount   Int @default(0)
   likeCount       Int @default(0)
   guessCount      Int @default(0)
   commentCount    Int @default(0)
@@ -162,6 +177,7 @@ model Review {
   comments     Comment[]
   shareEvents  ShareEvent[]
   videoModeration VideoModeration?
+  dailyDrops      DailyDrop[]
 
   @@index([userId])
   @@index([productId])
@@ -169,6 +185,19 @@ model Review {
   @@index([createdAt])
   @@index([likeCount, createdAt])
   @@index([duetOfId])
+}
+
+model DailyDrop {
+  id         String   @id @default(uuid())
+  date       DateTime @db.Date @unique
+  reviewId   String
+  review     Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  isOverride Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  guesses Guess[]
+
+  @@index([reviewId])
 }
 
 enum ReviewStatus {
@@ -200,19 +229,23 @@ enum ModerationStatus {
 }
 
 model Guess {
-  id            String   @id @default(uuid())
+  id            String     @id @default(uuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviewId      String
-  review        Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  review        Review     @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  dailyDropId   String?
+  dailyDrop     DailyDrop? @relation(fields: [dailyDropId], references: [id], onDelete: SetNull)
   guessedRating Int
-  isCorrect     Boolean  @default(false)
-  score         Int      @default(0)
-  createdAt     DateTime @default(now())
+  isCorrect     Boolean    @default(false)
+  score         Int        @default(0)
+  createdAt     DateTime   @default(now())
 
   @@unique([userId, reviewId])
+  @@unique([userId, dailyDropId])
   @@index([reviewId])
   @@index([userId])
+  @@index([dailyDropId])
 }
 
 model Like {
@@ -326,6 +359,7 @@ enum NotificationType {
   ACHIEVEMENT
   CHALLENGE
   SYSTEM
+  STREAK_AT_RISK
 }
 
 model FeatureFlag {
@@ -336,6 +370,36 @@ model FeatureFlag {
   rules       Json?    @default("{}")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Event {
+  id        String   @id @default(uuid())
+  type      String
+  userId    String?
+  sessionId String?
+  channel   String   @default("organic")
+  properties Json?   @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([type, createdAt])
+  @@index([userId, createdAt])
+  @@index([sessionId, createdAt])
+  @@index([channel, createdAt])
+  @@index([createdAt])
+}
+
+model MetricSnapshot {
+  id        String   @id @default(uuid())
+  date      DateTime @db.Date
+  metric    String
+  dimension String   @default("")
+  value     Float
+  sampleSize Int     @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, metric, dimension])
+  @@index([date, metric])
 }
 
 model Invite {

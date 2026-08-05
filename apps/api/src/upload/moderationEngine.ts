@@ -76,12 +76,21 @@ export async function runVideoModeration(videoPath: string, duration: number): P
   let reject = false;
   let review = false;
 
+  // Skin-tone policy: a person recording themselves (exactly what this app
+  // is for) will have a face in frame, which must NOT reject. Only reject
+  // when the video is predominantly skin-toned across the sampled frames
+  // (the explicit-content pattern), controlled by
+  // VIDEO_MODERATION_SKIN_THRESHOLD (average ratio, default 0.6).
   const skinThreshold = env.VIDEO_MODERATION_SKIN_THRESHOLD;
+  const avgSkin = frameScores.reduce((sum, s) => sum + s.skinRatio, 0) / frameScores.length;
+  if (avgSkin > skinThreshold) {
+    reasons.push(
+      `Video is predominantly skin-toned throughout (avg ${(avgSkin * 100).toFixed(0)}% skin pixels across frames)`
+    );
+    reject = true;
+  }
+
   for (const score of frameScores) {
-    if (score.skinRatio > skinThreshold) {
-      reasons.push(`Excessive skin tone detected at ${score.time.toFixed(2)}s`);
-      reject = true;
-    }
     if (score.entropy < 2.0) {
       reasons.push(`Very low entropy at ${score.time.toFixed(2)}s`);
       reject = true;
@@ -99,7 +108,6 @@ export async function runVideoModeration(videoPath: string, duration: number): P
     review = true;
   }
 
-  const avgSkin = frameScores.reduce((sum, s) => sum + s.skinRatio, 0) / frameScores.length;
   const avgEntropy = frameScores.reduce((sum, s) => sum + s.entropy, 0) / frameScores.length;
   const score = Math.min(1, Math.max(0, avgSkin * 2 + (8 - avgEntropy) / 8));
 

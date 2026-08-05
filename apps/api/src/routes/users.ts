@@ -1,11 +1,77 @@
 import { Router } from "express";
+import multer from "multer";
 import { z } from "zod";
+import { randomUUID } from "crypto";
+import { mkdir, writeFile } from "fs/promises";
+import { join } from "path";
 import { prisma } from "../prisma.js";
-import { optionalAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { optionalAuth, requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { UPLOAD_DIR, UPLOAD_BASE_URL } from "../upload/upload-helpers.js";
+import { encryptAtRest } from "../upload/storageCrypto.js";
 
 export const usersRouter = Router();
 
 const LimitSchema = z.coerce.number().int().min(1).max(50).default(10);
+
+const avatarUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter(_req, file, cb) {
+    if (["image/jpeg", "image/png", "image/webp"].includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error("Avatar must be a JPEG, PNG, or WebP image"));
+    }
+  },
+});
+
+// Upload a profile avatar: normalize to a 256px JPEG, encrypt at rest like
+// other uploads, and set it as the user's avatarUrl.
+usersRouter.post("/me/avatar", requireAuth, avatarUpload.single("file"), async (req: AuthenticatedRequest, res, next) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: "No image uploaded" });
+      return;
+    }
+    const { default: sharp } = await import("sharp");
+    const normalized = await sharp(req.file.buffer)
+      .resize(256, 256, { fit: "cover" })
+      .jpeg({ quality: 85 })
+      .toBuffer();
+
+    await mkdir(UPLOAD_DIR, { recursive: true });
+    const filename = `avatar-${randomUUID()}.jpg`;
+    await writeFile(join(UPLOAD_DIR, filename), encryptAtRest(normalized));
+
+    const avatarUrl = `${UPLOAD_BASE_URL}/${filename}`;
+    await prisma.user.update({ where: { id: req.user!.id }, data: { avatarUrl } });
+    res.status(201).json({ avatarUrl });
+  } catch (err) {
+    next(err);
+  }
+});
+
+usersRouter.patch("/me", requireAuth, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    const displayName = typeof req.body?.displayName === "string" ? req.body.displayName.trim().slice(0, 50) : undefined;
+    const bio = typeof req.body?.bio === "string" ? req.body.bio.trim().slice(0, 160) : undefined;
+    if (displayName === undefined && bio === undefined) {
+      res.status(400).json({ error: "Provide displayName and/or bio" });
+      return;
+    }
+    const user = await prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        ...(displayName !== undefined ? { displayName: displayName || null } : {}),
+        ...(bio !== undefined ? { bio: bio || null } : {}),
+      },
+      select: { id: true, displayName: true, bio: true },
+    });
+    res.json(user);
+  } catch (err) {
+    next(err);
+  }
+});
 
 usersRouter.get("/:id", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
@@ -19,7 +85,7 @@ usersRouter.get("/:id", optionalAuth, async (req: AuthenticatedRequest, res, nex
         avatarUrl: true,
         streakDays: true,
         createdAt: true,
-        _count: { select: { reviews: true, followers: true, following: true } },
+        _count: { select: { reviews: { where: { deletedAt: null } }, followers: true, following: true } },
       },
     });
     if (!user) {
@@ -72,8 +138,14 @@ usersRouter.get("/:id/reviews", optionalAuth, async (req: AuthenticatedRequest, 
   try {
     const cursor = req.query.cursor as string | undefined;
     const limit = LimitSchema.parse(req.query.limit);
+    const isOwner = req.user?.id === req.params.id;
     const reviews = await prisma.review.findMany({
-      where: { userId: req.params.id },
+      where: {
+        userId: req.params.id,
+        deletedAt: null,
+        // Others only see published reviews; the owner also sees pending ones.
+        ...(isOwner ? {} : { status: "PUBLISHED" }),
+      },
       take: limit,
       skip: cursor ? 1 : 0,
       cursor: cursor ? { id: cursor } : undefined,

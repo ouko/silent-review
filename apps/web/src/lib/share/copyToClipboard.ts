@@ -1,7 +1,14 @@
 export async function copyToClipboard(text: string): Promise<void> {
+  // Prefer the async clipboard API, but iOS Safari rejects writeText in
+  // several real-world cases (focus changes, permission quirks). Fall back
+  // to the legacy execCommand path instead of failing silently.
   if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(text);
-    return;
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall through to the legacy path.
+    }
   }
 
   const textarea = document.createElement("textarea");
@@ -11,7 +18,8 @@ export async function copyToClipboard(text: string): Promise<void> {
   document.body.appendChild(textarea);
   textarea.select();
   try {
-    document.execCommand("copy");
+    const ok = document.execCommand("copy");
+    if (!ok) throw new Error("execCommand copy failed");
   } finally {
     document.body.removeChild(textarea);
   }

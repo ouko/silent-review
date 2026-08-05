@@ -6,7 +6,7 @@ export interface Challenge {
   name: string;
   description: string | null;
   expiresAt: string;
-  creator: { id: string; username: string; displayName: string | null };
+  creator: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
   participants: Array<{
     userId: string;
     score: number;

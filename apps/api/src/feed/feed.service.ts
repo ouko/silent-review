@@ -108,6 +108,7 @@ export async function getFollowingFeed(
       userId: { in: followingIds },
       status: "PUBLISHED",
       deletedAt: null,
+      user: { deletedAt: null },
       ...(cursor ? { createdAt: { lt: await getCursorDate(cursor) } } : {}),
     },
     orderBy: { createdAt: "desc" },
@@ -127,6 +128,7 @@ export async function getTrendingFeed(cursor: string | undefined, limit: number)
     where: {
       status: "PUBLISHED",
       deletedAt: null,
+      user: { deletedAt: null },
       ...(cursor ? { createdAt: { lt: await getCursorDate(cursor) } } : {}),
     },
     orderBy: [{ guessCount: "desc" }, { createdAt: "desc" }],
@@ -150,6 +152,7 @@ export async function getCategoryFeed(
     where: {
       status: "PUBLISHED",
       deletedAt: null,
+      user: { deletedAt: null },
       product: { category },
       ...(cursor ? { createdAt: { lt: await getCursorDate(cursor) } } : {}),
     },
@@ -215,6 +218,7 @@ async function fetchCandidates(seenReviewIds: Set<string>, cursor: string | unde
     where: {
       status: "PUBLISHED",
       deletedAt: null,
+      user: { deletedAt: null },
       id: { notIn: Array.from(seenReviewIds) },
       ...(cursor ? { createdAt: { lt: await getCursorDate(cursor) } } : {}),
     },

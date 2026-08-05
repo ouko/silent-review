@@ -71,6 +71,10 @@ uploadRouter.post("/", requireAuth, upload.single("file"), async (req: Authentic
     }
 
     if (!validation.valid) {
+      console.warn(
+        `[upload] validation failed for ${file.originalname} (${file.mimetype}, ${file.size} bytes, ` +
+          `head=${file.buffer.subarray(0, 16).toString("hex")}): ${validation.errors.join("; ")}`
+      );
       res.status(422).json({ error: "Video validation failed", details: validation.errors });
       return;
     }

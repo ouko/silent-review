@@ -5,7 +5,7 @@ import { Sparkles, Send, RotateCcw } from "lucide-react";
 
 interface ReviewFinalizeProps {
   previewUrl: string;
-  onSubmit: (input: { rating: number; caption: string; tag?: string }) => void;
+  onSubmit: (input: { rating: number; caption: string; tag?: string; allowComments: boolean }) => void;
   onBack: () => void;
   isUploading: boolean;
   progress: number;
@@ -36,6 +36,7 @@ export function ReviewFinalize({
   const [rating, setRating] = useState<number | null>(null);
   const [caption, setCaption] = useState("");
   const [tag, setTag] = useState("");
+  const [allowComments, setAllowComments] = useState(true);
   const tagInputRef = useRef<HTMLInputElement>(null);
 
   const canSubmit = rating !== null && !isUploading;
@@ -124,6 +125,16 @@ export function ReviewFinalize({
 
       {error && <p className="text-center text-sm text-red-400">{error}</p>}
 
+      <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+        <span className="text-sm font-semibold text-white">Allow comments</span>
+        <input
+          type="checkbox"
+          checked={allowComments}
+          onChange={(e) => setAllowComments(e.target.checked)}
+          className="h-5 w-5 accent-rose-500"
+        />
+      </label>
+
       <div className="mt-auto flex gap-3">
         <motion.button
           whileTap={{ scale: 0.97 }}
@@ -136,7 +147,7 @@ export function ReviewFinalize({
         </motion.button>
         <motion.button
           whileTap={{ scale: 0.97 }}
-          onClick={() => rating !== null && onSubmit({ rating, caption, tag: tag.trim() || undefined })}
+          onClick={() => rating !== null && onSubmit({ rating, caption, tag: tag.trim() || undefined, allowComments })}
           disabled={!canSubmit}
           className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-3.5 font-bold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >

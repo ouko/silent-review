@@ -21,6 +21,7 @@
     "db:migrate": "dotenv -e .env -- pnpm --filter database migrate",
     "db:deploy": "dotenv -e .env -- pnpm --filter database run deploy",
     "db:seed": "dotenv -e .env -- pnpm --filter database seed",
+    "db:seed:analytics": "dotenv -e .env -- pnpm --filter database seed:analytics",
     "db:studio": "dotenv -e .env -- pnpm --filter database studio",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",

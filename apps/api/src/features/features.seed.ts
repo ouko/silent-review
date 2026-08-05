@@ -10,6 +10,8 @@ export const DEFAULT_FEATURE_FLAGS = [
   { key: "challenges", enabled: false, description: "Enable friend challenges" },
   { key: "creator_tipping", enabled: false, description: "Enable creator tipping" },
   { key: "share_export", enabled: true, description: "Enable video share/export" },
+  { key: "streak_freeze_ad_reward", enabled: false, description: "Earn streak freezes via rewarded ads (Phase 2)" },
+  { key: "streak_freeze_purchase", enabled: false, description: "Purchase streak freezes (Phase 2)" },
 ];
 
 export async function seedFeatureFlags(): Promise<void> {

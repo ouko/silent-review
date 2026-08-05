@@ -32,6 +32,9 @@ coverage/
 .DS_Store
 Thumbs.db
 
+# Worktrees
+.worktrees/
+
 # IDE
 .idea
 .vscode/*

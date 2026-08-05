@@ -8,6 +8,7 @@ import { listPlatforms, type PlatformId } from "../../lib/export/platformTemplat
 import { generateCaption } from "../../lib/export/captionGenerator";
 import { buildShareUrl, type ShareUrlOptions } from "../../lib/share/urlBuilder";
 import { copyToClipboard } from "../../lib/share/copyToClipboard";
+import { trackEvent } from "../../lib/analytics";
 import { X, Download, Share2, Link2, Copy } from "lucide-react";
 
 interface ShareSheetProps {
@@ -28,6 +29,7 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
   const [coverBlobUrl, setCoverBlobUrl] = useState<string | null>(null);
   const [videoSaved, setVideoSaved] = useState(false);
   const [captionCopied, setCaptionCopied] = useState(false);
+  const [captionCopyFailed, setCaptionCopyFailed] = useState(false);
   const sheetRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const backdropPointer = useRef<{ x: number; y: number } | null>(null);
@@ -90,6 +92,7 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
 
   async function handleExport() {
     await exportApi.generate({ videoUrl, platform: selectedPlatform, productName, rating });
+    trackEvent("share_card_created", { reviewId, platform: selectedPlatform });
     trackShare(selectedPlatform);
     setVideoSaved(false);
   }
@@ -102,7 +105,10 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
           text: `Can you guess the rating for ${productName}?`,
           url: deepLinkUrl,
         })
-        .then(() => trackShare("native"))
+        .then(() => {
+          trackEvent("share_card_clicked", { reviewId, provider: "native" });
+          trackShare("native");
+        })
         .catch(() => {});
     }
   }
@@ -113,6 +119,7 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
       await copyToClipboard(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+      trackEvent("share_card_clicked", { reviewId, provider: "copy" });
       trackShare("copy");
     } catch {
       // Ignore copy failures (e.g. user denied permission).
@@ -304,8 +311,9 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
                 try {
                   await copyToClipboard(fullCaptionText);
                   setCaptionCopied(true);
+                  setCaptionCopyFailed(false);
                 } catch {
-                  // Ignore copy failures.
+                  setCaptionCopyFailed(true);
                 }
               }}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-2 text-sm font-semibold text-white transition-colors hover:bg-white/15"
@@ -313,6 +321,11 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
               <Copy className="h-4 w-4" />
               {captionCopied ? "Caption copied!" : "Copy caption"}
             </button>
+            {captionCopyFailed && (
+              <p className="text-xs text-amber-300">
+                Couldn't copy automatically — tap and hold the caption above to copy it manually.
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -331,6 +344,7 @@ export function ShareSheet({ reviewId, videoUrl, productName, rating, deepLinkUr
             <button
               onClick={() => {
                 exportApi.download(`silent-review-${reviewId}-${selectedPlatform}.webm`);
+                trackEvent("share_card_clicked", { reviewId, provider: "download" });
                 trackShare("download");
                 setVideoSaved(true);
               }}

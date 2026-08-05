@@ -38,10 +38,16 @@ source "${ENV_FILE}"
 set +a
 
 log "Pulling latest code..."
-git pull origin main
+# Pull the branch this checkout is on, not a hardcoded one — deploy boxes
+# may track a release branch.
+CURRENT_BRANCH="$(git branch --show-current)"
+git pull origin "${CURRENT_BRANCH}"
 
 log "Installing dependencies..."
-pnpm install --frozen-lockfile
+# .env.prod exports NODE_ENV=production, which makes pnpm skip devDependencies
+# — but tsc/vite are devDependencies and the build needs them. Install with
+# devDependencies included regardless.
+NODE_ENV=development pnpm install --frozen-lockfile
 
 log "Building web app..."
 # The SPA and API share an origin behind nginx, so the browser must use
@@ -56,7 +62,14 @@ log "Building and deploying production stack..."
 docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" up -d --build --wait
 
 log "Running database migrations..."
-pnpm --filter database run deploy
+# Apply migrations via psql in the postgres container: deterministic, no
+# extra image pulls, and immune to the Prisma engine's OpenSSL issues on
+# Alpine and memory pressure on small hosts.
+bash scripts/migrate-psql.sh
+
+# Keep a copy of the operations runbook in the deploy user's home so it is
+# visible the moment anyone SSHs in.
+cp docs/RUNBOOK.md "${HOME}/RUNBOOK.md" 2>/dev/null || true
 
 HEALTH_URL="${WEB_APP_URL:-http://localhost}/api/health"
 log "Waiting for health check at ${HEALTH_URL}..."

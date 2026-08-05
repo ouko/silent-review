@@ -28,6 +28,11 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
+# Prisma cannot detect the OpenSSL version on Alpine and defaults to the
+# 1.1 engine (libssl.so.1.1, which does not exist here). Point it at the
+# linux-musl-openssl-3.0.x engine generated via binaryTargets instead.
+ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/.prisma/client/libquery_engine-linux-musl-openssl-3.0.x.so.node
+
 # ffmpeg/ffprobe are required at runtime for video validation, normalization
 # (trim/upscale/audio strip), thumbnails, and moderation frame analysis.
 RUN apk add --no-cache ffmpeg

@@ -45,6 +45,46 @@ reviewsRouter.get("/moderation", requireAuth, async (req: AuthenticatedRequest, 
   }
 });
 
+reviewsRouter.patch("/:id", requireAuth, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    // Owner-only: turn comments on/off for their own review.
+    const allowComments = typeof req.body?.allowComments === "boolean" ? req.body.allowComments : undefined;
+    if (allowComments === undefined) {
+      res.status(400).json({ error: "allowComments (boolean) is required" });
+      return;
+    }
+    const result = await prisma.review.updateMany({
+      where: { id: req.params.id, userId: req.user!.id, deletedAt: null },
+      data: { allowComments },
+    });
+    if (result.count === 0) {
+      res.status(404).json({ error: "Review not found" });
+      return;
+    }
+    res.json({ allowComments });
+  } catch (err) {
+    next(err);
+  }
+});
+
+reviewsRouter.delete("/:id", requireAuth, async (req: AuthenticatedRequest, res, next) => {
+  try {
+    // Owner-scoped soft delete: the review disappears from feed, profile,
+    // and counts, but the row stays for audit.
+    const result = await prisma.review.updateMany({
+      where: { id: req.params.id, userId: req.user!.id, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    if (result.count === 0) {
+      res.status(404).json({ error: "Review not found" });
+      return;
+    }
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 reviewsRouter.get("/:id", optionalAuth, async (req: AuthenticatedRequest, res, next) => {
   try {
     const review = await getReviewById(req.params.id);

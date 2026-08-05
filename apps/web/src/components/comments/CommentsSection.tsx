@@ -6,9 +6,10 @@ import { Loading } from "../common/Loading";
 
 interface CommentsSectionProps {
   reviewId: string;
+  allowComments?: boolean;
 }
 
-export function CommentsSection({ reviewId }: CommentsSectionProps) {
+export function CommentsSection({ reviewId, allowComments = true }: CommentsSectionProps) {
   const { data, isLoading } = useComments(reviewId);
   const create = useCreateComment(reviewId);
   const remove = useDeleteComment(reviewId);
@@ -32,28 +33,32 @@ export function CommentsSection({ reviewId }: CommentsSectionProps) {
         Comments ({comments.length})
       </h3>
 
-      {user ? (
-        <form onSubmit={handleSubmit} className="mb-4 flex items-center gap-2">
-          <input
-            type="text"
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            maxLength={280}
-            placeholder="Add a comment..."
-            aria-label="Add a comment"
-            className="flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-rose-400/50 focus:bg-white/10 focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={!text.trim() || create.isPending}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
-            aria-label="Post comment"
-          >
-            <Send className="h-4 w-4" />
-          </button>
-        </form>
+      {allowComments ? (
+        user ? (
+          <form onSubmit={handleSubmit} className="mb-4 flex items-center gap-2">
+            <input
+              type="text"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              maxLength={280}
+              placeholder="Add a comment..."
+              aria-label="Add a comment"
+              className="flex-1 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/40 focus:border-rose-400/50 focus:bg-white/10 focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={!text.trim() || create.isPending}
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-500 text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              aria-label="Post comment"
+            >
+              <Send className="h-4 w-4" />
+            </button>
+          </form>
+        ) : (
+          <p className="mb-4 text-sm text-white/50">Log in to add a comment.</p>
+        )
       ) : (
-        <p className="mb-4 text-sm text-white/50">Log in to add a comment.</p>
+        <p className="mb-4 text-sm text-white/50">Comments are turned off for this review.</p>
       )}
 
       <div className="space-y-4">

@@ -20,11 +20,13 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
   const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedRef = useRef(false);
   const activeRef = useRef(true);
+  const timingStartedRef = useRef(false);
 
   const { stream, isReady, error, permission, start: startCamera, stop: stopCamera } = useCamera();
   const [phase, setPhase] = useState<"idle" | "countdown" | "recording" | "processing">("idle");
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const [isPressed, setIsPressed] = useState(false);
+  const [recordError, setRecordError] = useState<string | null>(null);
   const stopWatchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -58,34 +60,52 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
   // Flush buffered data, then stop. iOS Safari sometimes never fires the
   // recorder's onstop after stop() — leaving the UI stuck on "Finishing..."
   // forever — so a watchdog finalizes with the collected chunks instead.
+  // The watchdog is armed before stop() and stop() itself is guarded, so no
+  // failure mode can strand the UI in the processing state.
   function stopRecording() {
     const recorder = recorderRef.current;
     if (!recorder || recorder.state === "inactive") return;
-    try {
-      recorder.requestData();
-    } catch {
-      // requestData is a best-effort flush; ignore InvalidStateError.
-    }
-    recorder.stop();
     stopWatchdogRef.current = setTimeout(() => {
       if (recorderRef.current === recorder) {
         recorder.onstop?.(new Event("stop"));
       }
     }, 3000);
+    try {
+      recorder.requestData();
+    } catch {
+      // requestData is a best-effort flush; ignore InvalidStateError.
+    }
+    try {
+      recorder.stop();
+    } catch {
+      // stop() throwing means no onstop will arrive; the watchdog handles it.
+    }
+  }
+
+  function handleCancelRecording() {
+    completedRef.current = false;
+    stopAll();
+    resetToIdle();
   }
 
   function selectMimeType(): string | undefined {
-    const types = [
-      "video/webm;codecs=vp9",
-      "video/webm;codecs=vp8",
-      "video/webm",
-      "video/mp4",
-    ];
+    // iOS Safari claims WebM/VP9 support but its MediaRecorder output is
+    // unreliable; MP4 (H.264) is the only battle-tested format there.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const types = isIOS
+      ? ["video/mp4", "video/webm"]
+      : [
+          "video/webm;codecs=vp9",
+          "video/webm;codecs=vp8",
+          "video/webm",
+          "video/mp4",
+        ];
     return types.find((t) => MediaRecorder.isTypeSupported(t));
   }
 
   function handlePressStart() {
     if (phase !== "idle") return;
+    setRecordError(null);
     setIsPressed(true);
     startCamera();
   }
@@ -102,12 +122,27 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
 
     chunksRef.current = [];
     completedRef.current = false;
+    timingStartedRef.current = false;
     const mimeType = selectMimeType();
     const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
     recorderRef.current = recorder;
 
     recorder.ondataavailable = (e) => {
-      if (e.data.size > 0) chunksRef.current.push(e.data);
+      if (e.data.size <= 0) return;
+      chunksRef.current.push(e.data);
+      if (!timingStartedRef.current) {
+        timingStartedRef.current = true;
+        // Arm the 5s capture window only when the encoder actually delivers
+        // data — iOS burns ~1s warming up after start(), so timing from
+        // start() would produce a ~4s file that fails validation.
+        stopTimeoutRef.current = setTimeout(() => {
+          if (recorder.state !== "inactive") {
+            completedRef.current = true;
+            setPhase("processing");
+            stopRecording();
+          }
+        }, COUNTDOWN_SECONDS * 1000);
+      }
     };
 
     recorder.onstop = () => {
@@ -122,11 +157,20 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
       recorderRef.current = null;
       resetToIdle();
       if (completed) {
-        onRecorded(blob);
+        // A 5s clip is hundreds of KB; anything tiny means the recorder
+        // produced no usable data (seen from iOS Safari). Reject it here
+        // with a friendly message instead of shipping an unreadable file.
+        if (blob.size < 50 * 1024) {
+          setRecordError("The recording didn't save. Please try again.");
+        } else {
+          onRecorded(blob);
+        }
       }
     };
 
-    recorder.start();
+    // Start with a 1s timeslice: without it, iOS Safari's MediaRecorder
+    // often emits nothing until stop() and finalizes with a near-empty file.
+    recorder.start(1000);
     setPhase("countdown");
     setCountdown(COUNTDOWN_SECONDS);
 
@@ -135,18 +179,9 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
       remaining -= 1;
       setCountdown(remaining);
       if (remaining <= 0 && timerRef.current) {
-        completedRef.current = true;
         clearInterval(timerRef.current);
       }
     }, 1000);
-
-    stopTimeoutRef.current = setTimeout(() => {
-      if (recorder.state !== "inactive") {
-        completedRef.current = true;
-        setPhase("processing");
-        stopRecording();
-      }
-    }, COUNTDOWN_SECONDS * 1000);
   }, [isReady, stream, phase, isPressed, onRecorded, stopCamera]);
 
   function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -220,6 +255,7 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
             </>
           )}
           {error && <p className="text-sm text-red-400">{error}</p>}
+          {recordError && <p className="text-sm text-red-400">{recordError}</p>}
           {onCancel && (
             <button onClick={onCancel} className="text-sm font-semibold text-white/50 transition-colors hover:text-white">
               Cancel
@@ -265,6 +301,12 @@ export function CameraRecorder({ onRecorded, onCancel }: CameraRecorderProps) {
           <p className="absolute bottom-12 text-sm font-bold uppercase tracking-widest text-white/80">
             {phase === "processing" ? "Finishing..." : "Recording..."}
           </p>
+          <button
+            onClick={handleCancelRecording}
+            className="absolute bottom-24 rounded-full border border-white/30 px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            Cancel
+          </button>
         </div>
       )}
     </div>

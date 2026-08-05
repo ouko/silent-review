@@ -1,15 +1,17 @@
 import { useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { useProfile, useProfileAchievements, useProfileReviews } from "../../hooks/useProfile";
 import { useAuthStore } from "../../stores/authStore";
+import { useQueryClient } from "@tanstack/react-query";
+import { api } from "../../lib/api";
 import { FollowButton } from "../social/FollowButton";
 import { ProfileReviews } from "./ProfileReviews";
 import { ActivityFeed } from "../social/ActivityFeed";
 import { Loading } from "../common/Loading";
 import { FeedTabs } from "../feed/FeedTabs";
 import { UserListSheet } from "./UserListSheet";
-import { Flame, Award, User, Pencil, LogOut } from "lucide-react";
+import { Flame, Award, User, Pencil, LogOut, ShieldCheck, BarChart3 } from "lucide-react";
 import { logout } from "../../lib/auth";
 
 const TABS = [
@@ -28,6 +30,40 @@ export function Profile() {
   const [activeTab, setActiveTab] = useState("reviews");
   const [sheetType, setSheetType] = useState<"followers" | "following" | null>(null);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editBio, setEditBio] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const queryClient = useQueryClient();
+
+  function startEditing() {
+    if (!profile) return;
+    setEditName(profile.displayName ?? "");
+    setEditBio(profile.bio ?? "");
+    setAvatarFile(null);
+    setIsEditing(true);
+  }
+
+  async function saveEditing() {
+    if (!profile) return;
+    setIsSaving(true);
+    try {
+      if (avatarFile) {
+        const form = new FormData();
+        form.append("file", avatarFile);
+        await api.post("/api/users/me/avatar", form, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      }
+      await api.patch("/api/users/me", { displayName: editName, bio: editBio });
+      await queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+      await queryClient.invalidateQueries({ queryKey: ["profile-reviews", userId] });
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
+  }
   const isMe = currentUser?.id === userId;
   const reducedMotion = useReducedMotion();
   const tabsRef = useRef<HTMLDivElement>(null);
@@ -117,10 +153,87 @@ export function Profile() {
               <FollowButton userId={userId} isFollowing={profile.isFollowing} />
             ) : (
               <div className="space-y-2">
-                <button className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 font-bold text-white transition-colors hover:bg-white/10">
-                  <Pencil className="h-4 w-4" />
-                  Edit profile
-                </button>
+                <Link
+                  to="/analytics"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 font-bold text-white transition-colors hover:bg-white/10"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Analytics
+                </Link>
+                {currentUser?.role === "ADMIN" && (
+                  <Link
+                    to="/admin"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-violet-400/40 bg-violet-500/10 py-3 font-bold text-violet-300 transition-colors hover:bg-violet-500/20"
+                  >
+                    <ShieldCheck className="h-4 w-4" />
+                    Admin
+                  </Link>
+                )}
+                {isEditing ? (
+                  <div className="space-y-2 rounded-2xl border border-white/10 bg-white/5 p-3">
+                    <label className="flex cursor-pointer items-center gap-3">
+                      {avatarFile ? (
+                        <img src={URL.createObjectURL(avatarFile)} alt="" className="h-12 w-12 rounded-full object-cover ring-2 ring-white/10" />
+                      ) : profile.avatarUrl ? (
+                        <img src={profile.avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover ring-2 ring-white/10" />
+                      ) : (
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-violet-500 ring-2 ring-white/10">
+                          <User className="h-6 w-6 text-white" />
+                        </div>
+                      )}
+                      <span className="text-sm font-semibold text-white/70">
+                        {avatarFile ? avatarFile.name : "Tap to change profile photo"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        className="hidden"
+                        onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+                      />
+                    </label>
+                    <input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      maxLength={50}
+                      placeholder="Display name"
+                      aria-label="Display name"
+                      className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-white/20"
+                    />
+                    <textarea
+                      value={editBio}
+                      onChange={(e) => setEditBio(e.target.value)}
+                      maxLength={160}
+                      rows={3}
+                      placeholder="Bio"
+                      aria-label="Bio"
+                      className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder-white/40 outline-none focus:border-white/20"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={saveEditing}
+                        disabled={isSaving}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-2.5 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                      >
+                        {isSaving ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        onClick={() => setIsEditing(false)}
+                        disabled={isSaving}
+                        className="rounded-xl border border-white/20 px-4 py-2.5 text-sm font-bold text-white/70 transition-colors hover:bg-white/10 disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={startEditing}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/5 py-3 font-bold text-white transition-colors hover:bg-white/10"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Edit profile
+                  </button>
+                )}
                 <button
                   onClick={async () => {
                     setIsLoggingOut(true);
@@ -154,7 +267,7 @@ export function Profile() {
 
       {/* Tab content */}
       <div className="flex-1">
-        {activeTab === "reviews" && <ProfileReviews reviews={reviews?.reviews ?? []} />}
+        {activeTab === "reviews" && <ProfileReviews reviews={reviews?.reviews ?? []} isOwnProfile={isMe} />}
         {activeTab === "activity" && <ActivityFeed />}
         {activeTab === "badges" && (
           <div className="p-3">

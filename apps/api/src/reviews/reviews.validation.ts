@@ -8,6 +8,7 @@ export const CreateReviewSchema = z.object({
   format: z.string().regex(/^video\//),
   rating: z.number().int().min(1).max(10),
   caption: z.string().max(280).optional(),
+  allowComments: z.boolean().optional(),
   productTag: z.string().max(50).optional().nullable(),
   duetOfId: z.string().uuid().optional().nullable(),
 });
