@@ -15,6 +15,7 @@ export default {
       },
     ],
   },
+  setupFilesAfterEnv: ["<rootDir>/src/test-setup.ts"],
   testMatch: ["**/*.test.ts"],
   collectCoverageFrom: ["src/**/*.ts", "!src/**/*.d.ts"],
 };

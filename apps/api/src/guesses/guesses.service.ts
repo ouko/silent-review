@@ -1,5 +1,6 @@
 import { prisma } from "../prisma.js";
 import { checkAchievements } from "../gamification/achievements.service.js";
+import { recordChallengeGuess } from "../challenges/challenges.service.js";
 import type { SubmitGuessInput } from "./guesses.validation.js";
 
 export function calculateGuessScore(actual: number, guessed: number): number {
@@ -72,6 +73,9 @@ export async function submitGuess(userId: string, reviewId: string, input: Submi
 
   // Gamification updates (fire-and-forget)
   checkAchievements(userId).catch(() => {});
+
+  // Update any active per-video challenge for this review.
+  recordChallengeGuess(reviewId, userId, score).catch(() => {});
 
   return { guess, review };
 }

@@ -24,6 +24,9 @@ interface FeedProps {
   onRefresh?: () => void;
   onPlayAgain?: (reviewId: string) => void;
   onScrollDirection?: (direction: "up" | "down") => void;
+  onChallengeFriend?: (reviewId: string) => void;
+  challengeComplete?: boolean;
+  onRematch?: (reviewId: string) => void;
 }
 
 export function Feed({
@@ -38,6 +41,9 @@ export function Feed({
   onRefresh,
   onPlayAgain,
   onScrollDirection,
+  onChallengeFriend,
+  challengeComplete,
+  onRematch,
 }: FeedProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [pullStartY, setPullStartY] = useState<number | null>(null);
@@ -236,6 +242,9 @@ export function Feed({
                         videoUrl={review.videoUrl}
                         productName={review.productTag ?? review.caption}
                         onShare={() => setShareReview(review)}
+                        onChallengeFriend={onChallengeFriend ? () => onChallengeFriend(review.id) : undefined}
+                        challengeComplete={challengeComplete}
+                        onRematch={onRematch ? () => onRematch(review.id) : undefined}
                       />
                     );
                   })()}

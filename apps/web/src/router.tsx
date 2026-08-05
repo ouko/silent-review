@@ -8,6 +8,7 @@ import { DailyDropRound } from "./pages/DailyDropRound";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { ReviewDetail } from "./pages/ReviewDetail";
+import { ChallengeLanding } from "./pages/ChallengeLanding";
 import { Status } from "./pages/Status";
 import { Loading } from "./components/common/Loading";
 
@@ -46,6 +47,7 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
       { path: "/register", element: <Register /> },
       { path: "/status", element: <Status /> },
       { path: "/invite/:code", element: <LazyWrapper><InviteLanding /></LazyWrapper> },
+      { path: "/challenge/:id", element: <ChallengeLanding /> },
       { path: "/review/:id", element: <ReviewDetail /> },
       { path: "/s/:id", element: <DeepLinkRedirect /> },
       {

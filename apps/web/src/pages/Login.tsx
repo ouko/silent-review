@@ -39,7 +39,16 @@ export function Login() {
       setUser(user);
       setAccessToken(accessToken);
       setLoading(false);
-      navigate("/");
+
+      const pendingChallengeId = sessionStorage.getItem("pendingChallengeId");
+      const searchParams = new URLSearchParams(window.location.search);
+      const challengeId = pendingChallengeId ?? searchParams.get("challenge");
+      if (challengeId) {
+        sessionStorage.removeItem("pendingChallengeId");
+        navigate(`/challenge/${challengeId}`);
+      } else {
+        navigate("/");
+      }
     } catch (err) {
       setIsLoading(false);
       setError(formatUserError(err));

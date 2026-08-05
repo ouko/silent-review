@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { Trophy, RotateCcw, Share2 } from "lucide-react";
+import { Trophy, RotateCcw, Share2, Swords } from "lucide-react";
 import { StatsChart } from "../stats/StatsChart";
 import { GuessFeedback } from "./GuessFeedback";
 
@@ -14,6 +14,9 @@ interface RevealScreenProps {
   videoUrl?: string;
   productName?: string | null;
   onShare?: () => void;
+  onChallengeFriend?: () => void;
+  challengeComplete?: boolean;
+  onRematch?: () => void;
 }
 
 export function RevealScreen({
@@ -26,6 +29,9 @@ export function RevealScreen({
   reviewId,
   productName,
   onShare,
+  onChallengeFriend,
+  challengeComplete,
+  onRematch,
 }: RevealScreenProps) {
   const reducedMotion = useReducedMotion();
 
@@ -118,6 +124,30 @@ export function RevealScreen({
         <Share2 className="h-4 w-4" />
         Share
       </motion.button>
+
+      {challengeComplete && onRematch && (
+        <motion.button
+          variants={itemVariants}
+          whileTap={{ scale: 0.96 }}
+          onClick={onRematch}
+          className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-violet-500 py-3.5 font-bold text-white shadow-lg shadow-rose-500/20 transition-transform"
+        >
+          <Swords className="h-4 w-4" />
+          Rematch
+        </motion.button>
+      )}
+
+      {!challengeComplete && onChallengeFriend && (
+        <motion.button
+          variants={itemVariants}
+          whileTap={{ scale: 0.96 }}
+          onClick={onChallengeFriend}
+          className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3.5 font-bold text-black transition-transform"
+        >
+          <Swords className="h-4 w-4" />
+          Challenge a friend
+        </motion.button>
+      )}
 
       <motion.button
         variants={itemVariants}

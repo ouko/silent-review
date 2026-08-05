@@ -1,13 +1,16 @@
 import { motion } from "framer-motion";
 import { useChallenges, type Challenge } from "../../hooks/useChallenges";
-import { Trophy, Calendar, Plus, User, TrendingUp, Share2, Check, Loader2 } from "lucide-react";
+import { Trophy, Calendar, Plus, User, TrendingUp, Share2, Check, Loader2, Swords, SwordsIcon } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useUIStore } from "../../stores/uiStore";
 import { trackEvent } from "../../lib/analytics";
 
 function ChallengeShareButton({ challenge }: { challenge: Challenge }) {
   const [copied, setCopied] = useState(false);
-  const link = `${window.location.origin}/viral?join=${challenge.id}`;
+  const link = challenge.type === "PER_VIDEO"
+    ? `${window.location.origin}/challenge/${challenge.id}`
+    : `${window.location.origin}/viral?join=${challenge.id}`;
 
   async function handleShare() {
     trackEvent("challenge_sent", { challengeId: challenge.id, channel: "challenge_link" });
@@ -37,7 +40,7 @@ function ChallengeShareButton({ challenge }: { challenge: Challenge }) {
   );
 }
 
-function ChallengeCard({
+function GenericChallengeCard({
   challenge,
   joined,
   onJoin,
@@ -126,6 +129,144 @@ function ChallengeCard({
       </div>
     </div>
   );
+}
+
+function PerVideoChallengeCard({ challenge }: { challenge: Challenge }) {
+  const navigate = useNavigate();
+  const { rematchChallenge, isRematching } = useChallenges();
+  const addToast = useUIStore((s) => s.addToast);
+  const bothGuessed = challenge.challengerScore > 0 && challenge.challengedScore > 0;
+  const winner = bothGuessed
+    ? challenge.challengedScore > challenge.challengerScore
+      ? challenge.challenged
+      : challenge.challengerScore > challenge.challengedScore
+        ? challenge.challenger
+        : null
+    : null;
+
+  async function handleRematch() {
+    try {
+      const rematch = await rematchChallenge(challenge.id);
+      trackEvent("rematch_started", {
+        challengeId: rematch.id,
+        previousChallengeId: challenge.id,
+        reviewId: rematch.reviewId,
+      });
+      navigate(`/play/${rematch.reviewId}?challenge=${rematch.id}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not start rematch";
+      addToast(message, "error");
+    }
+  }
+
+  return (
+    <div
+      className="rounded-2xl border border-white/10 bg-black/20 p-4"
+      data-testid="per-video-challenge-card"
+      data-challenge-id={challenge.id}
+    >
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-bold text-white">{challenge.name}</h3>
+          {challenge.description && (
+            <p className="mt-0.5 text-sm text-white/60">&ldquo;{challenge.description}&rdquo;</p>
+          )}
+        </div>
+        {challenge.review?.thumbnailUrl && (
+          <img
+            src={challenge.review.thumbnailUrl}
+            alt=""
+            className="h-14 w-14 rounded-xl object-cover"
+          />
+        )}
+      </div>
+
+      <div className="space-y-3">
+        <ScoreRow
+          label={challenge.challenger?.displayName ?? challenge.challenger?.username ?? "Challenger"}
+          avatarUrl={challenge.challenger?.avatarUrl}
+          score={challenge.challengerScore}
+          revealed={challenge.challengerScore > 0}
+          isWinner={winner?.id === challenge.challenger?.id}
+        />
+        <ScoreRow
+          label={challenge.challenged?.displayName ?? challenge.challenged?.username ?? "Opponent"}
+          avatarUrl={challenge.challenged?.avatarUrl}
+          score={challenge.challengedScore}
+          revealed={bothGuessed}
+          isWinner={winner?.id === challenge.challenged?.id}
+        />
+      </div>
+
+      <div className="mt-4 flex items-center gap-2">
+        {bothGuessed ? (
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            onClick={handleRematch}
+            disabled={isRematching}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-violet-500 py-3 font-bold text-white shadow-lg shadow-rose-500/20 disabled:opacity-50"
+          >
+            {isRematching ? <Loader2 className="h-4 w-4 animate-spin" /> : <SwordsIcon className="h-4 w-4" />}
+            {isRematching ? "Starting..." : "Rematch"}
+          </motion.button>
+        ) : (
+          <span className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-white/5 py-3 text-sm font-bold text-white/60">
+            <Swords className="h-4 w-4" />
+            Waiting for opponent
+          </span>
+        )}
+        <ChallengeShareButton challenge={challenge} />
+      </div>
+    </div>
+  );
+}
+
+function ScoreRow({
+  label,
+  avatarUrl,
+  score,
+  revealed,
+  isWinner,
+}: {
+  label: string;
+  avatarUrl?: string | null;
+  score: number;
+  revealed: boolean;
+  isWinner: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className="flex items-center gap-2 text-sm font-medium text-white/90">
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" className="h-5 w-5 rounded-full object-cover" />
+        ) : (
+          <User className="h-4 w-4 text-white/50" />
+        )}
+        {label}
+        {isWinner && <Trophy className="h-3.5 w-3.5 text-yellow-400" />}
+      </span>
+      <span className="font-black tracking-tight gradient-text">
+        {revealed ? `${score}/10` : "?"}
+      </span>
+    </div>
+  );
+}
+
+export function ChallengeCard({
+  challenge,
+  joined,
+  onJoin,
+  isJoining,
+}: {
+  challenge: Challenge;
+  joined: boolean;
+  onJoin: (id: string) => Promise<void>;
+  isJoining: boolean;
+}) {
+  if (challenge.type === "PER_VIDEO") {
+    return <PerVideoChallengeCard challenge={challenge} />;
+  }
+  return <GenericChallengeCard challenge={challenge} joined={joined} onJoin={onJoin} isJoining={isJoining} />;
 }
 
 export function ChallengeList() {

@@ -12,6 +12,7 @@ export type AnalyticsEventType =
   | "share_card_clicked"
   | "challenge_sent"
   | "challenge_accepted"
+  | "rematch_started"
   | "streak_milestone"
   | "streak_freeze_earned"
   | "streak_freeze_consumed"

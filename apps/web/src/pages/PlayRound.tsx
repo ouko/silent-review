@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../lib/api";
 import { Loading } from "../components/common/Loading";
 import { Feed } from "../components/feed/Feed";
 import { usePlayStore } from "../stores/playStore";
-import { trackFirstRoundComplete, trackDailyDropPlayed } from "../lib/analytics";
+import { trackFirstRoundComplete, trackDailyDropPlayed, trackEvent } from "../lib/analytics";
+import { useUIStore } from "../stores/uiStore";
 import type { FeedReview } from "../hooks/useFeed";
 
 interface ReviewDetailData {
@@ -20,6 +21,21 @@ interface ReviewDetailData {
   product?: { id: string; name: string; category: string } | null;
   viewerGuess: { guessedRating: number } | null;
   counts: { likes: number; comments: number; guesses: number };
+}
+
+interface PerVideoChallenge {
+  id: string;
+  type: string;
+  reviewId: string;
+  challengerId: string;
+  challengedId: string | null;
+  challengerScore: number;
+  challengedScore: number;
+  challenger: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
+  challenged: { id: string; username: string; displayName: string | null; avatarUrl: string | null } | null;
+  canSeeResult: boolean;
+  isParticipant: boolean;
+  status: string;
 }
 
 function mapToFeedReview(data: ReviewDetailData): FeedReview {
@@ -44,6 +60,9 @@ function mapToFeedReview(data: ReviewDetailData): FeedReview {
 export function PlayRound() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const challengeId = searchParams.get("challenge");
+
   const [review, setReview] = useState<FeedReview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,24 +71,42 @@ export function PlayRound() {
     Map<string, { rating: number; score: number; totalGuesses: number; distribution: number[] }>
   >(new Map());
   const [selectedRatings, setSelectedRatings] = useState<Map<string, number>>(new Map());
+  const [challenge, setChallenge] = useState<PerVideoChallenge | null>(null);
+  const [isCreatingChallenge, setIsCreatingChallenge] = useState(false);
+  const [isRematching, setIsRematching] = useState(false);
+  void isCreatingChallenge;
+  void isRematching;
   const markPlayed = usePlayStore((s) => s.markPlayed);
+  const addToast = useUIStore((s) => s.addToast);
 
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
     setLoading(true);
-    api
-      .get<ReviewDetailData>(`/api/reviews/${id}`)
-      .then((res) => {
+
+    async function load() {
+      try {
+        const [reviewRes, challengeRes] = await Promise.all([
+          api.get<ReviewDetailData>(`/api/reviews/${id}`),
+          challengeId ? api.get<{ challenge: PerVideoChallenge }>(`/api/challenges/per-video/${challengeId}`) : null,
+        ]);
         if (cancelled) return;
-        setReview(mapToFeedReview(res.data));
-      })
-      .catch(() => setError("Could not load this round."))
-      .finally(() => setLoading(false));
+        setReview(mapToFeedReview(reviewRes.data));
+        if (challengeRes) {
+          setChallenge(challengeRes.data.challenge);
+        }
+      } catch {
+        setError("Could not load this round.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    load();
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, challengeId]);
 
   function selectRating(reviewId: string, rating: number) {
     setSelectedRatings((prev) => new Map(prev).set(reviewId, rating));
@@ -92,6 +129,13 @@ export function PlayRound() {
       trackFirstRoundComplete({ reviewId });
       trackDailyDropPlayed({ reviewId });
       markPlayed(reviewId);
+
+      if (challengeId) {
+        trackEvent("challenge_accepted", { challengeId, reviewId, channel: getAnalyticsChannel() });
+        // Refresh challenge state so scores/winner update.
+        const challengeRes = await api.get<{ challenge: PerVideoChallenge }>(`/api/challenges/per-video/${challengeId}`);
+        setChallenge(challengeRes.data.challenge);
+      }
     } catch {
       // ignore
     } finally {
@@ -102,6 +146,54 @@ export function PlayRound() {
   function handlePlayAgain() {
     navigate("/play");
   }
+
+  async function handleChallengeFriend() {
+    if (!review) return;
+    setIsCreatingChallenge(true);
+    try {
+      const { data } = await api.post<{ challenge: PerVideoChallenge }>("/api/challenges/per-video", {
+        reviewId: review.id,
+      });
+      const challenge = data.challenge;
+      const message = `I scored ${challenge.challengerScore}/10 guessing this review — bet you can't beat me`;
+      const url = `${window.location.origin}/challenge/${challenge.id}`;
+      trackEvent("challenge_sent", { challengeId: challenge.id, reviewId: review.id, channel: "challenge_link" });
+
+      if (navigator.canShare?.({ title: "Silent Review", text: message, url })) {
+        await navigator.share({ title: "Silent Review", text: message, url });
+      } else {
+        await navigator.clipboard.writeText(`${message}\n${url}`);
+        addToast("Challenge link copied!", "success");
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not create challenge";
+      addToast(message, "error");
+    } finally {
+      setIsCreatingChallenge(false);
+    }
+  }
+
+  async function handleRematch() {
+    if (!challenge) return;
+    setIsRematching(true);
+    try {
+      const { data } = await api.post<{ challenge: PerVideoChallenge }>(`/api/challenges/per-video/${challenge.id}/rematch`);
+      trackEvent("rematch_started", {
+        challengeId: data.challenge.id,
+        previousChallengeId: challenge.id,
+        reviewId: data.challenge.reviewId,
+        channel: getAnalyticsChannel(),
+      });
+      navigate(`/play/${data.challenge.reviewId}?challenge=${data.challenge.id}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not start rematch";
+      addToast(message, "error");
+    } finally {
+      setIsRematching(false);
+    }
+  }
+
+  const challengeComplete = challenge?.canSeeResult ?? false;
 
   if (loading) return <Loading />;
   if (error || !review) {
@@ -122,6 +214,18 @@ export function PlayRound() {
       revealed={revealed}
       revealData={revealData}
       onPlayAgain={handlePlayAgain}
+      onChallengeFriend={handleChallengeFriend}
+      challengeComplete={challengeComplete}
+      onRematch={challengeComplete ? handleRematch : undefined}
     />
   );
+}
+
+function getAnalyticsChannel(): "organic" | "challenge_link" | "result_card" | "creator_link" {
+  const params = new URLSearchParams(window.location.search);
+  const channel = params.get("channel") ?? params.get("utm_medium") ?? "organic";
+  if (["challenge_link", "result_card", "creator_link"].includes(channel)) {
+    return channel as "challenge_link" | "result_card" | "creator_link";
+  }
+  return "organic";
 }
