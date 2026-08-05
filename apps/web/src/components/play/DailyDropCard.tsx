@@ -1,15 +1,15 @@
 import { Play, Check, Eye } from "lucide-react";
 import { motion } from "framer-motion";
-import type { FeedReview } from "../../hooks/useFeed";
+import type { DailyDropData } from "../../hooks/useDailyDrop";
 
 interface DailyDropCardProps {
-  review?: FeedReview;
-  isPlayed: boolean;
+  dailyDrop?: DailyDropData | null;
+  alreadyGuessed?: boolean;
   onPlay: () => void;
   isLoading: boolean;
 }
 
-export function DailyDropCard({ review, isPlayed, onPlay, isLoading }: DailyDropCardProps) {
+export function DailyDropCard({ dailyDrop, alreadyGuessed, onPlay, isLoading }: DailyDropCardProps) {
   if (isLoading) {
     return (
       <div className="aspect-[4/5] w-full animate-pulse rounded-3xl border border-white/10 bg-white/5 p-4">
@@ -18,14 +18,17 @@ export function DailyDropCard({ review, isPlayed, onPlay, isLoading }: DailyDrop
     );
   }
 
-  if (!review) {
+  if (!dailyDrop) {
     return (
       <div className="flex aspect-[4/5] w-full flex-col items-center justify-center rounded-3xl border border-white/10 bg-white/5 p-6 text-center">
         <Eye className="mb-2 h-8 w-8 text-white/30" />
-        <p className="text-sm font-bold text-white/50">No rounds available right now.</p>
+        <p className="text-sm font-bold text-white/50">No Daily Drop scheduled for today.</p>
       </div>
     );
   }
+
+  const review = dailyDrop.review;
+  const isPlayed = alreadyGuessed ?? false;
 
   return (
     <motion.button

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFeed } from "../hooks/useFeed";
+import { useTodaysDailyDrop } from "../hooks/useDailyDrop";
 import { useChallenges } from "../hooks/useChallenges";
 import { usePlayStore } from "../stores/playStore";
 import { StreakHeader } from "../components/play/StreakHeader";
@@ -14,25 +15,20 @@ const FIRST_ROUND_TRACKED_KEY = "sr_first_round_tracked";
 
 export function PlayHome() {
   const navigate = useNavigate();
-  const { data, isLoading: feedLoading } = useFeed("for-you");
+  const { data: feedData } = useFeed("for-you");
+  const { data: dailyDropData, isLoading: dailyDropLoading } = useTodaysDailyDrop();
   const { discoverChallenges } = useChallenges();
   const setDailyDrop = usePlayStore((s) => s.setDailyDrop);
   const setPendingChallengeCount = usePlayStore((s) => s.setPendingChallengeCount);
-  const isPlayed = usePlayStore((s) => s.isPlayed);
   const playedIds = usePlayStore((s) => s.playedReviewIds);
 
-  const reviews = data?.pages.flatMap((page) => page.reviews) ?? [];
+  const reviews = feedData?.pages.flatMap((page) => page.reviews) ?? [];
 
-  const { dailyDrop, continueList } = useMemo(() => {
-    const firstUnplayed = reviews.find((r) => !isPlayed(r.id));
-    const drop = firstUnplayed ?? reviews[0];
-    const rest = reviews.filter((r) => r.id !== drop?.id).slice(0, 10);
-    return { dailyDrop: drop, continueList: rest };
-  }, [reviews, isPlayed]);
+  const continueList = reviews.filter((r) => r.id !== dailyDropData?.dailyDrop.review.id).slice(0, 10);
 
   useEffect(() => {
-    setDailyDrop(dailyDrop?.id ?? null);
-  }, [dailyDrop?.id, setDailyDrop]);
+    setDailyDrop(dailyDropData?.dailyDrop.review.id ?? null);
+  }, [dailyDropData?.dailyDrop.review.id, setDailyDrop]);
 
   useEffect(() => {
     setPendingChallengeCount(discoverChallenges.length);
@@ -55,6 +51,11 @@ export function PlayHome() {
     sessionStorage.setItem(FIRST_ROUND_TRACKED_KEY, "1");
   }
 
+  function handlePlayDailyDrop() {
+    trackFirstRoundStart();
+    navigate("/dailydrop");
+  }
+
   function handlePlay(reviewId: string) {
     trackFirstRoundStart();
     navigate(`/play/${reviewId}`);
@@ -66,10 +67,10 @@ export function PlayHome() {
 
       <section className="space-y-2">
         <DailyDropCard
-          review={dailyDrop}
-          isPlayed={dailyDrop ? isPlayed(dailyDrop.id) : false}
-          onPlay={() => dailyDrop && handlePlay(dailyDrop.id)}
-          isLoading={feedLoading}
+          dailyDrop={dailyDropData?.dailyDrop}
+          alreadyGuessed={dailyDropData?.alreadyGuessed}
+          onPlay={handlePlayDailyDrop}
+          isLoading={dailyDropLoading}
         />
       </section>
 

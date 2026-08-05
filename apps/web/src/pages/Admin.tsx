@@ -6,6 +6,7 @@ import { useAuthStore } from "../stores/authStore";
 import { FeedTabs } from "../components/feed/FeedTabs";
 import { Loading } from "../components/common/Loading";
 import { MetricsDashboard } from "./admin/MetricsDashboard";
+import { DailyDropSchedule } from "./admin/DailyDropSchedule";
 import { ShieldCheck, Check, X, Search, Flag, Eye } from "lucide-react";
 
 interface AdminStats {
@@ -51,6 +52,7 @@ const TABS = [
   { id: "users", label: "Users" },
   { id: "products", label: "Products" },
   { id: "metrics", label: "Metrics" },
+  { id: "dailydrop", label: "Daily Drop" },
 ];
 
 export function Admin() {
@@ -102,6 +104,7 @@ export function Admin() {
         {tab === "users" && <UsersPanel onAction={invalidate} />}
         {tab === "products" && <ProductsPanel />}
         {tab === "metrics" && <MetricsDashboard />}
+        {tab === "dailydrop" && <DailyDropSchedule />}
       </div>
     </div>
   );

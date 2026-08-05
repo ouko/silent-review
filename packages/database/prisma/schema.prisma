@@ -175,6 +175,7 @@ model Review {
   comments     Comment[]
   shareEvents  ShareEvent[]
   videoModeration VideoModeration?
+  dailyDrops      DailyDrop[]
 
   @@index([userId])
   @@index([productId])
@@ -182,6 +183,19 @@ model Review {
   @@index([createdAt])
   @@index([likeCount, createdAt])
   @@index([duetOfId])
+}
+
+model DailyDrop {
+  id         String   @id @default(uuid())
+  date       DateTime @db.Date @unique
+  reviewId   String
+  review     Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  isOverride Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  guesses Guess[]
+
+  @@index([reviewId])
 }
 
 enum ReviewStatus {
@@ -213,19 +227,23 @@ enum ModerationStatus {
 }
 
 model Guess {
-  id            String   @id @default(uuid())
+  id            String     @id @default(uuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviewId      String
-  review        Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  review        Review     @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  dailyDropId   String?
+  dailyDrop     DailyDrop? @relation(fields: [dailyDropId], references: [id], onDelete: SetNull)
   guessedRating Int
-  isCorrect     Boolean  @default(false)
-  score         Int      @default(0)
-  createdAt     DateTime @default(now())
+  isCorrect     Boolean    @default(false)
+  score         Int        @default(0)
+  createdAt     DateTime   @default(now())
 
   @@unique([userId, reviewId])
+  @@unique([userId, dailyDropId])
   @@index([reviewId])
   @@index([userId])
+  @@index([dailyDropId])
 }
 
 model Like {

@@ -4,6 +4,7 @@ import { MainLayout } from "./components/layout/MainLayout";
 import { AuthGuard } from "./components/AuthGuard";
 import { PlayHome } from "./pages/PlayHome";
 import { PlayRound } from "./pages/PlayRound";
+import { DailyDropRound } from "./pages/DailyDropRound";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { ReviewDetail } from "./pages/ReviewDetail";
@@ -53,6 +54,7 @@ export const router: ReturnType<typeof createBrowserRouter> = createBrowserRoute
           { path: "/", element: <LegacyHomeRedirect /> },
           { path: "/play", element: <PlayHome /> },
           { path: "/play/:id", element: <PlayRound /> },
+          { path: "/dailydrop", element: <DailyDropRound /> },
           { path: "/browse", element: <LazyWrapper><Browse /></LazyWrapper> },
           { path: "/record", element: <LazyWrapper><Record /></LazyWrapper> },
           { path: "/activity", element: <LazyWrapper><Activity /></LazyWrapper> },

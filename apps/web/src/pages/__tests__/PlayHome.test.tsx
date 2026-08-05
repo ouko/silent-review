@@ -34,6 +34,36 @@ vi.mock("../../hooks/useFeed", () => ({
   }),
 }));
 
+vi.mock("../../hooks/useDailyDrop", () => ({
+  useTodaysDailyDrop: () => ({
+    data: {
+      dailyDrop: {
+        id: "dd-1",
+        date: new Date().toISOString(),
+        reviewId: "review-1",
+        isOverride: false,
+        createdAt: new Date().toISOString(),
+        alreadyGuessed: false,
+        review: {
+          id: "review-1",
+          videoUrl: "https://example.com/video.mp4",
+          thumbnailUrl: null,
+          caption: "Great product",
+          productTag: "headphones",
+          rating: 8,
+          duration: 5,
+          guessCount: 0,
+          createdAt: new Date().toISOString(),
+          user: { id: "u1", username: "tester", displayName: null, avatarUrl: null },
+          product: { id: "p1", name: "Headphones", category: "audio" },
+        },
+      },
+      alreadyGuessed: false,
+    },
+    isLoading: false,
+  }),
+}));
+
 vi.mock("../../hooks/useChallenges", () => ({
   useChallenges: () => ({
     discoverChallenges: [],
