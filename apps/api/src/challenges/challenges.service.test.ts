@@ -1,7 +1,6 @@
 import { prisma } from "../prisma.js";
 import {
   createPerVideoChallenge,
-  acceptPerVideoChallenge,
   recordChallengeGuess,
   getPerVideoChallenge,
   generateRematch,
@@ -85,7 +84,7 @@ describe("per-video challenges", () => {
     const review = await createReview(challenger.id);
     await createGuess(challenger.id, review.id, 7, 5);
 
-    const challenge = await createPerVideoChallenge({
+    await createPerVideoChallenge({
       challengerId: challenger.id,
       reviewId: review.id,
       challengedId: challenged.id,
@@ -136,7 +135,7 @@ describe("per-video challenges", () => {
     await recordChallengeGuess(review1.id, challenged.id, 10);
 
     const rematch = await generateRematch(challenge.id, challenger.id);
-    expect(rematch.reviewId).not.toBe(review1.id);
+    expect(rematch.reviewId).toBe(review2.id);
     expect(rematch.rematchOfId).toBe(challenge.id);
   });
 
