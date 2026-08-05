@@ -26,9 +26,11 @@ model User {
   totalGuesses  Int   @default(0)
   totalPoints   Int   @default(0)
   totalLikes    Int   @default(0)
-  streakDays    Int   @default(0)
-  longestStreak Int   @default(0)
-  lastActiveAt  DateTime?
+  streakDays         Int       @default(0)
+  longestStreak      Int       @default(0)
+  freezeHeld         Int       @default(0)
+  lastFreezeEarnedAt DateTime?
+  lastActiveAt       DateTime?
 
   // Preferences stored as JSONB for flexibility
   preferences Json? @default("{}")
@@ -357,6 +359,7 @@ enum NotificationType {
   ACHIEVEMENT
   CHALLENGE
   SYSTEM
+  STREAK_AT_RISK
 }
 
 model FeatureFlag {
