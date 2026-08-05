@@ -13,6 +13,9 @@ export type AnalyticsEventType =
   | "challenge_sent"
   | "challenge_accepted"
   | "streak_milestone"
+  | "streak_freeze_earned"
+  | "streak_freeze_consumed"
+  | "streak_at_risk"
   | "invite_sent"
   | "invite_install_attributed"
   | "tab_switched";

@@ -55,6 +55,18 @@ export async function updateStreak(userId: string): Promise<StreakUpdate> {
     select: { streakDays: true, longestStreak: true, freezeHeld: true },
   });
 
+  if (freezeAward) {
+    await prisma.event.create({
+      data: {
+        type: "streak_freeze_earned",
+        userId,
+        sessionId: "server",
+        channel: "organic",
+        properties: { streakDays: updated.streakDays },
+      },
+    });
+  }
+
   const newlyUnlocked = await checkStreakMilestones(userId, updated.streakDays);
 
   return { ...updated, newlyUnlocked };
@@ -121,6 +133,18 @@ export async function processMissedStreaks(): Promise<{ protected: number; reset
     });
   }
 
+  if (protectedIds.length > 0) {
+    await prisma.event.createMany({
+      data: protectedIds.map((id) => ({
+        type: "streak_freeze_consumed" as const,
+        userId: id,
+        sessionId: "server",
+        channel: "organic",
+        properties: {},
+      })),
+    });
+  }
+
   return { protected: protectedIds.length, reset: resetIds.length };
 }
 
@@ -157,6 +181,16 @@ export async function notifyStreakAtRisk(): Promise<{ notified: number }> {
       title: `Your ${u.streakDays}-day streak ends tonight`,
       body: "Play today's Daily Drop before midnight to keep it alive.",
       data: { streakDays: u.streakDays },
+    })),
+  });
+
+  await prisma.event.createMany({
+    data: users.map((u) => ({
+      type: "streak_at_risk" as const,
+      userId: u.id,
+      sessionId: "server",
+      channel: "organic",
+      properties: { streakDays: u.streakDays },
     })),
   });
 

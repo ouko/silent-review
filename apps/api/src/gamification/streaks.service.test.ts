@@ -11,6 +11,10 @@ const mockPrisma: any = {
     findMany: jest.fn(),
     createMany: jest.fn(),
   },
+  event: {
+    create: jest.fn(),
+    createMany: jest.fn(),
+  },
   achievement: {
     findUnique: jest.fn(),
   },
