@@ -56,13 +56,20 @@ jobs:
         run: pnpm --filter shared build && pnpm --filter database build
 
       - name: Typecheck
-        run: pnpm -r typecheck
+        run: pnpm -r typecheck 2>&1 | tee typecheck-output.log
 
       - name: Build
         run: pnpm build
 
       - name: Unit tests (API)
         run: pnpm --filter api test 2>&1 | tee api-test-output.log
+
+      - name: Upload typecheck output on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typecheck-output
+          path: typecheck-output.log
 
       - name: Upload API test output on failure
         if: failure()
