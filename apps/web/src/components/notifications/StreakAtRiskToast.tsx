@@ -3,6 +3,7 @@ import { ShieldAlert, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { api } from "../../lib/api";
 import { sendLocalNotification } from "../../lib/push";
+import { useAuthStore } from "../../stores/authStore";
 
 interface NotificationDto {
   id: string;
@@ -15,8 +16,15 @@ interface NotificationDto {
 export function StreakAtRiskToast() {
   const [visible, setVisible] = useState(false);
   const [notification, setNotification] = useState<NotificationDto | null>(null);
+  const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
+    // This component mounts at the root of the app (including /login), so it
+    // must not call authenticated endpoints while the user is signed out.
+    // Otherwise the 401 triggers the global axios interceptor, which reloads
+    // /login and creates an infinite loop.
+    if (!user) return;
+
     let cancelled = false;
 
     async function check() {
@@ -40,7 +48,7 @@ export function StreakAtRiskToast() {
       cancelled = true;
       clearInterval(id);
     };
-  }, []);
+  }, [user]);
 
   return (
     <AnimatePresence>
