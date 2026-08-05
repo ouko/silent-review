@@ -1,7 +1,10 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { Trophy, RotateCcw, Share2, Swords } from "lucide-react";
+import { useState } from "react";
+import { Trophy, RotateCcw, Swords } from "lucide-react";
 import { StatsChart } from "../stats/StatsChart";
 import { GuessFeedback } from "./GuessFeedback";
+import { ResultCardPreview } from "../share/ResultCardPreview";
+import { useGamification } from "../../hooks/useGamification";
 
 interface RevealScreenProps {
   rating: number;
@@ -19,6 +22,19 @@ interface RevealScreenProps {
   onRematch?: () => void;
 }
 
+function scoreToAccuracy(score: number): number {
+  switch (score) {
+    case 10:
+      return 100;
+    case 5:
+      return 50;
+    case 2:
+      return 20;
+    default:
+      return 0;
+  }
+}
+
 export function RevealScreen({
   rating,
   userGuess,
@@ -28,32 +44,13 @@ export function RevealScreen({
   onPlayAgain,
   reviewId,
   productName,
-  onShare,
   onChallengeFriend,
   challengeComplete,
   onRematch,
 }: RevealScreenProps) {
   const reducedMotion = useReducedMotion();
-
-  const canNativeShare = typeof navigator !== "undefined" && "share" in navigator;
-
-  async function handleShare() {
-    if (onShare) {
-      onShare();
-      return;
-    }
-    if (!canNativeShare) return;
-    const url = reviewId ? `${window.location.origin}/review/${reviewId}` : window.location.href;
-    try {
-      await navigator.share({
-        title: "Silent Review",
-        text: `Can you guess the rating for ${productName || "this review"}?`,
-        url,
-      });
-    } catch {
-      // User cancelled or share failed; ignore.
-    }
-  }
+  const [showResultCard, setShowResultCard] = useState(false);
+  const { data: gamification } = useGamification();
 
   const containerVariants = {
     hidden: reducedMotion ? {} : { opacity: 0 },
@@ -101,28 +98,14 @@ export function RevealScreen({
         <StatsChart distribution={distribution} totalGuesses={totalGuesses} />
       </motion.div>
 
-      <motion.div
-        variants={itemVariants}
-        className="glow-border flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-left"
-      >
-        <div className="flex items-center gap-2">
-          <Trophy className="h-4 w-4 text-rose-400" />
-          <p className="text-sm font-bold text-white/90">Result Card</p>
-        </div>
-        <p className="text-sm text-white/60">
-          Share your guess with friends. Sharing coming soon!
-        </p>
-      </motion.div>
-
       <motion.button
         variants={itemVariants}
-        whileTap={onShare || canNativeShare ? { scale: 0.96 } : {}}
-        onClick={handleShare}
-        disabled={!onShare && !canNativeShare}
-        className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-white/10 py-3.5 font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+        whileTap={{ scale: 0.96 }}
+        onClick={() => setShowResultCard(true)}
+        className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-3.5 font-bold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90"
       >
-        <Share2 className="h-4 w-4" />
-        Share
+        <Trophy className="h-4 w-4" />
+        Share result card
       </motion.button>
 
       {challengeComplete && onRematch && (
@@ -157,10 +140,22 @@ export function RevealScreen({
       >
         <RotateCcw className="h-4 w-4" />
         Play again
-        <span className="ml-1 rounded-full bg-black/10 px-2 py-0.5 text-sm">
-          {rating}/10
-        </span>
       </motion.button>
+
+      {showResultCard && reviewId && userGuess !== null && (
+        <ResultCardPreview
+          open={showResultCard}
+          onClose={() => setShowResultCard(false)}
+          reviewId={reviewId}
+          title={productName || "Silent Review"}
+          subtitle="Can you beat my guess?"
+          guesses={[userGuess]}
+          actualRatings={[rating]}
+          accuracy={scoreToAccuracy(score)}
+          streak={gamification?.streakDays ?? 0}
+          onChallengeInstead={onChallengeFriend}
+        />
+      )}
     </motion.div>
   );
 }

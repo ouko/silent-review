@@ -264,6 +264,7 @@ async function main() {
     ["creator_tipping", false, "Enable creator tipping"],
     ["leaderboard_friends", true, "Enable friends tab on leaderboard"],
     ["analytics", true, "Enable event ingestion and analytics dashboard"],
+    ["result_card_layout_v2", false, "Enable dial layout A/B variant for result cards"],
   ] as const;
 
   const flags = [];

@@ -2,16 +2,33 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DailyDropPlayer } from "../components/dailydrop/DailyDropPlayer";
 import { Loading } from "../components/common/Loading";
+import { ResultCardPreview } from "../components/share/ResultCardPreview";
 import { useTodaysDailyDrop, useDailyDropAttempt } from "../hooks/useDailyDrop";
 import { usePlayStore } from "../stores/playStore";
+import { useGamification } from "../hooks/useGamification";
 import { trackDailyDropPlayed, trackFirstRoundComplete } from "../lib/analytics";
+
+function scoreToAccuracy(score: number): number {
+  switch (score) {
+    case 10:
+      return 100;
+    case 5:
+      return 50;
+    case 2:
+      return 20;
+    default:
+      return 0;
+  }
+}
 
 export function DailyDropRound() {
   const navigate = useNavigate();
   const { data, isLoading, error } = useTodaysDailyDrop();
   const attemptMutation = useDailyDropAttempt();
   const markPlayed = usePlayStore((s) => s.markPlayed);
+  const { data: gamification } = useGamification();
   const [attemptResult, setAttemptResult] = useState<ReturnType<typeof useDailyDropAttempt>["data"]>();
+  const [showResultCard, setShowResultCard] = useState(false);
 
   if (isLoading) return <Loading />;
 
@@ -43,17 +60,38 @@ export function DailyDropRound() {
   }
 
   function handleReveal() {
-    navigate("/play");
+    setShowResultCard(true);
   }
 
+  const userGuess = attemptResult?.guess.guessedRating ?? null;
+  const score = attemptResult?.score ?? 0;
+  const accuracy = scoreToAccuracy(score);
+  const streak = gamification?.streakDays ?? 0;
+
   return (
-    <DailyDropPlayer
-      dailyDrop={dailyDrop}
-      alreadyGuessed={alreadyGuessed}
-      onAttempt={handleAttempt}
-      onReveal={handleReveal}
-      isSubmitting={attemptMutation.isPending}
-      attemptResult={attemptResult ?? undefined}
-    />
+    <>
+      <DailyDropPlayer
+        dailyDrop={dailyDrop}
+        alreadyGuessed={alreadyGuessed}
+        onAttempt={handleAttempt}
+        onReveal={handleReveal}
+        isSubmitting={attemptMutation.isPending}
+        attemptResult={attemptResult ?? undefined}
+      />
+      {showResultCard && userGuess !== null && (
+        <ResultCardPreview
+          open={showResultCard}
+          onClose={() => setShowResultCard(false)}
+          reviewId={dailyDrop.review.id}
+          title="Daily Drop"
+          subtitle={new Date(dailyDrop.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+          guesses={[userGuess]}
+          actualRatings={[dailyDrop.review.rating]}
+          accuracy={accuracy}
+          streak={streak}
+          dailyDropDate={dailyDrop.date.slice(0, 10)}
+        />
+      )}
+    </>
   );
 }

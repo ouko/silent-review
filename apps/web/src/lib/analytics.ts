@@ -10,6 +10,7 @@ export type AnalyticsEventType =
   | "daily_drop_played"
   | "share_card_created"
   | "share_card_clicked"
+  | "card_to_install_attributed"
   | "challenge_sent"
   | "challenge_accepted"
   | "rematch_started"

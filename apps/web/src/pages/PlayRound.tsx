@@ -8,6 +8,8 @@ import { trackFirstRoundComplete, trackDailyDropPlayed, trackEvent } from "../li
 import { useUIStore } from "../stores/uiStore";
 import type { FeedReview } from "../hooks/useFeed";
 
+const attributedResultCards = new Set<string>();
+
 interface ReviewDetailData {
   id: string;
   videoUrl: string;
@@ -130,8 +132,14 @@ export function PlayRound() {
       trackDailyDropPlayed({ reviewId });
       markPlayed(reviewId);
 
+      const channel = getAnalyticsChannel();
+      if (channel === "result_card" && !attributedResultCards.has(reviewId)) {
+        attributedResultCards.add(reviewId);
+        trackEvent("card_to_install_attributed", { reviewId, channel });
+      }
+
       if (challengeId) {
-        trackEvent("challenge_accepted", { challengeId, reviewId, channel: getAnalyticsChannel() });
+        trackEvent("challenge_accepted", { challengeId, reviewId, channel });
         // Refresh challenge state so scores/winner update.
         const challengeRes = await api.get<{ challenge: PerVideoChallenge }>(`/api/challenges/per-video/${challengeId}`);
         setChallenge(challengeRes.data.challenge);
