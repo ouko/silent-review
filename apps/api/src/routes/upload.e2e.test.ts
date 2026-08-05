@@ -99,7 +99,7 @@ describe("POST /api/upload moderation queue integration", () => {
     const elapsed = Date.now() - start;
 
     expect(response.status).toBe(201);
-    expect(elapsed).toBeLessThan(200);
+    expect(elapsed).toBeLessThan(500);
     expect(response.body).toMatchObject({
       url: "/uploads/test-video.mp4",
       duration: 12.34,

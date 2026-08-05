@@ -15,7 +15,7 @@ const mockPrisma: any = {
     update: jest.fn(),
   },
   challenge: {
-    findFirst: jest.fn().mockResolvedValue(null),
+    findFirst: jest.fn<() => Promise<null>>().mockResolvedValue(null),
   },
 };
 
