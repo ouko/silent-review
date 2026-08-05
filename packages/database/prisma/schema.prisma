@@ -107,7 +107,7 @@ model Product {
 
   // The merchant account that owns this product (assigned by an admin).
   ownerId String?
-  owner   User?   @relation("OwnedProducts", fields: [ownerId], references: [id], onDelete: SetNull)
+  owner   User?   @relation("OwnedProducts", fields: [ownerId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   // Full-text search vector maintained by application layer or trigger
   searchVector String?
