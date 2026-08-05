@@ -62,7 +62,15 @@ jobs:
         run: pnpm build
 
       - name: Unit tests (API)
-        run: pnpm --filter api test
+        run: pnpm --filter api test 2>&1 | tee api-test-output.log
+
+      - name: Upload API test output on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-test-output
+          path: api-test-output.log
+          retention-days: 7
 
       - name: Unit tests (Web)
         run: pnpm --filter web test
