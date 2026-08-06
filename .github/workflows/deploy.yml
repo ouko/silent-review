@@ -23,4 +23,4 @@ jobs:
             set -e
             cd ~/silent-review
             git pull origin main
-            ENV_FILE=.env.prod pnpm run deploy
+            ENV_FILE=.env.prod RUN_SEED=true pnpm run deploy
