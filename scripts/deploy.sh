@@ -67,9 +67,20 @@ log "Running database migrations..."
 # Alpine and memory pressure on small hosts.
 bash scripts/migrate-psql.sh
 
+if [ "${RUN_SEED:-}" = "true" ]; then
+  log "Seeding demo data (RUN_SEED=true)..."
+  docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" exec -T api node_modules/.bin/tsx packages/database/prisma/seed.ts
+fi
+
 # Keep a copy of the operations runbook in the deploy user's home so it is
 # visible the moment anyone SSHs in.
 cp docs/RUNBOOK.md "${HOME}/RUNBOOK.md" 2>/dev/null || true
+
+# Activate HTTPS if the nginx SSL config is not yet present.
+if [ ! -f "${PROJECT_ROOT}/nginx/conf.d/ssl.conf" ] && [ "${WEB_APP_URL:-}" != "${WEB_APP_URL#https://}" ]; then
+  log "HTTPS config missing; requesting Let's Encrypt certificate..."
+  bash scripts/init-ssl.sh
+fi
 
 HEALTH_URL="${WEB_APP_URL:-http://localhost}/api/health"
 log "Waiting for health check at ${HEALTH_URL}..."

@@ -54,3 +54,6 @@ tmp-verify-screenshots.cjs
 
 # Local dev TLS certificates
 certs/
+
+# Let's Encrypt data (production certs live on the server)
+data/certbot/

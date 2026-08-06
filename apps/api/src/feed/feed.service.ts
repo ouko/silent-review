@@ -3,6 +3,8 @@ import { getRedis } from "../redis.js";
 import { scoreReview, type ReviewCandidate, type UserProfile } from "./scoring.js";
 
 const CACHE_TTL_SECONDS = 5 * 60;
+const PROFILE_CACHE_TTL_SECONDS = 15 * 60;
+const PROFILE_HISTORY_LIMIT = 500;
 const CANDIDATE_POOL_SIZE = 200;
 
 export interface FeedResult {
@@ -40,7 +42,7 @@ export async function getForYouFeed(
     return JSON.parse(cached) as FeedResult;
   }
 
-  const userProfile = userId ? await buildUserProfile(userId) : emptyProfile();
+  const userProfile = userId ? await getCachedUserProfile(userId) : emptyProfile();
   const candidates = await fetchCandidates(userProfile.seenReviewIds, cursor);
 
   const scored = candidates.map((review) => ({
@@ -168,19 +170,59 @@ export async function getCategoryFeed(
   return { reviews: reviews.map(formatReview), nextCursor };
 }
 
+async function getCachedUserProfile(userId: string): Promise<UserProfile> {
+  const redis = getRedis();
+  const cacheKey = `user:profile:${userId}`;
+
+  if (redis) {
+    const cached = await redis.get(cacheKey).catch(() => null);
+    if (cached) {
+      const parsed = JSON.parse(cached) as {
+        followingIds: string[];
+        interestCategories: [string, number][];
+        seenReviewIds: string[];
+      };
+      return {
+        followingIds: new Set(parsed.followingIds),
+        interestCategories: new Map(parsed.interestCategories),
+        seenReviewIds: new Set(parsed.seenReviewIds),
+      };
+    }
+  }
+
+  const profile = await buildUserProfile(userId);
+
+  if (redis) {
+    const payload = JSON.stringify({
+      followingIds: Array.from(profile.followingIds),
+      interestCategories: Array.from(profile.interestCategories.entries()),
+      seenReviewIds: Array.from(profile.seenReviewIds),
+    });
+    await redis.setex(cacheKey, PROFILE_CACHE_TTL_SECONDS, payload).catch(() => {});
+  }
+
+  return profile;
+}
+
 async function buildUserProfile(userId: string): Promise<UserProfile> {
   const [following, guesses, likes, reviews] = await Promise.all([
     prisma.follow.findMany({ where: { followerId: userId }, select: { followingId: true } }),
     prisma.guess.findMany({
       where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: PROFILE_HISTORY_LIMIT,
       include: { review: { select: { productTag: true } } },
     }),
     prisma.like.findMany({
       where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: PROFILE_HISTORY_LIMIT,
       include: { review: { select: { productTag: true } } },
     }),
     prisma.review.findMany({
       where: { userId, deletedAt: null },
+      orderBy: { createdAt: "desc" },
+      take: PROFILE_HISTORY_LIMIT,
       select: { productTag: true },
     }),
   ]);

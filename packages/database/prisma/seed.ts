@@ -1,10 +1,18 @@
 import bcrypt from "bcryptjs";
+import { execSync } from "child_process";
+import { existsSync, mkdirSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { prisma } from "../src/client.js";
 import { runDailyRollup } from "../src/analytics/rollup.service.js";
 
 const SALT_ROUNDS = 12;
 const DEMO_PASSWORD = "DemoPass123!";
 const DAY_MS = 24 * 60 * 60 * 1000;
+const PROJECT_ROOT = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.url)))));
+const SEED_VIDEO_DIR = join(PROJECT_ROOT, "uploads", "seed");
+const SEED_VIDEO_COUNT = 60;
+const SEED_VIDEO_DURATION = 5;
 
 const CATEGORIES = [
   "Electronics",
@@ -109,25 +117,67 @@ interface VideoAsset {
   category: string;
 }
 
-const VIDEO_ASSETS: VideoAsset[] = [
-  { path: "/uploads/placeholder-review.webm", format: "video/webm", duration: 5, category: "Home" },
-  { path: "/uploads/review-2.webm", format: "video/webm", duration: 10, category: "Electronics" },
-  { path: "/uploads/review-3.webm", format: "video/webm", duration: 15, category: "Sports" },
-  { path: "/uploads/review-road-20s.webm", format: "video/webm", duration: 20, category: "Automotive" },
-  { path: "/uploads/review-road-30s.webm", format: "video/webm", duration: 30, category: "Automotive" },
-  { path: "/uploads/review-nature-park.mp4", format: "video/mp4", duration: 10, category: "Home" },
-  { path: "/uploads/review-food-cooking.mp4", format: "video/mp4", duration: 10, category: "Food" },
-  { path: "/uploads/review-tech-laptop.mp4", format: "video/mp4", duration: 10, category: "Electronics" },
-  { path: "/uploads/review-fashion-walk.mp4", format: "video/mp4", duration: 10, category: "Fashion" },
-  { path: "/uploads/review-city-traffic.mp4", format: "video/mp4", duration: 10, category: "Automotive" },
-  { path: "/uploads/review-people-talk.mp4", format: "video/mp4", duration: 10, category: "Beauty" },
-  { path: "/uploads/review-travel-beach.mp4", format: "video/mp4", duration: 10, category: "Sports" },
-  { path: "/uploads/review-coffee-pour.mp4", format: "video/mp4", duration: 10, category: "Food" },
-  { path: "/uploads/review-phone-hands.mp4", format: "video/mp4", duration: 10, category: "Electronics" },
-  { path: "/uploads/review-woman-smile.mp4", format: "video/mp4", duration: 10, category: "Beauty" },
-  { path: "/uploads/review-gym-workout.mp4", format: "video/mp4", duration: 10, category: "Sports" },
-  { path: "/uploads/review-books-read.mp4", format: "video/mp4", duration: 10, category: "Books" },
-];
+function generateSeedVideos(): VideoAsset[] {
+  if (!existsSync(SEED_VIDEO_DIR)) {
+    mkdirSync(SEED_VIDEO_DIR, { recursive: true });
+  }
+
+  const hasFfmpeg = (() => {
+    try {
+      execSync("ffmpeg -version", { stdio: "ignore" });
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  if (!hasFfmpeg) {
+    console.warn("ffmpeg not found; falling back to a single placeholder video for seeding.");
+    return [{ path: "/uploads/placeholder-review.webm", format: "video/webm", duration: 5, category: "Home" }];
+  }
+
+  const palette = [
+    "#ef4444", "#f97316", "#f59e0b", "#84cc16", "#10b981",
+    "#06b6d4", "#0ea5e9", "#3b82f6", "#6366f1", "#8b5cf6",
+    "#d946ef", "#f43f5e", "#78716c", "#64748b", "#334155",
+  ];
+
+  const generated: VideoAsset[] = [];
+  for (let i = 0; i < SEED_VIDEO_COUNT; i++) {
+    const fileName = `seed-${i}.mp4`;
+    const filePath = join(SEED_VIDEO_DIR, fileName);
+    const publicPath = `/uploads/seed/${fileName}`;
+
+    if (!existsSync(filePath)) {
+      const color = palette[i % palette.length];
+      const cmd = `ffmpeg -f lavfi -i color=c=${color}:s=480x854:d=${SEED_VIDEO_DURATION} -c:v libx264 -preset fast -crf 28 -pix_fmt yuv420p -movflags +faststart -an "${filePath}" -y`;
+      try {
+        execSync(cmd, { stdio: "ignore", timeout: 30000 });
+      } catch (err) {
+        console.warn(`Failed to generate seed video ${fileName}, skipping.`, err);
+        continue;
+      }
+    }
+
+    if (existsSync(filePath)) {
+      generated.push({
+        path: publicPath,
+        format: "video/mp4",
+        duration: SEED_VIDEO_DURATION,
+        category: CATEGORIES[i % CATEGORIES.length],
+      });
+    }
+  }
+
+  if (generated.length === 0) {
+    return [{ path: "/uploads/placeholder-review.webm", format: "video/webm", duration: 5, category: "Home" }];
+  }
+
+  console.log(`Using ${generated.length} generated seed videos`);
+  return generated;
+}
+
+const VIDEO_ASSETS: VideoAsset[] = generateSeedVideos();
 
 const CAPTIONS = [
   "My take on the",
@@ -231,6 +281,10 @@ function sample<T>(arr: T[]): T {
 function sampleMany<T>(arr: T[], count: number): T[] {
   const shuffled = [...arr].sort(() => rng() - 0.5);
   return shuffled.slice(0, count);
+}
+
+function shuffleArray<T>(arr: T[]): T[] {
+  return [...arr].sort(() => rng() - 0.5);
 }
 
 function randomInt(min: number, max: number): number {
@@ -534,14 +588,22 @@ async function seedReviews(users: any[], products: any[]) {
 
   const reviewData: any[] = [];
 
+  // Pre-shuffle the video pool so adjacent reviews rarely share the same clip.
+  const shuffledVideos = shuffleArray([...VIDEO_ASSETS]);
+  let videoIndex = 0;
+  const nextVideo = () => {
+    const video = shuffledVideos[videoIndex % shuffledVideos.length];
+    videoIndex++;
+    return video;
+  };
+
   // Ensure each of the first 12 primary demo users has at least a few published reviews.
   // Keep these recent so they reliably surface in feeds used by E2E tests.
   const primaryUsers = users.slice(0, 12);
-  let primaryReviewIndex = 0;
   for (const user of primaryUsers) {
     const countForUser = randomInt(5, 8);
     for (let i = 0; i < countForUser; i++) {
-      const video = VIDEO_ASSETS[primaryReviewIndex % VIDEO_ASSETS.length];
+      const video = nextVideo();
       const product = sample(products);
       const rating = randomInt(1, 10);
       reviewData.push({
@@ -564,13 +626,12 @@ async function seedReviews(users: any[], products: any[]) {
         allowComments: true,
         createdAt: randomDate(recentWindow, now),
       });
-      primaryReviewIndex++;
     }
   }
 
   // Fill remaining published reviews.
   while (reviewData.length < PUBLISHED_COUNT) {
-    const video = VIDEO_ASSETS[reviewData.length % VIDEO_ASSETS.length];
+    const video = nextVideo();
     const product = sample(products);
     const user = sample(users);
     const rating = randomInt(1, 10);
@@ -598,7 +659,7 @@ async function seedReviews(users: any[], products: any[]) {
 
   // Add moderation-queue reviews.
   for (let i = 0; i < UNDER_REVIEW_COUNT; i++) {
-    const video = VIDEO_ASSETS[i % VIDEO_ASSETS.length];
+    const video = nextVideo();
     const product = sample(products);
     const user = sample(users);
     const rating = randomInt(1, 10);
