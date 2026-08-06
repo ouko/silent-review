@@ -76,10 +76,25 @@ fi
 # visible the moment anyone SSHs in.
 cp docs/RUNBOOK.md "${HOME}/RUNBOOK.md" 2>/dev/null || true
 
-# Activate HTTPS if the nginx SSL config is not yet present.
-if [ ! -f "${PROJECT_ROOT}/nginx/conf.d/ssl.conf" ] && [ "${WEB_APP_URL:-}" != "${WEB_APP_URL#https://}" ]; then
-  log "HTTPS config missing; requesting Let's Encrypt certificate..."
+# Regenerate HTTPS config from template on every deploy so security-header
+# and static-location changes are picked up. Certbot is a no-op when the
+# certificate is still valid.
+if [ "${WEB_APP_URL:-}" != "${WEB_APP_URL#https://}" ]; then
+  log "Ensuring HTTPS config is current..."
   bash scripts/init-ssl.sh
+fi
+
+# Seeding truncates tables, so any cached feeds/profiles/notifications are
+# stale. Clear the affected Redis keys before users hit the app.
+if [ "${RUN_SEED:-}" = "true" ]; then
+  log "Clearing stale Redis caches after seed..."
+  docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" exec -T redis sh -c '
+    for pattern in feed:* user:profile:* notifications:* dailydrop:*; do
+      for key in $(redis-cli --scan --pattern "$pattern"); do
+        redis-cli DEL "$key" >/dev/null
+      done
+    done
+  '
 fi
 
 HEALTH_URL="${WEB_APP_URL:-http://localhost}/api/health"

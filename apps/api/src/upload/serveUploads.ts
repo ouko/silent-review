@@ -20,16 +20,18 @@ const CONTENT_TYPES: Record<string, string> = {
   ".webp": "image/webp",
 };
 
+const UPLOAD_PATH_RE = /^[\w][\w.-]*(?:\/[\w][\w.-]*)*$/;
+
 export async function serveUpload(req: Request, res: Response): Promise<void> {
-  const { filename } = req.params;
-  if (typeof filename !== "string" || !/^[\w][\w.-]*$/.test(filename)) {
+  const path = req.params[0];
+  if (typeof path !== "string" || !UPLOAD_PATH_RE.test(path)) {
     res.status(400).json({ error: "Invalid filename" });
     return;
   }
 
   let data: Buffer;
   try {
-    data = decryptAtRest(await readFile(join(UPLOAD_DIR, filename)));
+    data = decryptAtRest(await readFile(join(UPLOAD_DIR, path)));
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "ENOENT") {
       res.status(404).json({ error: "Not found" });
@@ -39,7 +41,7 @@ export async function serveUpload(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  res.setHeader("Content-Type", CONTENT_TYPES[extname(filename).toLowerCase()] ?? "application/octet-stream");
+  res.setHeader("Content-Type", CONTENT_TYPES[extname(path).toLowerCase()] ?? "application/octet-stream");
   res.setHeader("Accept-Ranges", "bytes");
   res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
 

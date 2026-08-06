@@ -11,8 +11,23 @@ server {
   ssl_certificate /etc/letsencrypt/live/example.com/fullchain.pem;
   ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
 
+  # Security headers: HTTPS is mandatory for this application.
+  add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+  add_header X-Frame-Options "SAMEORIGIN" always;
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+
   # Upload size (matches API limit headroom)
   client_max_body_size 100M;
+
+  # Seed videos are unencrypted generated assets; serve them directly from disk
+  # so nginx does not pay the API decryption/CPU cost for every feed impression.
+  location /uploads/seed/ {
+    alias /var/www/uploads/seed/;
+    try_files $uri =404;
+    expires 1d;
+    add_header Cache-Control "public, max-age=86400, immutable" always;
+  }
 
   # API proxy. No trailing slash on proxy_pass: the app mounts everything
   # under /api, so the prefix must be preserved (/api/feed -> /api/feed).

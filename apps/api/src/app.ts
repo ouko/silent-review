@@ -62,7 +62,8 @@ export function createApp() {
 
   // Serve uploaded videos locally, decrypting at-rest payloads and
   // supporting Range requests (required by iOS Safari video playback).
-  app.get(`${UPLOAD_BASE_URL}/:filename`, serveUpload);
+  // The wildcard supports seed assets nested under /uploads/seed/.
+  app.get(`${UPLOAD_BASE_URL}/*`, serveUpload);
 
   app.get("/health", (_req, res) => {
     res.json({
