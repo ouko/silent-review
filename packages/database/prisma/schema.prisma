@@ -482,6 +482,9 @@ model Challenge {
   challenged      User?   @relation("ChallengesReceived", fields: [challengedId], references: [id], onDelete: Cascade)
   challengerScore Int     @default(0)
   challengedScore Int     @default(0)
+  // Per-video challenges need to distinguish "score of 0" from "has not played yet".
+  challengerSubmittedAt DateTime?
+  challengedSubmittedAt DateTime?
 
   // Rematch chain: a completed challenge can spawn a follow-up on a fresh video.
   rematchOfId String?

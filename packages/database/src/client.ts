@@ -11,11 +11,19 @@ function buildDatabaseUrl(): string {
     if (parsed.hostname === "localhost") {
       parsed.hostname = "127.0.0.1";
     }
-    // Force a larger connection pool for local dev/e2e so concurrent requests
-    // (feature-flag checks, auth, feed) don't exhaust the default pool.
-    parsed.searchParams.set("connection_limit", "20");
+    // Size the connection pool for the environment. Local dev/e2e runs many
+    // concurrent workers (feed, analytics ingest, feature flags, auth) and
+    // exhausts the default pool, so give them more headroom. Production can
+    // override via DATABASE_CONNECTION_LIMIT to match its Postgres limits.
+    const isProduction = process.env.NODE_ENV === "production";
+    const connectionLimit = process.env.DATABASE_CONNECTION_LIMIT
+      ? parseInt(process.env.DATABASE_CONNECTION_LIMIT, 10)
+      : isProduction
+        ? 20
+        : 50;
+    parsed.searchParams.set("connection_limit", String(connectionLimit));
     if (!parsed.searchParams.has("pool_timeout")) {
-      parsed.searchParams.set("pool_timeout", "10");
+      parsed.searchParams.set("pool_timeout", isProduction ? "10" : "20");
     }
     return parsed.toString();
   } catch {

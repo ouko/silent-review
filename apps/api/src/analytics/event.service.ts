@@ -1,5 +1,5 @@
 import { prisma } from "../prisma.js";
-import { isFeatureEnabled } from "../features/features.service.js";
+import { isFeatureEnabled, getFeatureFlag } from "../features/features.service.js";
 
 export interface AnalyticsEventInput {
   type: string;
@@ -16,7 +16,8 @@ export async function ingestEvents(events: AnalyticsEventInput[]): Promise<{ sto
     return { stored: 0 };
   }
 
-  const rules = (await getAnalyticsRules()) ?? {};
+  const flag = await getFeatureFlag("analytics");
+  const rules = (flag?.rules as Record<string, unknown> | undefined) ?? {};
   const sampleRate = typeof rules.sampleRate === "number" ? rules.sampleRate : 1;
 
   const toStore = events
@@ -63,7 +64,4 @@ function normalizeChannel(channel?: string): string {
   return allowed.has(channel) ? channel : "organic";
 }
 
-async function getAnalyticsRules(): Promise<Record<string, unknown> | null> {
-  const flag = await prisma.featureFlag.findUnique({ where: { key: "analytics" } });
-  return (flag?.rules as Record<string, unknown>) ?? null;
-}
+

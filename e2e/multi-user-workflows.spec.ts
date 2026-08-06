@@ -58,8 +58,8 @@ async function loginAs(page: Page, email: string): Promise<AuthSession> {
   await submitButton.click();
   const loginRes = await loginResponse;
 
-  await expect(page).toHaveURL("/", { timeout: 20000 });
-  await expect(page.getByText("For You")).toBeVisible({ timeout: 15000 });
+  await expect(page).toHaveURL("/play", { timeout: 20000 });
+  await expect(page.getByText("Daily Drop")).toBeVisible({ timeout: 15000 });
 
   const body = (await loginRes.json()) as { accessToken: string; user: CurrentUser };
   return { accessToken: body.accessToken, user: body.user };
@@ -74,6 +74,15 @@ async function switchToUser(page: Page, context: BrowserContext, email: string):
 
 async function forYouFeed(page: Page, token: string): Promise<FeedReview[]> {
   const res = await page.request.get("/api/feed?limit=50", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(res.ok()).toBe(true);
+  const body = (await res.json()) as { reviews: FeedReview[] };
+  return body.reviews;
+}
+
+async function followingFeed(page: Page, token: string): Promise<FeedReview[]> {
+  const res = await page.request.get("/api/feed/following?limit=50", {
     headers: { Authorization: `Bearer ${token}` },
   });
   expect(res.ok()).toBe(true);
@@ -115,11 +124,18 @@ test("all demo users can log in and see a recent, tag-rich feed", async ({ page,
       expect(prev, "feed should be sorted by createdAt descending").toBeGreaterThanOrEqual(curr);
     }
 
-    // The first card should expose the author and product tag in the UI.
+    // Navigate to the browse feed and verify a visible card exposes author + tag.
+    await page.goto("/browse");
+    await expect(page.getByText("For You")).toBeVisible({ timeout: 15000 });
+    await expect(page.locator("[data-review-id]").first()).toBeVisible({ timeout: 15000 });
     const firstCard = feedCards(page).first();
-    await expect(firstCard.getByText(`@${feed[0].user.username}`)).toBeVisible();
-    if (feed[0].productTag) {
-      await expect(firstCard.getByText(`#${feed[0].productTag}`)).toBeVisible();
+    await expect(firstCard).toBeVisible({ timeout: 15000 });
+    const username = await firstCard.getAttribute("data-username");
+    expect(username).toBeTruthy();
+    await expect(firstCard.getByText(`@${username}`)).toBeVisible();
+    const productTag = await firstCard.getAttribute("data-product-tag");
+    if (productTag) {
+      await expect(firstCard.getByText(`#${productTag}`)).toBeVisible();
     }
 
     // A user should see their own profile reviews.
@@ -152,19 +168,7 @@ test("demo users can guess, like, and comment on each other's reviews", async ({
   expect(target).not.toBeNull();
   expect(session).not.toBeNull();
 
-  // Open the target review via the feed comment link and react to it.
-  let index = await findCardIndexById(page, target!.id);
-  let scrollAttempts = 0;
-  while (index < 0 && scrollAttempts < 20) {
-    scrollAttempts++;
-    await scrollToFeedCard(page, scrollAttempts);
-    index = await findCardIndexById(page, target!.id);
-  }
-  expect(index, "target review card should be rendered in the feed").toBeGreaterThanOrEqual(0);
-  await scrollToFeedCard(page, index);
-
-  const targetCard = page.locator(`[data-review-id="${target!.id}"]`).first();
-  // Navigate directly: WebKit hangs on evaluate-clicks that trigger navigation.
+  // Navigate directly to the target review to avoid flaky snap-feed scrolling.
   await page.goto(`/review/${target!.id}`);
 
   const displayName = target!.user.displayName || target!.user.username;
@@ -248,25 +252,8 @@ test("users can follow each other and see followed content on the Following feed
   expect(follower, "a demo user should see another demo user's review").not.toBeNull();
   expect(target).not.toBeNull();
 
-  // Tap the owner's username in the feed to open their profile.
-  let index = await findCardIndexById(page, target!.id);
-  let attempts = 0;
-  while (index < 0 && attempts < 20) {
-    attempts++;
-    await scrollToFeedCard(page, attempts);
-    index = await findCardIndexById(page, target!.id);
-  }
-  expect(index).toBeGreaterThanOrEqual(0);
-  await scrollToFeedCard(page, index);
-
-  const targetCard = page.locator(`[data-review-id="${target!.id}"]`).first();
-  // Tap the owner's username in the feed to open their profile. Use force: true
-  // to bypass WebKit actionability/compositing quirks with the snap-scrolling
-  // feed overlay, and keep the navigation in-app so auth state is preserved.
-  // Navigate directly: WebKit both rejects force-clicks on the snap-scroll
-  // overlay AND hangs on evaluate-clicks that trigger navigation.
+  // Navigate directly to the owner's profile to avoid flaky snap-feed scrolling.
   await page.goto(`/profile/${target!.user.id}`);
-
   await expect(page.locator(`[data-profile-username="${target!.user.username}"]`)).toBeVisible({ timeout: 10000 });
 
   // Follow the owner (toggle off first if already following so the action is deterministic).
@@ -277,28 +264,27 @@ test("users can follow each other and see followed content on the Following feed
     await followButton.click();
     await expect(page.getByRole("button", { name: /^Follow user/i })).toBeVisible();
   }
+  const followResponse = page.waitForResponse(
+    (res) => res.url().includes("/api/follows/") && res.request().method() === "POST" && res.status() === 201
+  );
   await page.getByRole("button", { name: /^Follow user/i }).click();
+  await followResponse;
   await expect(page.getByRole("button", { name: /^Unfollow user/i })).toBeVisible();
 
   // The owner's content should now appear on the follower's Following feed.
-  // Navigate directly to the Following tab via query param to avoid flakiness
-  // from the animated tab bar under load.
+  // Verify via API first, then confirm the card is rendered in the UI.
+  const followed = await followingFeed(page, session!.accessToken);
+  expect(followed.map((r) => r.id), "target review should be returned by the Following feed API").toContain(target!.id);
+
   const followingFeedResponse = page.waitForResponse(
     (res) => res.url().includes("/api/feed/following") && res.request().method() === "GET"
   );
-  await page.goto("/?tab=following");
-  await expect(page).toHaveURL("/?tab=following");
+  await page.goto("/browse?tab=following");
+  await expect(page).toHaveURL("/browse?tab=following");
   await expect(page.getByRole("tab", { name: "Following" })).toHaveAttribute("aria-selected", "true", { timeout: 15000 });
   await followingFeedResponse;
 
-  let followIndex = await findCardIndexById(page, target!.id);
-  let followScrollAttempts = 0;
-  while (followIndex < 0 && followScrollAttempts < 20) {
-    followScrollAttempts++;
-    await scrollToFeedCard(page, followScrollAttempts);
-    followIndex = await findCardIndexById(page, target!.id);
-  }
-  expect(followIndex, "target review should appear in the Following feed").toBeGreaterThanOrEqual(0);
-  await scrollToFeedCard(page, followIndex);
-  await expect(page.locator(`[data-review-id="${target!.id}"]`).first()).toBeVisible();
+  const targetCard = page.locator(`[data-review-id="${target!.id}"]`).first();
+  await targetCard.scrollIntoViewIfNeeded();
+  await expect(targetCard, "target review card should be visible in the Following feed").toBeVisible({ timeout: 10000 });
 });

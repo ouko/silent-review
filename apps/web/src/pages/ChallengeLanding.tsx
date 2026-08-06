@@ -6,6 +6,7 @@ import { Button } from "../components/ui/Button";
 import { BrandSpinner } from "../components/ui/BrandSpinner";
 import { Swords } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
+import { fetchMe } from "../lib/auth";
 
 interface ChallengeLandingData {
   id: string;
@@ -20,12 +21,36 @@ export function ChallengeLanding() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
+  const isAuthLoading = useAuthStore((s) => s.isLoading);
+  const setUser = useAuthStore((s) => s.setUser);
+  const setAuthLoading = useAuthStore((s) => s.setLoading);
+  const logout = useAuthStore((s) => s.logout);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [challenge, setChallenge] = useState<ChallengeLandingData | null>(null);
 
+  // Hydrate auth on this public route so we know whether the user is logged in.
   useEffect(() => {
-    if (!id) return;
+    if (!isAuthLoading) return;
+    let cancelled = false;
+    setAuthLoading(true);
+    fetchMe()
+      .then((u) => {
+        if (!cancelled) setUser(u);
+      })
+      .catch(() => {
+        if (!cancelled) logout();
+      })
+      .finally(() => {
+        if (!cancelled) setAuthLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthLoading, setUser, setAuthLoading, logout]);
+
+  useEffect(() => {
+    if (!id || isAuthLoading) return;
     const challengeId = id;
     let cancelled = false;
 
@@ -62,7 +87,7 @@ export function ChallengeLanding() {
     return () => {
       cancelled = true;
     };
-  }, [id, navigate, user]);
+  }, [id, navigate, user, isAuthLoading]);
 
   function handlePlay() {
     if (!challenge) return;

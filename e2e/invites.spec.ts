@@ -37,8 +37,8 @@ async function registerFreshUserWithInvite(
   const response = await registerResponse;
   expect(response.status()).toBe(201);
 
-  await expect(page).toHaveURL("/", { timeout: 20000 });
-  await expect(page.getByText("For You")).toBeVisible({ timeout: 15000 });
+  await expect(page).toHaveURL("/play", { timeout: 20000 });
+  await expect(page.getByText("Daily Drop")).toBeVisible({ timeout: 15000 });
 
   await context.close();
   return { email, username };

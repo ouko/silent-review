@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { registerFreshUser } from "./helpers/auth";
-import { prepareFeedForTesting, revealFirstReview } from "./create-guess-share.spec";
+import { prepareFeedForTesting, revealFirstReview } from "./helpers/review";
 
 test.describe("result card share flow", () => {
   test("user can open result card preview after revealing a review", async ({ page }) => {
@@ -19,7 +19,7 @@ test.describe("result card share flow", () => {
     await expect(preview.getByAltText("Result card preview")).toBeVisible({ timeout: 10000 });
 
     // The share and copy actions should be present.
-    await expect(preview.getByRole("button", { name: /Share/i })).toBeVisible();
+    await expect(preview.getByRole("button", { name: /^Share$/i })).toBeVisible();
     await expect(preview.getByRole("button", { name: /Copy image/i })).toBeVisible();
 
     // Closing the preview returns to the reveal screen.

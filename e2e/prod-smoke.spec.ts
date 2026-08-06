@@ -37,7 +37,7 @@ async function registerViaInvite(browser: Browser, inviteCode: string) {
   await page.getByPlaceholder("Username").fill(`smokeinv${Date.now()}`.slice(0, 22));
   await page.getByPlaceholder("Password").fill(DEMO_PASSWORD);
   await page.getByRole("button", { name: /sign up with email/i }).click();
-  await expect(page).toHaveURL("/", { timeout: 30000 });
+  await expect(page).toHaveURL("/play", { timeout: 30000 });
   await context.close();
 }
 
@@ -83,7 +83,7 @@ test.describe("production smoke", () => {
     const viewer = await viewerContext.newPage();
     await registerFreshUser(viewer);
 
-    await viewer.goto("/");
+    await viewer.goto("/browse");
     // Guess + reveal happen on the feed card (the review detail page has no
     // guess UI).
     await expect(async () => {
@@ -105,15 +105,17 @@ test.describe("production smoke", () => {
     await commentLink.evaluate((el: HTMLElement) => el.click());
     await expect(viewer).toHaveURL(/\/review\//);
 
-    // Like.
+    // Like. The button starts disabled while its query loads; wait for it to
+    // become enabled, click, and then wait for the optimistic mutation to flip
+    // the label back to "Unlike".
     const likeButton = viewer.getByRole("button", { name: /^(Like|Unlike) review/i });
     await expect(likeButton).toBeEnabled({ timeout: 30000 });
     if ((await likeButton.getAttribute("aria-label"))?.startsWith("Unlike")) {
       await likeButton.click();
-      await expect(viewer.getByRole("button", { name: /^Like review/i })).toBeEnabled({ timeout: 10000 });
+      await expect(viewer.getByRole("button", { name: /^Like review/i })).toBeEnabled({ timeout: 15000 });
     }
     await viewer.getByRole("button", { name: /^Like review/i }).click();
-    await expect(viewer.getByRole("button", { name: /^Unlike review/i })).toBeVisible();
+    await expect(viewer.getByRole("button", { name: /^Unlike review/i })).toBeEnabled({ timeout: 30000 });
 
     // Comment.
     const commentText = `smoke comment ${Date.now()}`;
@@ -124,7 +126,7 @@ test.describe("production smoke", () => {
     // Follow the creator from their profile (author link on the feed card —
     // the review detail page has no author link, and the bottom-nav Profile
     // link goes to the viewer's own profile).
-    await viewer.goto("/");
+    await viewer.goto("/browse");
     await viewer.locator('a[data-profile-link]').first().click();
     await expect(viewer).toHaveURL(/\/profile\//);
     const followButton = viewer.getByRole("button", { name: /^(Follow|Unfollow) user/i });

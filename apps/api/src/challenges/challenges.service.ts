@@ -80,6 +80,7 @@ export async function createPerVideoChallenge(input: CreatePerVideoChallengeInpu
       description: defaultDescription,
       challengerScore: existingGuess.score,
       challengedScore: 0,
+      challengerSubmittedAt: new Date(),
       expiresAt,
       status: "ACTIVE",
     },
@@ -154,18 +155,23 @@ export async function recordChallengeGuess(reviewId: string, userId: string, sco
 
   const isChallenger = challenge.challengerId === userId;
   const scoreField = isChallenger ? "challengerScore" : "challengedScore";
+  const submittedAtField = isChallenger ? "challengerSubmittedAt" : "challengedSubmittedAt";
 
   const updated = await prisma.challenge.update({
     where: { id: challenge.id },
-    data: { [scoreField]: score },
+    data: { [scoreField]: score, [submittedAtField]: new Date() },
     include: {
       challenger: { select: { id: true, displayName: true, username: true } },
       challenged: { select: { id: true, displayName: true, username: true } },
     },
   });
 
-  // Only evaluate the result when both scores are present.
-  if (updated.challengerScore > 0 && updated.challengedScore > 0) {
+  // A score of 0 is valid; use submission timestamps to decide if both players have played.
+  const bothGuessed =
+    updated.challengerSubmittedAt !== null &&
+    updated.challengedSubmittedAt !== null;
+
+  if (bothGuessed) {
     const winnerId =
       updated.challengedScore > updated.challengerScore
         ? updated.challengedId
@@ -218,11 +224,18 @@ export async function getPerVideoChallenge(id: string, viewerId: string) {
 
   if (!challenge) return null;
 
+  const isOpen = challenge.challengedId === null;
   const isParticipant = challenge.challengerId === viewerId || challenge.challengedId === viewerId;
-  const bothGuessed = challenge.challengerScore > 0 && challenge.challengedScore > 0;
 
-  // Spectators cannot see scores until the result is finalized.
-  if (!isParticipant && !bothGuessed) {
+  // A score of 0 is valid; use submission timestamps to decide if both players have played.
+  const bothGuessed =
+    !isOpen &&
+    challenge.challengerSubmittedAt !== null &&
+    challenge.challengedSubmittedAt !== null;
+
+  // Spectators cannot see scores until the result is finalized, but open
+  // challenges must be visible so potential opponents can accept them.
+  if (!isParticipant && !bothGuessed && !isOpen) {
     return null;
   }
 
@@ -243,14 +256,16 @@ export async function generateRematch(challengeId: string, userId: string) {
   if (challenge.challengerId !== userId && challenge.challengedId !== userId) {
     throw new Error("Only participants can start a rematch");
   }
-  if (challenge.challengerScore === 0 || challenge.challengedScore === 0) {
-    throw new Error("Both players must guess before a rematch");
-  }
-
   const challengerId = challenge.challengerId!;
   const challengedId = challenge.challengedId;
   if (!challengedId) {
     throw new Error("Cannot rematch an anonymous challenge");
+  }
+
+  const bothGuessed =
+    challenge.challengerSubmittedAt !== null && challenge.challengedSubmittedAt !== null;
+  if (!bothGuessed) {
+    throw new Error("Both players must guess before a rematch");
   }
 
   const playedReviewIds = await prisma.guess.findMany({

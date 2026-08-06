@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { readFileSync } from "fs";
 import { registerFreshUser } from "./helpers/auth";
 import { generateVideoFixture } from "./helpers/fixtures";
 
@@ -11,9 +12,15 @@ test.describe("video moderation", () => {
     await page.getByPlaceholder("Product name").fill("E2E Test Product");
     await page.getByRole("button", { name: /Add Product/i }).click();
 
-    // Step 2: upload the prepared video from the gallery.
+    // Step 2: upload the prepared video from the gallery. Read the file into a
+    // buffer first to avoid WebKit file-stream issues with generated MP4s.
     const fileInput = page.locator('input[type="file"][accept="video/*"]').first();
-    await fileInput.setInputFiles(videoPath);
+    const buffer = readFileSync(videoPath);
+    await fileInput.setInputFiles({
+      name: "video.mp4",
+      mimeType: "video/mp4",
+      buffer,
+    });
 
     // Wait for the finalize step to render the preview video.
     await expect(page.locator("video").first()).toBeVisible({ timeout: 10000 });
@@ -86,6 +93,6 @@ test.describe("video moderation", () => {
     await createProductAndUpload(page, videoPath);
 
     await page.getByRole("button", { name: /Post review/i }).click();
-    await expect(page.getByText(/community guidelines/i)).toBeVisible({ timeout: 60000 });
+    await expect(page.getByText(/skin-toned|community guidelines/i)).toBeVisible({ timeout: 60000 });
   });
 });

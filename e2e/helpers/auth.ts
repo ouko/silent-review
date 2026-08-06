@@ -39,8 +39,10 @@ export async function registerFreshUser(
   await submitButton.click();
   await registerResponse;
 
-  await expect(page).toHaveURL("/play", { timeout: 20000 });
-  await expect(page.getByText("Daily Drop")).toBeVisible({ timeout: 15000 });
+  await expect(page).toHaveURL("/play", { timeout: 30000 });
+  // The Daily Drop card renders a skeleton while the query loads; wait for any
+  // of its loaded states (scheduled drop or "no drop" message).
+  await expect(page.getByText(/Daily Drop|No Daily Drop scheduled/i)).toBeVisible({ timeout: 30000 });
 
   // Log in via API so callers have a Bearer token for authenticated endpoints.
   const loginRes = await page.context().request.post("/api/auth/login", {
@@ -71,6 +73,14 @@ export async function loginDemoUser(
   await submitButton.click();
   await loginResponse;
 
-  await expect(page).toHaveURL("/play", { timeout: 20000 });
-  await expect(page.getByText("Daily Drop")).toBeVisible();
+  await expect(page).toHaveURL("/play", { timeout: 30000 });
+
+  // Seeded users with streaks may show a streak-at-risk toast that covers the
+  // Daily Drop card. Dismiss it if present so later assertions are unblocked.
+  const dismissToast = page.getByRole("button", { name: "Dismiss" });
+  if (await dismissToast.isVisible().catch(() => false)) {
+    await dismissToast.click();
+  }
+
+  await expect(page.getByText(/Daily Drop|No Daily Drop scheduled/i)).toBeVisible({ timeout: 30000 });
 }

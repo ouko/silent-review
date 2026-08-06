@@ -13,7 +13,7 @@ export default defineConfig({
     // The dev-lan stack serves HTTPS with a local-CA cert; tolerate it while
     // remaining compatible with plain HTTP servers.
     ignoreHTTPSErrors: true,
-    trace: "on-first-retry",
+    trace: "on",
     reducedMotion: "reduce",
   },
   projects: [

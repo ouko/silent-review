@@ -6,6 +6,8 @@ test.describe("challenges", () => {
     await loginDemoUser(page);
     await page.goto("/viral");
 
+    // Wait for the challenges list to finish loading.
+    await expect(page.getByText("Loading challenges...")).not.toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("heading", { name: "Challenges", exact: true })).toBeVisible();
 
     // Create a new challenge.

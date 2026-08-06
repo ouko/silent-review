@@ -2,7 +2,7 @@ import { test, expect, type BrowserContext, type Page } from "@playwright/test";
 import { loginDemoUser, registerFreshUser, DEMO_PASSWORD } from "./helpers/auth";
 
 async function apiLogin(context: BrowserContext, email: string, password: string) {
-  const res = await context.request.post("/api/auth/login", {
+  const res = await context.request.post("http://localhost:3001/api/auth/login", {
     data: { email, password },
     headers: { "Content-Type": "application/json" },
   });
@@ -19,13 +19,13 @@ function authHeaders(token: string) {
 }
 
 async function me(context: BrowserContext, token: string) {
-  const res = await context.request.get("/api/auth/me", { headers: authHeaders(token) });
+  const res = await context.request.get("http://localhost:3001/api/auth/me", { headers: authHeaders(token) });
   expect(res.ok()).toBeTruthy();
   return res.json() as Promise<{ user: { id: string; email: string; username: string; streakDays: number } }>;
 }
 
 async function getFeedReview(context: BrowserContext) {
-  const res = await context.request.get("/api/feed?limit=20");
+  const res = await context.request.get("http://localhost:3001/api/feed?limit=20");
   expect(res.ok()).toBeTruthy();
   const data = (await res.json()) as {
     reviews: Array<{ id: string; rating: number; product: { name: string } }>;
@@ -36,7 +36,7 @@ async function getFeedReview(context: BrowserContext) {
 }
 
 async function submitGuess(context: BrowserContext, token: string, reviewId: string, guessedRating: number) {
-  const res = await context.request.post(`/api/guesses/${reviewId}`, {
+  const res = await context.request.post(`http://localhost:3001/api/guesses/${reviewId}`, {
     data: { guessedRating },
     headers: authHeaders(token),
   });
@@ -44,7 +44,7 @@ async function submitGuess(context: BrowserContext, token: string, reviewId: str
 }
 
 async function getNotifications(context: BrowserContext, token: string) {
-  const res = await context.request.get("/api/notifications", { headers: authHeaders(token) });
+  const res = await context.request.get("http://localhost:3001/api/notifications", { headers: authHeaders(token) });
   expect(res.ok()).toBeTruthy();
   return res.json() as Promise<{
     notifications: Array<{ type: string; title: string; body: string }>;
@@ -53,7 +53,7 @@ async function getNotifications(context: BrowserContext, token: string) {
 }
 
 async function setActive(context: BrowserContext, token: string) {
-  const res = await context.request.post("/api/gamification/activity", { headers: authHeaders(token) });
+  const res = await context.request.post("http://localhost:3001/api/gamification/activity", { headers: authHeaders(token) });
   expect(res.ok()).toBeTruthy();
 }
 
@@ -69,7 +69,7 @@ test.describe("soft-launch journey", () => {
       extraHTTPHeaders: { Authorization: `Bearer ${adminToken}` },
     });
 
-    const scheduleRes = await adminContext.request.post("/api/dailydrop/schedule");
+    const scheduleRes = await adminContext.request.post("http://localhost:3001/api/dailydrop/schedule");
     expect(scheduleRes.ok()).toBeTruthy();
     const scheduleBody = (await scheduleRes.json()) as { scheduled: number };
     expect(scheduleBody.scheduled).toBeGreaterThanOrEqual(0);
@@ -86,10 +86,10 @@ test.describe("soft-launch journey", () => {
     const userBId = (await me(contextB, userB.token)).user.id;
 
     // 4. Player A plays today's Daily Drop (drives streak / first-round events).
-    const todayRes = await contextA.request.get("/api/dailydrop/today", { headers: authHeaders(userA.token) });
+    const todayRes = await contextA.request.get("http://localhost:3001/api/dailydrop/today", { headers: authHeaders(userA.token) });
     expect(todayRes.ok()).toBeTruthy();
     const todayBody = (await todayRes.json()) as { dailyDrop: { id: string } };
-    const attemptRes = await contextA.request.post(`/api/dailydrop/${todayBody.dailyDrop.id}/attempt`, {
+    const attemptRes = await contextA.request.post(`http://localhost:3001/api/dailydrop/${todayBody.dailyDrop.id}/attempt`, {
       data: { guessedRating: 5 },
       headers: authHeaders(userA.token),
     });
@@ -97,7 +97,7 @@ test.describe("soft-launch journey", () => {
 
     // Mark Player A active so the daily-live scheduler targets them, then trigger it.
     await setActive(contextA, userA.token);
-    const dailyLiveRes = await adminContext.request.post("/api/admin/run-daily-live");
+    const dailyLiveRes = await adminContext.request.post("http://localhost:3001/api/admin/run-daily-live");
     expect(dailyLiveRes.ok()).toBeTruthy();
 
     // 5. Player A picks a non-Daily-Drop review, guesses just below the real rating,
@@ -106,7 +106,7 @@ test.describe("soft-launch journey", () => {
     const aGuess = Math.max(1, review.rating - 1);
     await submitGuess(contextA, userA.token, review.id, aGuess);
 
-    const challengeRes = await contextA.request.post("/api/challenges/per-video", {
+    const challengeRes = await contextA.request.post("http://localhost:3001/api/challenges/per-video", {
       data: { reviewId: review.id, challengedId: userBId },
       headers: authHeaders(userA.token),
     });
@@ -114,7 +114,7 @@ test.describe("soft-launch journey", () => {
     const challenge = (await challengeRes.json()) as { challenge: { id: string } };
 
     // 6. Player B accepts and guesses the real rating, beating Player A.
-    const acceptRes = await contextB.request.post(`/api/challenges/per-video/${challenge.challenge.id}/accept`, {
+    const acceptRes = await contextB.request.post(`http://localhost:3001/api/challenges/per-video/${challenge.challenge.id}/accept`, {
       headers: authHeaders(userB.token),
     });
     expect(acceptRes.ok()).toBeTruthy();
@@ -130,13 +130,20 @@ test.describe("soft-launch journey", () => {
 
     // 8. Notification settings toggles persist to the server.
     await pageA.goto("/notifications/settings");
-    await pageA.getByText("New challenges").click();
+    await expect(pageA.getByText("Loading preferences")).not.toBeVisible({ timeout: 15000 });
+    const challengesToggle = pageA.getByRole("switch", { name: "New challenges" });
+    const prefsResponse = pageA.waitForResponse(
+      (res) => res.url().includes("/api/notifications/preferences") && res.request().method() === "PATCH"
+    );
+    await challengesToggle.click();
+    await prefsResponse;
     await pageA.reload();
+    await expect(pageA.getByText("Loading preferences")).not.toBeVisible({ timeout: 15000 });
     const toggle = pageA.getByRole("switch", { name: "New challenges" });
     await expect(toggle).toHaveAttribute("aria-checked", "false");
 
     // 9. Analytics events can be ingested and rolled up, then viewed on the dashboard.
-    const eventsRes = await contextA.request.post("/api/analytics/events/batch", {
+    const eventsRes = await contextA.request.post("http://localhost:3001/api/analytics/events/batch", {
       data: {
         events: [
           { type: "app_open", userId: userAId, sessionId: "e2e", channel: "organic" },
@@ -148,14 +155,14 @@ test.describe("soft-launch journey", () => {
     });
     expect(eventsRes.ok()).toBeTruthy();
 
-    const rollupRes = await adminContext.request.post("/api/analytics/rollup");
+    const rollupRes = await adminContext.request.post("http://localhost:3001/api/analytics/rollup");
     expect(rollupRes.ok()).toBeTruthy();
 
     await page.goto("/admin");
     await page.getByRole("tab", { name: /metrics/i }).click();
     await expect(page.getByText(/retention|K-factor|share rate|streak/i).first()).toBeVisible();
 
-    const dashRes = await adminContext.request.get("/api/analytics/dashboard?days=30");
+    const dashRes = await adminContext.request.get("http://localhost:3001/api/analytics/dashboard?days=30");
     expect(dashRes.ok()).toBeTruthy();
     const dash = (await dashRes.json()) as Record<string, unknown>;
     expect(Object.keys(dash).length).toBeGreaterThan(0);

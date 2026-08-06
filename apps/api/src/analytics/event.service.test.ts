@@ -1,18 +1,18 @@
 import { jest, describe, it, expect, beforeEach } from "@jest/globals";
 
 const mockCreateMany = jest.fn() as jest.Mock<(...args: any[]) => Promise<{ count: number }>>;
-const mockFindUnique = jest.fn() as jest.Mock<(...args: any[]) => Promise<any>>;
 
 const mockPrisma = {
   event: { createMany: mockCreateMany },
-  featureFlag: { findUnique: mockFindUnique },
 };
 
 jest.unstable_mockModule("../prisma.js", () => ({ prisma: mockPrisma }));
 
 const mockIsFeatureEnabled = jest.fn() as jest.Mock<(...args: any[]) => Promise<boolean>>;
+const mockGetFeatureFlag = jest.fn() as jest.Mock<(...args: any[]) => Promise<any>>;
 jest.unstable_mockModule("../features/features.service.js", () => ({
   isFeatureEnabled: mockIsFeatureEnabled,
+  getFeatureFlag: mockGetFeatureFlag,
 }));
 
 const { ingestEvents } = await import("./event.service.js");
@@ -21,6 +21,7 @@ describe("ingestEvents", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockCreateMany.mockResolvedValue({ count: 0 });
+    mockGetFeatureFlag.mockResolvedValue(undefined);
   });
 
   it("stores nothing when the analytics feature flag is disabled", async () => {
@@ -32,7 +33,7 @@ describe("ingestEvents", () => {
 
   it("stores valid events when analytics is enabled", async () => {
     mockIsFeatureEnabled.mockResolvedValue(true);
-    mockFindUnique.mockResolvedValue({ key: "analytics", enabled: true, rules: {} });
+    mockGetFeatureFlag.mockResolvedValue({ key: "analytics", enabled: true, rules: {} });
     mockCreateMany.mockResolvedValue({ count: 2 });
 
     const result = await ingestEvents([
@@ -50,7 +51,7 @@ describe("ingestEvents", () => {
 
   it("drops unknown event types and normalizes channels", async () => {
     mockIsFeatureEnabled.mockResolvedValue(true);
-    mockFindUnique.mockResolvedValue({ key: "analytics", enabled: true, rules: {} });
+    mockGetFeatureFlag.mockResolvedValue({ key: "analytics", enabled: true, rules: {} });
     mockCreateMany.mockResolvedValue({ count: 1 });
 
     const result = await ingestEvents([
@@ -66,7 +67,7 @@ describe("ingestEvents", () => {
 
   it("applies sampleRate from feature flag rules", async () => {
     mockIsFeatureEnabled.mockResolvedValue(true);
-    mockFindUnique.mockResolvedValue({ key: "analytics", enabled: true, rules: { sampleRate: 0 } });
+    mockGetFeatureFlag.mockResolvedValue({ key: "analytics", enabled: true, rules: { sampleRate: 0 } });
 
     const result = await ingestEvents([{ type: "app_open", userId: "u1", sessionId: "s1" }]);
 

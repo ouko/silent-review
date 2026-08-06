@@ -6,7 +6,7 @@ export async function getLeaderboard(
   type: LeaderboardType,
   userId: string,
   limit: number
-): Promise<{ id: string; username: string; displayName: string | null; avatarUrl: string | null; points: number }[]> {
+): Promise<{ id: string; username: string; displayName: string | null; avatarUrl: string | null; totalPoints: number }[]> {
   let users: { id: string; username: string; displayName: string | null; avatarUrl: string | null; totalPoints: number }[];
 
   if (type === "friends") {
@@ -30,5 +30,5 @@ export async function getLeaderboard(
     });
   }
 
-  return users.map((u) => ({ ...u, points: u.totalPoints }));
+  return users;
 }

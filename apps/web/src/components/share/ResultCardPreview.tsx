@@ -48,6 +48,9 @@ export function ResultCardPreview({ open, onClose, onChallengeInstead, ...option
 
   const modal = (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Share result"
       className="fixed inset-0 z-50 overflow-y-auto bg-black/90"
       onPointerUp={(e) => {
         if (e.target === e.currentTarget) onClose();

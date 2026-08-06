@@ -57,6 +57,11 @@ export async function getFeatureFlags(): Promise<FeatureFlag[]> {
   return Array.from(flags.values());
 }
 
+export async function getFeatureFlag(key: string): Promise<FeatureFlag | undefined> {
+  const flags = await loadFlags();
+  return flags.get(key);
+}
+
 export async function setFeatureFlag(
   key: string,
   enabled: boolean,

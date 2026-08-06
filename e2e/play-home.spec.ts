@@ -11,7 +11,7 @@ test("new user lands on Play home and starts a round within 2 taps", async ({ pa
   // Tap the Daily Drop card (tap 1)
   await page.getByRole("button", { name: /Play today's guess/i }).click();
 
-  // Should be on the play round route with the guess UI visible
-  await expect(page).toHaveURL(/\/play\//);
+  // The Daily Drop now routes to /dailydrop.
+  await expect(page).toHaveURL(/\/dailydrop/);
   await expect(page.getByText(/Guess the rating/i)).toBeVisible();
 });
