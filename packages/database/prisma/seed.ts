@@ -1326,8 +1326,8 @@ async function updateUserStats(users: any[]) {
 
 async function main() {
   // 1. Seed demo users first (upsert to preserve deterministic credentials)
-  const demoPassword = await hashPassword(DEMO_PASSWORD);
-  const users = await seedDemoUsers(demoPassword);
+  // Pass the plain password; seedDemoUsers hashes it once before upsert.
+  const users = await seedDemoUsers(DEMO_PASSWORD);
 
   // 2. Seed achievements
   const achievements = await seedAchievements();
