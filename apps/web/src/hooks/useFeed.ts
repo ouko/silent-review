@@ -11,7 +11,7 @@ export interface FeedReview {
   duration: number;
   createdAt: string;
   user: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
-  product: { id: string; name: string; category: string };
+  product: { id: string; name: string; category: string; affiliateUrl: string | null };
   likeCount: number;
   guessCount: number;
   commentCount: number;

@@ -58,6 +58,7 @@ model User {
   challengesReceived      Challenge[]            @relation("ChallengesReceived")
   challengeParticipations ChallengeParticipant[]
   notificationPreference  UserNotificationPreference?
+  affiliateClicks         AffiliateClick[]
 
   @@index([deletedAt])
   @@index([role])
@@ -107,6 +108,7 @@ model Product {
   description  String?
   imageUrl     String?
   affiliateUrl String?
+  clickCount   Int      @default(0)
   tags         String[]
   metadata     Json?    @default("{}")
 
@@ -124,7 +126,8 @@ model Product {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  reviews Review[]
+  reviews         Review[]
+  affiliateClicks AffiliateClick[]
 
   @@index([category])
   @@index([brand])
@@ -132,6 +135,26 @@ model Product {
   @@index([deletedAt])
   @@index([searchVector])
   @@index([tags])
+}
+
+model AffiliateClick {
+  id        String   @id @default(uuid())
+  productId String
+  reviewId  String?
+  userId    String?
+  ipAddress String?
+  userAgent String?
+  referrer  String?
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  review  Review? @relation(fields: [reviewId], references: [id], onDelete: SetNull)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([productId, createdAt])
+  @@index([reviewId, createdAt])
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }
 
 enum ProductModerationStatus {
@@ -183,6 +206,7 @@ model Review {
   dailyDrops      DailyDrop[]
   Challenge       Challenge[]
   contentCuration ContentCuration[]
+  affiliateClicks AffiliateClick[]
 
   @@index([userId])
   @@index([productId])

@@ -47,7 +47,7 @@ export async function createReview(userId: string, input: CreateReviewInput) {
         user: {
           select: { id: true, username: true, displayName: true, avatarUrl: true },
         },
-        product: { select: { id: true, name: true, category: true } },
+        product: { select: { id: true, name: true, category: true, affiliateUrl: true } },
       },
     });
     clearFeedCache().catch(() => {});
@@ -62,7 +62,7 @@ export async function createReview(userId: string, input: CreateReviewInput) {
       user: {
         select: { id: true, username: true, displayName: true, avatarUrl: true },
       },
-      product: { select: { id: true, name: true, category: true } },
+      product: { select: { id: true, name: true, category: true, affiliateUrl: true } },
     },
   });
 
@@ -145,7 +145,7 @@ export async function getReviewById(reviewId: string) {
       user: {
         select: { id: true, username: true, displayName: true, avatarUrl: true },
       },
-      product: { select: { id: true, name: true, category: true } },
+      product: { select: { id: true, name: true, category: true, affiliateUrl: true } },
       _count: { select: { likes: true, comments: true, guesses: true } },
     },
   });

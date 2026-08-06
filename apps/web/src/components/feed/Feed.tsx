@@ -179,6 +179,9 @@ export function Feed({
                 avatarUrl={review.user.avatarUrl}
                 caption={review.caption}
                 productTag={review.productTag}
+                reviewId={review.id}
+                productId={review.product.id}
+                affiliateUrl={review.product.affiliateUrl}
               />
 
               <div className="mb-3 mt-3 flex items-center gap-5">

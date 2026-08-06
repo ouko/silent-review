@@ -20,7 +20,7 @@ interface ReviewDetailData {
   duration: number;
   createdAt: string;
   user: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
-  product?: { id: string; name: string; category: string } | null;
+  product?: { id: string; name: string; category: string; affiliateUrl: string | null } | null;
   viewerGuess: { guessedRating: number } | null;
   counts: { likes: number; comments: number; guesses: number };
 }
@@ -51,7 +51,7 @@ function mapToFeedReview(data: ReviewDetailData): FeedReview {
     duration: data.duration,
     createdAt: data.createdAt,
     user: data.user,
-    product: data.product ?? { id: "", name: data.productTag ?? "Review", category: "" },
+    product: data.product ?? { id: "", name: data.productTag ?? "Review", category: "", affiliateUrl: null },
     likeCount: data.counts.likes,
     guessCount: data.counts.guesses,
     commentCount: data.counts.comments,

@@ -14,6 +14,7 @@ function makeReview(
     description: null,
     imageUrl: null,
     affiliateUrl: null,
+    clickCount: 0,
     tags: [],
     metadata: {},
     ownerId: null,

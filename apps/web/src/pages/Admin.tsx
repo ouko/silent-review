@@ -8,7 +8,7 @@ import { Loading } from "../components/common/Loading";
 import { MetricsDashboard } from "./admin/MetricsDashboard";
 import { DailyDropSchedule } from "./admin/DailyDropSchedule";
 import { ContentQueue } from "./admin/ContentQueue";
-import { ShieldCheck, Check, X, Search, Flag, Eye } from "lucide-react";
+import { ShieldCheck, Check, X, Search, Flag, Eye, Download } from "lucide-react";
 
 interface AdminStats {
   users: number;
@@ -43,6 +43,8 @@ interface AdminProduct {
   id: string;
   name: string;
   category: string;
+  affiliateUrl: string | null;
+  clickCount: number;
   ownerId: string | null;
   owner: { id: string; username: string; displayName: string | null } | null;
   _count: { reviews: number };
@@ -52,6 +54,7 @@ const TABS = [
   { id: "moderation", label: "Moderation" },
   { id: "users", label: "Users" },
   { id: "products", label: "Products" },
+  { id: "affiliate-clicks", label: "Affiliate Clicks" },
   { id: "content-queue", label: "Content Queue" },
   { id: "metrics", label: "Metrics" },
   { id: "dailydrop", label: "Daily Drop" },
@@ -105,6 +108,7 @@ export function Admin() {
         {tab === "moderation" && <ModerationQueue onAction={invalidate} />}
         {tab === "users" && <UsersPanel onAction={invalidate} />}
         {tab === "products" && <ProductsPanel />}
+        {tab === "affiliate-clicks" && <AffiliateClicksPanel />}
         {tab === "content-queue" && <ContentQueue />}
         {tab === "metrics" && <MetricsDashboard />}
         {tab === "dailydrop" && <DailyDropSchedule />}
@@ -211,6 +215,8 @@ function ProductsPanel() {
   const [submitted, setSubmitted] = useState("");
   const [assigning, setAssigning] = useState<string | null>(null);
   const [ownerQuery, setOwnerQuery] = useState("");
+  const [editingAffiliate, setEditingAffiliate] = useState<string | null>(null);
+  const [affiliateInput, setAffiliateInput] = useState("");
 
   const { data, isLoading } = useQuery<{ products: AdminProduct[] }>({
     queryKey: ["admin-products", submitted],
@@ -229,6 +235,17 @@ function ProductsPanel() {
     },
     onSuccess: () => {
       setAssigning(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] });
+    },
+  });
+
+  const updateAffiliate = useMutation({
+    mutationFn: async ({ productId, affiliateUrl }: { productId: string; affiliateUrl: string }) => {
+      await api.patch(`/api/admin/products/${productId}/affiliate`, { affiliateUrl });
+    },
+    onSuccess: () => {
+      setEditingAffiliate(null);
+      setAffiliateInput("");
       queryClient.invalidateQueries({ queryKey: ["admin-products"] });
     },
   });
@@ -269,16 +286,37 @@ function ProductsPanel() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-white">{p.name}</p>
                 <p className="text-xs text-white/50">
-                  {p.category} · {p._count.reviews} reviews ·{" "}
+                  {p.category} · {p._count.reviews} reviews · {p.clickCount} affiliate clicks ·{" "}
                   {p.owner ? `owned by @${p.owner.username}` : "unassigned"}
                 </p>
+                {p.affiliateUrl && (
+                  <p className="mt-1 truncate text-[11px] text-emerald-300/80">
+                    {p.affiliateUrl}
+                  </p>
+                )}
               </div>
-              <button
-                onClick={() => setAssigning(assigning === p.id ? null : p.id)}
-                className="shrink-0 rounded-xl bg-violet-500/20 px-3 py-2 text-xs font-bold text-violet-300 transition-colors hover:bg-violet-500/30"
-              >
-                {assigning === p.id ? "Cancel" : "Assign"}
-              </button>
+              <div className="flex shrink-0 flex-col gap-1.5">
+                <button
+                  onClick={() => setAssigning(assigning === p.id ? null : p.id)}
+                  className="rounded-xl bg-violet-500/20 px-3 py-2 text-xs font-bold text-violet-300 transition-colors hover:bg-violet-500/30"
+                >
+                  {assigning === p.id ? "Cancel" : "Assign"}
+                </button>
+                <button
+                  onClick={() => {
+                    if (editingAffiliate === p.id) {
+                      setEditingAffiliate(null);
+                      setAffiliateInput("");
+                    } else {
+                      setEditingAffiliate(p.id);
+                      setAffiliateInput(p.affiliateUrl ?? "");
+                    }
+                  }}
+                  className="rounded-xl bg-emerald-500/20 px-3 py-2 text-xs font-bold text-emerald-300 transition-colors hover:bg-emerald-500/30"
+                >
+                  {editingAffiliate === p.id ? "Cancel" : "Affiliate"}
+                </button>
+              </div>
             </div>
 
             {assigning === p.id && (
@@ -306,8 +344,123 @@ function ProductsPanel() {
                 )}
               </div>
             )}
+
+            {editingAffiliate === p.id && (
+              <div className="mt-3 border-t border-white/10 pt-3">
+                <input
+                  value={affiliateInput}
+                  onChange={(e) => setAffiliateInput(e.target.value)}
+                  placeholder="https://... affiliate URL"
+                  className="mb-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/40 outline-none"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => updateAffiliate.mutate({ productId: p.id, affiliateUrl: affiliateInput })}
+                    disabled={updateAffiliate.isPending}
+                    className="flex-1 rounded-xl bg-emerald-500/20 px-3 py-2 text-xs font-bold text-emerald-300 transition-colors hover:bg-emerald-500/30 disabled:opacity-50"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditingAffiliate(null);
+                      setAffiliateInput("");
+                    }}
+                    disabled={updateAffiliate.isPending}
+                    className="flex-1 rounded-xl bg-white/10 px-3 py-2 text-xs font-bold text-white/70 transition-colors hover:bg-white/15 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {updateAffiliate.isError && (
+                  <p className="mt-2 text-xs text-rose-300">Failed to save. Check the URL is valid.</p>
+                )}
+              </div>
+            )}
           </div>
         ))
+      )}
+    </div>
+  );
+}
+
+interface AffiliateClickRow {
+  id: string;
+  productId: string;
+  reviewId: string | null;
+  userId: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  referrer: string | null;
+  createdAt: string;
+  product: { id: string; name: string };
+  review: { id: string } | null;
+  user: { id: string; username: string } | null;
+}
+
+function AffiliateClicksPanel() {
+  const limit = 50;
+  const { data, isLoading } = useQuery<{ clicks: AffiliateClickRow[]; nextCursor?: string }>({
+    queryKey: ["admin-affiliate-clicks", limit],
+    queryFn: async () => (await api.get("/api/revenue/affiliate/clicks", { params: { limit } })).data,
+  });
+
+  function exportCsv() {
+    if (!data?.clicks.length) return;
+    const rows = data.clicks.map((c) => ({
+      time: c.createdAt,
+      product: c.product.name,
+      productId: c.productId,
+      reviewId: c.reviewId ?? "",
+      username: c.user?.username ?? "",
+      userId: c.userId ?? "",
+      ip: c.ipAddress ?? "",
+      referrer: c.referrer ?? "",
+    }));
+    const headers = ["time", "product", "productId", "reviewId", "username", "userId", "ip", "referrer"];
+    const csv = [headers.join(","), ...rows.map((r) => headers.map((h) => `"${String((r as Record<string, string>)[h]).replace(/"/g, '""')}"`).join(","))].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `affiliate-clicks-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-white/50">Recent affiliate click-throughs</p>
+        <button
+          onClick={exportCsv}
+          disabled={!data?.clicks.length}
+          className="flex items-center gap-1.5 rounded-xl bg-white/10 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-white/15 disabled:opacity-40"
+        >
+          <Download className="h-3.5 w-3.5" /> Export CSV
+        </button>
+      </div>
+
+      {isLoading || !data ? (
+        <Loading />
+      ) : data.clicks.length === 0 ? (
+        <p className="py-12 text-center text-sm text-white/50">No affiliate clicks yet.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {data.clicks.map((c) => (
+            <div key={c.id} className="rounded-2xl border border-white/10 bg-white/5 p-3 backdrop-blur-sm">
+              <div className="flex items-center justify-between gap-2">
+                <p className="min-w-0 flex-1 truncate text-sm font-bold text-white">{c.product.name}</p>
+                <p className="shrink-0 text-[10px] text-white/40">{new Date(c.createdAt).toLocaleString()}</p>
+              </div>
+              <p className="text-xs text-white/50">
+                {c.user ? `@${c.user.username}` : "Guest"}
+                {c.reviewId ? ` · review ${c.reviewId.slice(0, 8)}` : ""}
+                {c.ipAddress ? ` · ${c.ipAddress}` : ""}
+              </p>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

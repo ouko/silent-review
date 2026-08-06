@@ -24,7 +24,7 @@ export interface FeedResult {
     commentCount: number;
     shareCount: number;
     user: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
-    product: { id: string; name: string; category: string };
+    product: { id: string; name: string; category: string; affiliateUrl: string | null };
   }>;
   nextCursor?: string;
 }
@@ -117,7 +117,7 @@ export async function getFollowingFeed(
     take: limit,
     include: {
       user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-      product: { select: { id: true, name: true, category: true } },
+      product: { select: { id: true, name: true, category: true, affiliateUrl: true } },
     },
   });
 
@@ -137,7 +137,7 @@ export async function getTrendingFeed(cursor: string | undefined, limit: number)
     take: limit,
     include: {
       user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-      product: { select: { id: true, name: true, category: true } },
+      product: { select: { id: true, name: true, category: true, affiliateUrl: true } },
     },
   });
 
@@ -162,7 +162,7 @@ export async function getCategoryFeed(
     take: limit,
     include: {
       user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-      product: { select: { id: true, name: true, category: true } },
+      product: { select: { id: true, name: true, category: true, affiliateUrl: true } },
     },
   });
 
@@ -268,7 +268,7 @@ async function fetchCandidates(seenReviewIds: Set<string>, cursor: string | unde
     take: CANDIDATE_POOL_SIZE,
     include: {
       user: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-      product: { select: { id: true, name: true, category: true } },
+      product: { select: { id: true, name: true, category: true, affiliateUrl: true } },
     },
   });
   return reviews as FormattableReview[];
@@ -296,7 +296,7 @@ interface FormattableReview extends ReviewCandidate {
   duration: number;
   updatedAt: Date;
   user: { id: string; username: string; displayName: string | null; avatarUrl: string | null };
-  product: { id: string; name: string; category: string };
+  product: { id: string; name: string; category: string; affiliateUrl: string | null };
 }
 
 function formatReview(review: FormattableReview): FeedResult["reviews"][number] {

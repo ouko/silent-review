@@ -15,6 +15,7 @@ export interface Product {
   name: string;
   category: string;
   brand?: string | null;
+  affiliateUrl?: string | null;
 }
 
 export interface ReviewInput {
@@ -98,6 +99,7 @@ export function useCreateReview(options?: { onSuccess?: (review: FeedReview) => 
             id: review.product.id,
             name: review.product.name,
             category: review.product.category,
+            affiliateUrl: review.product.affiliateUrl ?? null,
           },
           likeCount: 0,
           guessCount: 0,

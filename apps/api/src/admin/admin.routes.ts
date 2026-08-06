@@ -245,6 +245,8 @@ adminRouter.get("/products", async (req, res, next) => {
         id: true,
         name: true,
         category: true,
+        affiliateUrl: true,
+        clickCount: true,
         ownerId: true,
         owner: { select: { id: true, username: true, displayName: true } },
         _count: { select: { reviews: { where: { deletedAt: null } } } },
@@ -277,6 +279,43 @@ adminRouter.post("/products/:id/owner", async (req, res, next) => {
       return;
     }
     res.json({ status: "ok" });
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminRouter.patch("/products/:id/affiliate", async (req, res, next) => {
+  try {
+    const rawUrl = req.body?.affiliateUrl;
+    let affiliateUrl: string | null = null;
+    if (rawUrl !== undefined && rawUrl !== null && rawUrl !== "") {
+      if (typeof rawUrl !== "string") {
+        res.status(400).json({ error: "affiliateUrl must be a string" });
+        return;
+      }
+      let parsed: URL;
+      try {
+        parsed = new URL(rawUrl);
+      } catch {
+        res.status(400).json({ error: "Invalid URL" });
+        return;
+      }
+      if (!["http:", "https:"].includes(parsed.protocol)) {
+        res.status(400).json({ error: "URL must use http or https" });
+        return;
+      }
+      affiliateUrl = rawUrl.trim();
+    }
+
+    const result = await prisma.product.updateMany({
+      where: { id: req.params.id },
+      data: { affiliateUrl },
+    });
+    if (result.count === 0) {
+      res.status(404).json({ error: "Product not found" });
+      return;
+    }
+    res.json({ status: "ok", affiliateUrl });
   } catch (err) {
     next(err);
   }
