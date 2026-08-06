@@ -95,6 +95,9 @@ if [ "${RUN_SEED:-}" = "true" ]; then
       done
     done
   '
+
+  log "Warming anonymous feed cache..."
+  curl -fsS "${WEB_APP_URL}/api/feed?limit=20" >/dev/null 2>&1 || true
 fi
 
 HEALTH_URL="${WEB_APP_URL:-http://localhost}/api/health"
