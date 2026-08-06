@@ -492,7 +492,11 @@ async function seedDemoUsers(demoPassword: string) {
     users.push(
       await prisma.user.upsert({
         where: { email: input.email },
-        update: {},
+        update: {
+          passwordHash: input.passwordHash,
+          emailVerified: input.emailVerified,
+          role: input.role,
+        },
         create: input,
       })
     );
