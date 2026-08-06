@@ -69,7 +69,7 @@ bash scripts/migrate-psql.sh
 
 if [ "${RUN_SEED:-}" = "true" ]; then
   log "Seeding demo data (RUN_SEED=true)..."
-  docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" exec -T api node_modules/.bin/tsx packages/database/prisma/seed.ts
+  docker compose -f docker-compose.prod.yml --env-file "${ENV_FILE}" exec -T api packages/database/node_modules/.bin/tsx packages/database/prisma/seed.ts
 fi
 
 # Keep a copy of the operations runbook in the deploy user's home so it is
