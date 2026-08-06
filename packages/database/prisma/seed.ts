@@ -470,12 +470,13 @@ async function buildGuessDistributions(reviewIds: string[]): Promise<Map<string,
 async function seedDemoUsers(demoPassword: string) {
   const now = new Date();
   const start = new Date(now.getTime() - 90 * DAY_MS);
+  const hashedPassword = await hashPassword(demoPassword);
 
   const userInputs = ALL_DEMO_USERS.map(([email, username, displayName], index) => ({
     email,
     username,
     displayName,
-    passwordHash: demoPassword,
+    passwordHash: hashedPassword,
     emailVerified: true,
     bio: sample(BIOS),
     avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`,
