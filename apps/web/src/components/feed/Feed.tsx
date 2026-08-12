@@ -151,6 +151,7 @@ export function Feed({
           <div
             key={review.id}
             ref={setItemRef(index)}
+            data-testid="feed-item"
             data-index={index}
             data-review-id={review.id}
             data-user-id={review.user.id}
