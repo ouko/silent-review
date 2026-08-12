@@ -25,9 +25,9 @@ export interface FeedResponse {
 
 export type FeedType = "for-you" | "following" | "trending";
 
-export function useFeed(feedType: FeedType = "for-you", category?: string) {
+export function useFeed(feedType: FeedType = "for-you") {
   return useInfiniteQuery<FeedResponse>({
-    queryKey: ["feed", feedType, category],
+    queryKey: ["feed", feedType],
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,

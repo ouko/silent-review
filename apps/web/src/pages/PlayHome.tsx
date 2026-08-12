@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useFeed } from "../hooks/useFeed";
+import { usePrefetchFeed } from "../hooks/usePrefetchFeed";
 import { useTodaysDailyDrop } from "../hooks/useDailyDrop";
 import { useChallenges } from "../hooks/useChallenges";
 import { usePlayStore } from "../stores/playStore";
@@ -14,6 +15,7 @@ const APP_OPEN_TIME_KEY = "sr_app_open_time";
 const FIRST_ROUND_TRACKED_KEY = "sr_first_round_tracked";
 
 export function PlayHome() {
+  usePrefetchFeed();
   const navigate = useNavigate();
   const { data: feedData } = useFeed("for-you");
   const { data: dailyDropData, isLoading: dailyDropLoading } = useTodaysDailyDrop();
