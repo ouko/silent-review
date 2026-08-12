@@ -3,6 +3,7 @@ import { CreateReviewSchema } from "./reviews.validation.js";
 import { createReview, getReviewById } from "./reviews.service.js";
 import { prisma } from "../prisma.js";
 import { requireAuth, optionalAuth, type AuthenticatedRequest } from "../middleware/auth.js";
+import { warmUserProfileCache } from "../feed/feed.service.js";
 
 export const reviewsRouter = Router();
 
@@ -10,6 +11,7 @@ reviewsRouter.post("/", requireAuth, async (req: AuthenticatedRequest, res, next
   try {
     const data = CreateReviewSchema.parse(req.body);
     const review = await createReview(req.user!.id, data);
+    warmUserProfileCache(req.user!.id).catch(() => {});
     res.status(201).json({
       ...review,
       createdAt: review.createdAt.toISOString(),

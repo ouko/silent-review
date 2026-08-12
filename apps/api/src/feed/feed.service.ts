@@ -3,7 +3,7 @@ import { getRedis } from "../redis.js";
 import { scoreReview, type ReviewCandidate, type UserProfile } from "./scoring.js";
 
 const CACHE_TTL_SECONDS = 5 * 60;
-const PROFILE_CACHE_TTL_SECONDS = 15 * 60;
+const PROFILE_CACHE_TTL_SECONDS = 60 * 60;
 const PROFILE_HISTORY_LIMIT = 500;
 const CANDIDATE_POOL_SIZE = 200;
 
@@ -245,6 +245,18 @@ async function buildUserProfile(userId: string): Promise<UserProfile> {
     interestCategories: interests,
     seenReviewIds,
   };
+}
+
+export async function warmUserProfileCache(userId: string): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
+  const profile = await buildUserProfile(userId);
+  const payload = JSON.stringify({
+    followingIds: Array.from(profile.followingIds),
+    interestCategories: Array.from(profile.interestCategories.entries()),
+    seenReviewIds: Array.from(profile.seenReviewIds),
+  });
+  await redis.setex(`user:profile:${userId}`, PROFILE_CACHE_TTL_SECONDS, payload).catch(() => {});
 }
 
 function emptyProfile(): UserProfile {

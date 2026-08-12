@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth, optionalAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import { SubmitGuessSchema } from "./guesses.validation.js";
 import { submitGuess, getGuessStats, revealReview } from "./guesses.service.js";
+import { warmUserProfileCache } from "../feed/feed.service.js";
 
 export const guessesRouter = Router();
 
@@ -9,6 +10,7 @@ guessesRouter.post("/:reviewId", requireAuth, async (req: AuthenticatedRequest, 
   try {
     const data = SubmitGuessSchema.parse(req.body);
     const { guess } = await submitGuess(req.user!.id, req.params.reviewId, data);
+    warmUserProfileCache(req.user!.id).catch(() => {});
     res.json({ guess: { ...guess, createdAt: guess.createdAt.toISOString() } });
   } catch (err) {
     next(err);

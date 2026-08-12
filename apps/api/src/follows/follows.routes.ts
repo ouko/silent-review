@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import { prisma } from "../prisma.js";
+import { warmUserProfileCache } from "../feed/feed.service.js";
 
 export const followsRouter = Router();
 
@@ -39,6 +40,7 @@ followsRouter.post("/:userId", requireAuth, async (req: AuthenticatedRequest, re
       });
     }
 
+    warmUserProfileCache(followerId).catch(() => {});
     res.status(201).json({ following: true });
   } catch (err) {
     next(err);
@@ -54,6 +56,7 @@ followsRouter.delete("/:userId", requireAuth, async (req: AuthenticatedRequest, 
       where: { followerId, followingId },
     });
 
+    warmUserProfileCache(followerId).catch(() => {});
     res.json({ following: false });
   } catch (err) {
     next(err);

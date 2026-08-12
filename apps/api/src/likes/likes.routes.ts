@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth, type AuthenticatedRequest } from "../middleware/auth.js";
 import { prisma } from "../prisma.js";
+import { warmUserProfileCache } from "../feed/feed.service.js";
 
 export const likesRouter = Router();
 
@@ -60,6 +61,7 @@ likesRouter.post("/reviews/:reviewId", requireAuth, async (req: AuthenticatedReq
       });
     }
 
+    warmUserProfileCache(userId).catch(() => {});
     const status = result.liked ? 201 : 200;
     res.status(status).json({ liked: result.liked, count: result.count });
   } catch (err) {
