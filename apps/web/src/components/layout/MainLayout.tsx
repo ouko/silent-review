@@ -7,6 +7,7 @@ import { useUIStore } from "../../stores/uiStore";
 import { useAuthStore } from "../../stores/authStore";
 import { initAnalytics, setAnalyticsUser, trackEvent } from "../../lib/analytics";
 import { ChallengeNotificationToast } from "../notifications/ChallengeNotificationToast";
+import { useOnlineStatus } from "../../hooks/useOnlineStatus";
 
 export function MainLayout() {
   const showBottomNav = useUIStore((s) => s.showBottomNav);
@@ -34,9 +35,15 @@ export function MainLayout() {
 
   const hideNavOnAuth = location.pathname === "/login" || location.pathname === "/register";
   const shouldShowNav = showBottomNav && !hideNavOnAuth;
+  const online = useOnlineStatus();
 
   return (
     <div className="flex h-dvh flex-col bg-black text-white">
+      {!online && (
+        <div className="bg-amber-500 px-4 py-1 text-center text-xs font-semibold text-black">
+          Offline — showing saved content
+        </div>
+      )}
       <ChallengeNotificationToast />
       <main className="relative flex-1 overflow-hidden">
         <AnimatePresence mode="wait">
