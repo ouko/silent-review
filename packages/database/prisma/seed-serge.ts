@@ -227,7 +227,36 @@ async function main() {
   );
   console.log("Created notifications for @serge");
 
-  // 8. Pending per-video challenges involving Serge
+  // 8. Demo review for a product with an affiliate URL so the "Shop" CTA is visible
+  const affiliateProduct = products.find((p) => p.affiliateUrl && p.affiliateUrl.trim().length > 0) ?? pick(products);
+  const affiliateReviewer = pick(users.filter((u) => u.id !== serge.id));
+  const affiliateReview = await prisma.review.create({
+    data: {
+      userId: affiliateReviewer.id,
+      productId: affiliateProduct.id,
+      videoUrl: "/uploads/seed/seed-0.mp4",
+      thumbnailUrl: null,
+      duration: 5,
+      format: "video/mp4",
+      rating: randomRating(),
+      caption: `Check out the ${affiliateProduct.name} — shop link below!`,
+      productTag: affiliateProduct.category,
+      status: "PUBLISHED",
+    },
+  });
+  console.log(
+    "Created demo affiliate review:",
+    affiliateReview.id,
+    "for product",
+    affiliateProduct.name,
+    "→",
+    affiliateProduct.affiliateUrl ?? "(no affiliate URL set)"
+  );
+
+  // Refresh published reviews list so challenges can pick from the new review too
+  publishedReviews.push({ ...affiliateReview, user: { id: affiliateReviewer.id } });
+
+  // 9. Pending per-video challenges involving Serge
   const challengeReview1 = pick(publishedReviews);
   const challenger1 = pick(users.filter((u) => u.id !== serge.id));
   const challenger1Guess = await prisma.guess.create({
