@@ -227,10 +227,19 @@ async function main() {
   );
   console.log("Created notifications for @serge");
 
-  // 8. Demo review for a product with an affiliate URL so the "Shop" CTA is visible
-  const affiliateProduct = products.find((p) => p.affiliateUrl && p.affiliateUrl.trim().length > 0) ?? pick(products);
+  // 8. Demo content for the affiliate link feature
+  let affiliateProduct = products.find((p) => p.affiliateUrl && p.affiliateUrl.trim().length > 0);
+  if (!affiliateProduct) {
+    affiliateProduct = await prisma.product.update({
+      where: { id: pick(products).id },
+      data: { affiliateUrl: "https://example.com/shop/demo-product?ref=silent-review" },
+    });
+    console.log("No product had an affiliate URL; set one on", affiliateProduct.name);
+  }
+
+  // Create two fresh, recent reviews for the affiliate product so it is easy to find.
   const affiliateReviewer = pick(users.filter((u) => u.id !== serge.id));
-  const affiliateReview = await prisma.review.create({
+  const affiliateReview1 = await prisma.review.create({
     data: {
       userId: affiliateReviewer.id,
       productId: affiliateProduct.id,
@@ -244,17 +253,35 @@ async function main() {
       status: "PUBLISHED",
     },
   });
-  console.log(
-    "Created demo affiliate review:",
-    affiliateReview.id,
-    "for product",
-    affiliateProduct.name,
-    "→",
-    affiliateProduct.affiliateUrl ?? "(no affiliate URL set)"
-  );
 
-  // Refresh published reviews list so challenges can pick from the new review too
-  publishedReviews.push({ ...affiliateReview, user: { id: affiliateReviewer.id } });
+  const affiliateReview2 = await prisma.review.create({
+    data: {
+      userId: serge.id,
+      productId: affiliateProduct.id,
+      videoUrl: "/uploads/seed/seed-1.mp4",
+      thumbnailUrl: null,
+      duration: 5,
+      format: "video/mp4",
+      rating: randomRating(),
+      caption: `My review of the ${affiliateProduct.name}. Tap Shop this product to buy it.`,
+      productTag: affiliateProduct.category,
+      status: "PUBLISHED",
+    },
+  });
+
+  console.log("Affiliate demo product:", affiliateProduct.name);
+  console.log("Affiliate URL:", affiliateProduct.affiliateUrl);
+  console.log("Review by another user:", affiliateReview1.id);
+  console.log("Review by @serge:", affiliateReview2.id);
+  console.log("Direct links:");
+  console.log(`  /review/${affiliateReview1.id}`);
+  console.log(`  /review/${affiliateReview2.id}`);
+
+  // Refresh published reviews list so challenges can pick from the new reviews too
+  publishedReviews.push(
+    { ...affiliateReview1, user: { id: affiliateReviewer.id } },
+    { ...affiliateReview2, user: { id: serge.id } }
+  );
 
   // 9. Pending per-video challenges involving Serge
   const challengeReview1 = pick(publishedReviews);
