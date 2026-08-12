@@ -4,7 +4,7 @@ import { get, set, del } from "idb-keyval";
 
 export const CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 24; // 24 hours
 
-const ALLOWED_PREFIXES = ["feed", "dailyDrop", "challenges"];
+const ALLOWED_PREFIXES = ["feed", "dailydrop", "challenges"];
 const DENIED_PREFIXES = ["auth", "user", "account", "profile", "followers", "following"];
 
 function isAllowedQueryKey(queryKey: unknown): boolean {
