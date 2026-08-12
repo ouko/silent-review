@@ -19,6 +19,7 @@
     "deploy": "prisma migrate deploy",
     "seed": "tsx prisma/seed.ts",
     "seed:analytics": "tsx prisma/seed-analytics.ts",
+    "seed:serge": "tsx prisma/seed-serge.ts",
     "studio": "prisma studio",
     "typecheck": "prisma generate && tsc --noEmit",
     "clean": "rm -rf dist"
