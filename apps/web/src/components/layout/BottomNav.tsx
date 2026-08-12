@@ -3,10 +3,11 @@ import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useRef } from "react";
 import { trackEvent } from "../../lib/analytics";
+import { preloadBrowse } from "../../router";
 
 const LINKS = [
   { to: "/play", icon: Gamepad2, label: "Play" },
-  { to: "/browse", icon: Compass, label: "Browse", preload: () => import("../../pages/Home").catch(() => {}) },
+  { to: "/browse", icon: Compass, label: "Browse" },
   { to: "/record", icon: PlusCircle, label: "Create" },
   { to: "/activity", icon: Bell, label: "Activity" },
   { to: "/profile/me", icon: User, label: "Profile" },
@@ -51,8 +52,8 @@ export function BottomNav() {
         <NavLink
           key={link.to}
           to={link.to}
-          onMouseEnter={link.preload}
-          onTouchStart={link.preload}
+          onMouseEnter={link.to === "/browse" ? preloadBrowse : undefined}
+          onTouchStart={link.to === "/browse" ? preloadBrowse : undefined}
           onClick={(e) => {
             handleNavClick(link.to);
             if (isLinkActive(location.pathname, link.to)) {

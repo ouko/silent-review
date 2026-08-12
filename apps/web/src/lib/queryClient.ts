@@ -1,39 +1,58 @@
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryKey } from "@tanstack/react-query";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
+import type { Query } from "@tanstack/query-core";
 import { get, set, del } from "idb-keyval";
 
 export const CACHE_MAX_AGE_MS = 1000 * 60 * 60 * 24; // 24 hours
 
-const ALLOWED_PREFIXES = ["feed", "dailydrop", "challenges"];
-const DENIED_PREFIXES = ["auth", "user", "account", "profile", "followers", "following"];
+const ALLOWED_PREFIXES = ["feed", "dailydrop", "challenges"] as const;
+const DENIED_PREFIXES = ["auth", "user", "account", "profile", "followers", "following"] as const;
 
-function isAllowedQueryKey(queryKey: unknown): boolean {
-  const first = String(Array.isArray(queryKey) ? queryKey[0] : queryKey);
-  if (DENIED_PREFIXES.some((p) => first === p || first.startsWith(`${p}-`) || first.startsWith(`${p}.`))) {
-    return false;
-  }
+function getFirstKeySegment(queryKey: QueryKey): string | undefined {
+  return Array.isArray(queryKey) && typeof queryKey[0] === "string" ? queryKey[0] : undefined;
+}
+
+function isAllowedSegment(segment: string): boolean {
   return ALLOWED_PREFIXES.some(
-    (p) => first === p || first.startsWith(`${p}-`) || first.startsWith(`${p}.`)
+    (prefix) => segment === prefix || segment.startsWith(`${prefix}-`) || segment.startsWith(`${prefix}.`)
   );
 }
 
+function isDeniedSegment(segment: string): boolean {
+  return DENIED_PREFIXES.some(
+    (prefix) => segment === prefix || segment.startsWith(`${prefix}-`) || segment.startsWith(`${prefix}.`)
+  );
+}
+
+/**
+ * Determines which queries are written to the persisted IndexedDB cache.
+ * Only allowlisted keys are persisted; denylisted keys are explicitly excluded
+ * to avoid storing PII (profile, followers, following, etc.).
+ */
+export function shouldDehydrateQuery(query: Query): boolean {
+  const segment = getFirstKeySegment(query.queryKey);
+  if (!segment) return false;
+  if (isDeniedSegment(segment)) return false;
+  return isAllowedSegment(segment);
+}
+
 const idbStorage = {
-  getItem: async (key: string) => {
+  getItem: async (key: string): Promise<string | undefined> => {
     try {
-      return await get(key);
+      return (await get<string>(key)) ?? undefined;
     } catch (err) {
       console.warn("[query-persist] getItem failed:", err);
       return undefined;
     }
   },
-  setItem: async (key: string, value: string) => {
+  setItem: async (key: string, value: string): Promise<void> => {
     try {
       await set(key, value);
     } catch (err) {
       console.warn("[query-persist] setItem failed:", err);
     }
   },
-  removeItem: async (key: string) => {
+  removeItem: async (key: string): Promise<void> => {
     try {
       await del(key);
     } catch (err) {
@@ -55,10 +74,4 @@ export const queryClient = new QueryClient({
 export const persister = createAsyncStoragePersister({
   storage: idbStorage,
   key: "silent-review-query-cache",
-  serialize: (data) => JSON.stringify(data),
-  deserialize: (data) => JSON.parse(data),
 });
-
-export function shouldDehydrateQuery(query: { queryKey: unknown }): boolean {
-  return isAllowedQueryKey(query.queryKey);
-}

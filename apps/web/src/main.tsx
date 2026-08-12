@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { queryClient, persister, CACHE_MAX_AGE_MS, shouldDehydrateQuery } from "./lib/queryClient";
+import { queryClient, persister, shouldDehydrateQuery, CACHE_MAX_AGE_MS } from "./lib/queryClient";
 import App from "./App";
 import "./index.css";
 
@@ -12,7 +12,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       persistOptions={{
         persister,
         maxAge: CACHE_MAX_AGE_MS,
-        dehydrateOptions: { shouldDehydrateQuery },
+        dehydrateOptions: {
+          shouldDehydrateQuery,
+        },
       }}
     >
       <App />
