@@ -3,6 +3,8 @@ import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { Share2, Sparkles, Clock } from "lucide-react";
 import { VideoPlayer } from "../feed/VideoPlayer";
 import { RatingBar } from "../guess/RatingBar";
+import { Button } from "../ui/Button";
+import { Badge } from "../ui/Badge";
 import type { DailyDropData, DailyDropAttemptResult } from "../../hooks/useDailyDrop";
 
 interface DailyDropPlayerProps {
@@ -23,9 +25,9 @@ function computeScore(actual: number, guess: number): number {
 }
 
 function segmentColor(rating: number): string {
-  if (rating <= 4) return "text-rose-400";
-  if (rating <= 6) return "text-amber-400";
-  return "text-emerald-400";
+  if (rating <= 4) return "text-accent-pink";
+  if (rating <= 6) return "text-accent-yellow";
+  return "text-accent-lime";
 }
 
 export function DailyDropPlayer({
@@ -56,27 +58,19 @@ export function DailyDropPlayer({
   const countdownItems = useMemo(() => [3, 2, 1], []);
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-black">
-      <VideoPlayer
-        src={review.videoUrl}
-        shouldPlay={true}
-        preload={true}
-        poster={review.thumbnailUrl}
-        reviewId={review.id}
-      />
+    <div className="relative h-full w-full overflow-hidden bg-void">
+      <VideoPlayer src={review.videoUrl} shouldPlay={true} preload={true} poster={review.thumbnailUrl} reviewId={review.id} />
 
-      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+      <div className="absolute inset-0 bg-gradient-to-t from-void via-void/30 to-transparent" />
 
       <div className="absolute inset-x-0 top-0 flex items-center justify-between p-4 pt-safe">
-        <div className="rounded-full bg-black/50 px-3 py-1 text-xs font-black uppercase tracking-wider text-white backdrop-blur-md">
+        <Badge variant="lime">
+          <Sparkles className="h-3.5 w-3.5" />
           Daily Drop
-        </div>
+        </Badge>
         <div className="flex items-center gap-1.5 rounded-full bg-black/50 px-3 py-1 text-xs font-bold text-white/80 backdrop-blur-md">
           <Clock className="h-3.5 w-3.5" />
-          {new Date(dailyDrop.date).toLocaleDateString(undefined, {
-            month: "short",
-            day: "numeric",
-          })}
+          {new Date(dailyDrop.date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
         </div>
       </div>
 
@@ -91,31 +85,22 @@ export function DailyDropPlayer({
               className="space-y-4"
             >
               <div className="text-center">
-                <p className="text-sm font-bold text-white/70">
-                  {review.productTag ?? review.product.name}
-                </p>
-                <p className="text-xs text-white/50">Guess the rating</p>
+                <p className="text-sm font-bold text-white/70">{review.productTag ?? review.product.name}</p>
+                <p className="text-xs text-white/50">What&apos;d they rate it?</p>
               </div>
 
-              <RatingBar
-                selected={selectedRating}
-                onSelect={setSelectedRating}
-                disabled={isSubmitting}
-              />
+              <RatingBar selected={selectedRating} onSelect={setSelectedRating} disabled={isSubmitting} />
 
-              <motion.button
-                whileTap={selectedRating && !isSubmitting ? { scale: 0.97 } : {}}
+              <Button
+                variant="primary"
+                shape="pill"
+                className="w-full"
                 onClick={handleSubmit}
                 disabled={!selectedRating || isSubmitting}
-                className={[
-                  "w-full rounded-2xl py-3.5 font-bold text-white shadow-lg transition-all",
-                  selectedRating && !isSubmitting
-                    ? "bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 shadow-rose-500/25 hover:shadow-rose-500/40 hover:brightness-110"
-                    : "cursor-not-allowed bg-white/10 text-white/40 shadow-none ring-1 ring-white/10",
-                ].join(" ")}
+                loading={isSubmitting}
               >
-                {isSubmitting ? "Submitting..." : "Reveal rating"}
-              </motion.button>
+                {isSubmitting ? "Submitting..." : "Lock it in"}
+              </Button>
             </motion.div>
           ) : (
             <motion.div
@@ -133,14 +118,12 @@ export function DailyDropPlayer({
               )}
 
               <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-white/50">
-                  The actual rating was
-                </p>
+                <p className="text-xs font-bold uppercase tracking-[0.05em] text-white/50">The actual rating was</p>
                 <motion.div
                   initial={reducedMotion ? { scale: 1 } : { scale: 0.5, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 250, damping: 18, delay: 0.1 }}
-                  className={`text-8xl font-black leading-none tracking-tighter ${segmentColor(actualRating)}`}
+                  className={`font-heading text-8xl font-black leading-none tracking-tighter ${segmentColor(actualRating)}`}
                 >
                   {actualRating}
                   <span className="text-3xl text-white/30">/10</span>
@@ -154,24 +137,16 @@ export function DailyDropPlayer({
                   transition={{ delay: 0.2 }}
                   className="rounded-2xl border border-white/10 bg-white/5 p-4"
                 >
-                  <p className="text-xs font-bold uppercase tracking-widest text-white/50">Your guess</p>
-                  <p className="mt-1 text-3xl font-black text-white">
-                    {userGuess}/10
-                  </p>
-                  <p className="mt-1 text-sm font-bold text-white/70">
-                    +{score} points
-                  </p>
+                  <p className="text-xs font-bold uppercase tracking-[0.05em] text-white/50">Your guess</p>
+                  <p className="mt-1 font-heading text-3xl font-black text-white">{userGuess}/10</p>
+                  <p className="mt-1 text-sm font-bold text-white/70">+{score} points</p>
                 </motion.div>
               )}
 
-              <motion.button
-                whileTap={{ scale: 0.97 }}
-                onClick={onReveal}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white py-3.5 font-bold text-black transition-transform"
-              >
+              <Button variant="ghost" shape="pill" className="w-full" onClick={onReveal}>
                 <Share2 className="h-4 w-4" />
                 Share result
-              </motion.button>
+              </Button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -189,15 +164,10 @@ export function DailyDropPlayer({
                 x: [0, (i - 1) * 40, (i - 1) * 80],
                 rotate: [0, 180, 360],
               }}
-              transition={{
-                duration: 1.5,
-                delay: i * 0.2,
-                repeat: Infinity,
-                repeatDelay: 2,
-              }}
+              transition={{ duration: 1.5, delay: i * 0.2, repeat: Infinity, repeatDelay: 2 }}
               className="absolute left-1/2 top-1/3"
             >
-              <Sparkles className="h-5 w-5 text-rose-400" />
+              <Sparkles className="h-5 w-5 text-primary-400" />
             </motion.div>
           ))}
         </div>

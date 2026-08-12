@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useGuess } from "../hooks/useGuess";
 import { VideoInfo } from "./feed/VideoInfo";
 import { RatingBar } from "./guess/RatingBar";
 import { RevealScreen } from "./guess/RevealScreen";
+import { Button } from "./ui/Button";
 
 interface VideoCardProps {
   id: string;
@@ -24,6 +25,7 @@ export function VideoCard(props: VideoCardProps) {
     totalGuesses: number;
     distribution: number[];
   } | null>(null);
+  const reducedMotion = useReducedMotion();
 
   const { selectedRating, setSelectedRating, submit, isSubmitting, reveal } = useGuess(props.id);
 
@@ -52,7 +54,7 @@ export function VideoCard(props: VideoCardProps) {
 
   if (revealed && revealData) {
     return (
-      <div className="relative h-full w-full snap-start overflow-hidden bg-black">
+      <div className="relative h-full w-full snap-start overflow-hidden bg-void">
         <RevealScreen
           rating={revealData.rating}
           userGuess={selectedRating}
@@ -66,16 +68,9 @@ export function VideoCard(props: VideoCardProps) {
   }
 
   return (
-    <div className="relative h-full w-full snap-start overflow-hidden bg-black">
-      <video
-        src={props.videoUrl}
-        className="h-full w-full object-cover"
-        loop
-        muted
-        playsInline
-        autoPlay
-      />
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/60 to-transparent p-5 pb-10">
+    <div className="relative h-full w-full snap-start overflow-hidden bg-void">
+      <video src={props.videoUrl} className="h-full w-full object-cover" loop muted playsInline autoPlay />
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-void via-void/60 to-transparent p-5 pb-10">
         <VideoInfo
           username={props.username}
           avatarUrl={props.avatarUrl}
@@ -84,27 +79,25 @@ export function VideoCard(props: VideoCardProps) {
         />
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={reducedMotion ? {} : { opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.35 }}
+          transition={{ delay: 0.1, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           className="mt-5 space-y-4"
         >
-          <p className="text-center text-xs font-bold uppercase tracking-widest text-white/50">
-            Guess the rating
+          <p className="text-center text-xs font-bold uppercase tracking-[0.05em] text-white/50">
+            What&apos;d they rate it?
           </p>
-          <RatingBar
-            selected={selectedRating}
-            onSelect={setSelectedRating}
-            disabled={isSubmitting}
-          />
-          <motion.button
-            whileTap={{ scale: 0.97 }}
+          <RatingBar selected={selectedRating} onSelect={setSelectedRating} disabled={isSubmitting} />
+          <Button
+            variant="primary"
+            shape="pill"
+            className="w-full"
             onClick={handleReveal}
             disabled={selectedRating == null || isSubmitting}
-            className="w-full rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-3.5 font-bold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+            loading={isSubmitting}
           >
-            {isSubmitting ? "Checking..." : "Reveal"}
-          </motion.button>
+            {isSubmitting ? "Checking..." : "Lock it in"}
+          </Button>
         </motion.div>
       </div>
     </div>

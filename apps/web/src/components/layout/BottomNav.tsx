@@ -1,6 +1,6 @@
 import { Gamepad2, Compass, PlusCircle, Bell, User } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { useRef } from "react";
 import { trackEvent } from "../../lib/analytics";
 import { preloadBrowse } from "../../router";
@@ -34,6 +34,7 @@ function scrollPageToTop() {
 export function BottomNav() {
   const location = useLocation();
   const previousPathRef = useRef(location.pathname);
+  const reducedMotion = useReducedMotion();
 
   function handleNavClick(to: string) {
     const from = previousPathRef.current;
@@ -45,7 +46,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="flex items-center justify-around border-t border-white/10 bg-black/60 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 backdrop-blur-xl"
+      className="flex items-center justify-around border-t border-white/8 bg-void/80 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 backdrop-blur-2xl"
       style={{ minHeight: "calc(4.5rem + env(safe-area-inset-bottom))" }}
     >
       {LINKS.map((link) => (
@@ -57,14 +58,13 @@ export function BottomNav() {
           onClick={(e) => {
             handleNavClick(link.to);
             if (isLinkActive(location.pathname, link.to)) {
-              // Already on this page: give feedback instead of a no-op.
               e.preventDefault();
               scrollPageToTop();
             }
           }}
           className={({ isActive }) =>
-            `group relative flex flex-1 flex-col items-center gap-1 rounded-2xl py-2 text-xs font-bold transition-colors ${
-              isActive ? "text-white" : "text-white/50 hover:text-white/80"
+            `group relative flex flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 text-[11px] font-medium transition-colors tap-48 ${
+              isActive ? "text-primary-300" : "text-white/45 hover:text-white/80"
             }`
           }
         >
@@ -72,13 +72,21 @@ export function BottomNav() {
             <>
               {isActive && (
                 <motion.div
-                  layoutId="bottomNavIndicator"
-                  className="pointer-events-none absolute inset-0 -z-10 rounded-2xl bg-gradient-to-r from-rose-500/80 via-pink-500/80 to-violet-500/80"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  layoutId="bottomNavPill"
+                  className="pointer-events-none absolute inset-x-2 inset-y-1 -z-10 rounded-2xl bg-primary-500/15"
+                  transition={{ type: "spring", stiffness: 450, damping: 32 }}
                 />
               )}
-              <link.icon className={`h-6 w-6 transition-transform ${isActive ? "scale-110" : "group-active:scale-95"}`} />
-              <span>{link.label}</span>
+              <motion.div
+                animate={isActive && !reducedMotion ? { scale: 1.1 } : { scale: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 20 }}
+              >
+                <link.icon
+                  className="h-6 w-6 transition-transform group-active:scale-95"
+                  strokeWidth={isActive ? 2.5 : 2}
+                />
+              </motion.div>
+              <span className={isActive ? "font-semibold" : ""}>{link.label}</span>
             </>
           )}
         </NavLink>

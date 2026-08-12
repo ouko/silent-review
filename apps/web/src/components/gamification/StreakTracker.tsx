@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Flame, Shield, Trophy, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { trackStreakMilestone } from "../../lib/analytics";
@@ -26,6 +26,7 @@ export function StreakTracker({
 }: StreakTrackerProps) {
   const [showMilestone, setShowMilestone] = useState(false);
   const [celebrated, setCelebrated] = useState<Set<number>>(new Set());
+  const reducedMotion = useReducedMotion();
 
   useEffect(() => {
     trackStreakMilestone(streakDays);
@@ -61,61 +62,66 @@ export function StreakTracker({
       : null);
 
   return (
-    <div className="rounded-2xl bg-gradient-to-br from-orange-500/20 to-red-500/20 p-4">
+    <div className="rounded-2xl bg-gradient-to-br from-accent-yellow/15 to-accent-pink/15 p-4 ring-1 ring-white/10">
       <div className="flex items-center gap-3">
         <motion.div
-          animate={{ scale: [1, 1.15, 1] }}
+          animate={reducedMotion ? undefined : { scale: [1, 1.15, 1] }}
           transition={{ repeat: Infinity, duration: 1.5 }}
+          className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-yellow/15 text-accent-yellow"
         >
-          <Flame className="h-8 w-8 text-orange-500" />
+          <Flame className="h-7 w-7" />
         </motion.div>
         <div>
-          <p className="text-2xl font-bold">{streakDays}</p>
-          <p className="text-xs text-white/60">day streak</p>
+          <p className="font-heading text-2xl font-bold tracking-tight">{streakDays}</p>
+          <p className="text-xs font-medium text-white/50">day streak</p>
         </div>
         {freezeHeld > 0 && (
-          <div className="ml-auto flex items-center gap-1.5 rounded-full bg-blue-500/20 px-2.5 py-1 text-xs font-bold text-blue-300 ring-1 ring-blue-500/30">
+          <div className="ml-auto flex items-center gap-1.5 rounded-full bg-primary-500/15 px-2.5 py-1 text-xs font-bold text-primary-300 ring-1 ring-primary-500/30">
             <Shield className="h-3.5 w-3.5" />
             Protected
           </div>
         )}
       </div>
-      <p className="mt-2 text-xs text-white/50">Longest: {longestStreak} days</p>
+      <p className="mt-2 text-xs font-medium text-white/40">Longest: {longestStreak} days</p>
 
       <AnimatePresence>
         {showMilestone && displayMilestone && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.85 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.35 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6"
+            initial={reducedMotion ? { opacity: 1 } : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-4 backdrop-blur-sm"
             onClick={() => setShowMilestone(false)}
           >
-            <div className="relative w-full max-w-xs rounded-3xl bg-gradient-to-br from-orange-500 to-rose-600 p-6 text-center text-white shadow-2xl">
+            <motion.div
+              initial={reducedMotion ? {} : { y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 350, damping: 35 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-t-3xl bg-gradient-to-br from-accent-yellow to-accent-pink p-6 text-center text-white shadow-2xl"
+            >
+              <div className="mx-auto mb-2 h-1.5 w-12 rounded-full bg-white/30" />
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowMilestone(false);
-                }}
-                className="absolute right-3 top-3 rounded-full p-1 text-white/70 hover:bg-white/10"
+                onClick={() => setShowMilestone(false)}
+                className="absolute right-4 top-4 rounded-full p-2 text-white/70 transition-colors hover:bg-white/10"
                 aria-label="Close"
               >
                 <X className="h-5 w-5" />
               </button>
               <motion.div
-                initial={{ rotate: -20, scale: 0 }}
+                initial={reducedMotion ? {} : { rotate: -20, scale: 0 }}
                 animate={{ rotate: 0, scale: 1 }}
                 transition={{ type: "spring", stiffness: 260, damping: 14 }}
-                className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20"
+                className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-white/20"
               >
-                <Trophy className="h-8 w-8 text-white" />
+                <Trophy className="h-10 w-10 text-white" />
               </motion.div>
-              <h3 className="text-xl font-black">{displayMilestone.name}</h3>
+              <h3 className="font-heading text-2xl font-black tracking-tight">{displayMilestone.name}</h3>
               <p className="mt-1 text-sm font-medium text-white/90">
                 {displayMilestone.streakDays}-day streak milestone unlocked!
               </p>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

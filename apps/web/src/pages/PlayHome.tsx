@@ -1,9 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import { useFeed } from "../hooks/useFeed";
 import { useTodaysDailyDrop } from "../hooks/useDailyDrop";
 import { useChallenges } from "../hooks/useChallenges";
 import { usePlayStore } from "../stores/playStore";
+import { useAuthStore } from "../stores/authStore";
 import { StreakHeader } from "../components/play/StreakHeader";
 import { DailyDropCard } from "../components/play/DailyDropCard";
 import { ChallengeInbox } from "../components/play/ChallengeInbox";
@@ -21,9 +23,10 @@ export function PlayHome() {
   const setDailyDrop = usePlayStore((s) => s.setDailyDrop);
   const setPendingChallengeCount = usePlayStore((s) => s.setPendingChallengeCount);
   const playedIds = usePlayStore((s) => s.playedReviewIds);
+  const user = useAuthStore((s) => s.user);
+  const reducedMotion = useReducedMotion();
 
   const reviews = feedData?.pages.flatMap((page) => page.reviews) ?? [];
-
   const continueList = reviews.filter((r) => r.id !== dailyDropData?.dailyDrop.review.id).slice(0, 10);
 
   useEffect(() => {
@@ -61,8 +64,24 @@ export function PlayHome() {
     navigate(`/play/${reviewId}`);
   }
 
+  const greetingName = user?.displayName ?? user?.username ?? "there";
+
   return (
-    <div className="flex h-full flex-col gap-4 overflow-y-auto px-4 pb-6 pt-4" style={{ scrollbarWidth: "none" }}>
+    <div
+      className="flex h-full flex-col gap-4 overflow-y-auto px-4 pb-6 pt-4 no-scrollbar"
+      style={{ scrollbarWidth: "none" }}
+    >
+      <motion.div
+        initial={reducedMotion ? {} : { opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+      >
+        <p className="text-sm font-medium text-white/50">Hey {greetingName} 👋</p>
+        <h1 className="font-heading text-3xl font-bold tracking-tight text-white">
+          Ready to <span className="gradient-text">guess?</span>
+        </h1>
+      </motion.div>
+
       <StreakHeader />
 
       <section className="space-y-2">

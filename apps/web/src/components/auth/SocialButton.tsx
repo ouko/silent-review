@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { Apple, Music2 } from "lucide-react";
+import { Apple } from "lucide-react";
 
 function GoogleIcon(props: React.SVGProps<SVGSVGElement>) {
   return (
@@ -37,7 +37,7 @@ function InstagramIcon(props: React.SVGProps<SVGSVGElement>) {
 const PROVIDER_ICONS = {
   google: GoogleIcon,
   apple: Apple,
-  tiktok: Music2,
+  tiktok: () => <span aria-hidden="true">🎵</span>,
   instagram: InstagramIcon,
 };
 
@@ -59,9 +59,10 @@ export function SocialButton({ provider, onClick }: SocialButtonProps) {
   return (
     <motion.button
       type="button"
-      whileTap={reducedMotion ? undefined : { scale: 0.98 }}
+      whileTap={reducedMotion ? undefined : { scale: 0.96 }}
+      transition={{ type: "spring", stiffness: 500, damping: 30 }}
       onClick={onClick}
-      className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3.5 font-medium text-white transition-colors hover:bg-white/10"
+      className="flex w-full min-h-14 items-center justify-center gap-3 rounded-full border border-white/10 bg-white/5 px-5 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-white/10 active:bg-white/[0.12]"
     >
       <Icon className="h-5 w-5" />
       <span>Continue with {PROVIDER_LABELS[provider]}</span>

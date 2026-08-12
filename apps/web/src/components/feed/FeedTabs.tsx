@@ -16,14 +16,17 @@ export function FeedTabs({ tabs, activeId, onSelect }: FeedTabsProps) {
 
   return (
     <div className="flex items-center justify-center p-3">
-      <div className="relative flex items-center rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur-md" role="tablist">
+      <div
+        className="relative flex items-center rounded-full border border-white/10 bg-white/5 p-1 backdrop-blur-md"
+        role="tablist"
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
             role="tab"
             aria-selected={activeId === tab.id}
             onClick={() => onSelect(tab.id)}
-            className="relative z-10 px-4 py-2 text-sm font-bold tracking-tight transition-colors"
+            className="relative z-10 px-4 py-2 text-sm font-bold tracking-tight transition-colors tap-48"
           >
             {activeId === tab.id ? (
               <span className="text-white">{tab.label}</span>
@@ -34,7 +37,7 @@ export function FeedTabs({ tabs, activeId, onSelect }: FeedTabsProps) {
               <motion.div
                 layoutId="activeFeedTab"
                 transition={reducedMotion ? { duration: 0 } : { type: "spring", stiffness: 400, damping: 30 }}
-                className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-white/15"
+                className="pointer-events-none absolute inset-0 -z-10 rounded-full bg-primary-500/20 ring-1 ring-primary-500/30"
               />
             )}
           </button>

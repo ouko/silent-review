@@ -7,21 +7,12 @@ import { CameraRecorder } from "./CameraRecorder";
 import { ReviewFinalize } from "./ReviewFinalize";
 import { Clapperboard } from "lucide-react";
 
-type Step = "product" | "record" | "finalize";
-
-const STEPS: { id: Step; label: string }[] = [
-  { id: "product", label: "Product" },
-  { id: "record", label: "Record" },
-  { id: "finalize", label: "Publish" },
-];
-
 export function CreateReview() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const duetOfId = searchParams.get("duet");
   const reducedMotion = useReducedMotion();
 
-  const [step, setStep] = useState<Step>("product");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -48,7 +39,6 @@ export function CreateReview() {
 
   function handleProductSelect(product: Product) {
     setSelectedProduct(product);
-    setStep("record");
   }
 
   const handleRecorded = useCallback((blob: Blob) => {
@@ -58,13 +48,12 @@ export function CreateReview() {
     setRecordedBlob(blob);
     previewUrlRef.current = URL.createObjectURL(blob);
     setUploadError(null);
-    setStep("finalize");
   }, []);
 
   function handleBackToRecord() {
     setUploadError(null);
     reset();
-    setStep("record");
+    setRecordedBlob(null);
   }
 
   async function handleSubmit(input: { rating: number; caption: string; tag?: string; allowComments: boolean }) {
@@ -85,7 +74,6 @@ export function CreateReview() {
       extension = ".webm";
       fileType = "video/webm";
     } else {
-      // iOS Safari MediaRecorder may report an empty or generic type; recorded output is usually MP4.
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
       extension = isIOS ? ".mp4" : ".webm";
       fileType = recordedBlob.type || (isIOS ? "video/mp4" : "video/webm");
@@ -106,54 +94,23 @@ export function CreateReview() {
     });
   }
 
+  const step = !selectedProduct ? "product" : !recordedBlob ? "record" : "finalize";
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="px-4 pt-5 pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-rose-500 to-violet-500">
-              <Clapperboard className="h-4 w-4 text-white" />
-            </div>
-            <h1 className="text-xl font-black tracking-tight text-white">Create review</h1>
+      <div className="safe-top px-4 pt-4 pb-3">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-accent-pink text-white shadow-glow">
+            <Clapperboard className="h-5 w-5" />
           </div>
-        </div>
-
-        {/* Stepper */}
-        <div className="mt-4 flex items-center gap-2">
-          {STEPS.map((s, index) => {
-            const isActive = step === s.id;
-            const isCompleted =
-              (s.id === "product" && selectedProduct !== null) ||
-              (s.id === "record" && recordedBlob !== null) ||
-              (s.id === "finalize" && false);
-            return (
-              <div key={s.id} className="flex flex-1 items-center gap-2">
-                <div
-                  className={`flex flex-1 items-center justify-center gap-2 rounded-full py-2 text-xs font-bold uppercase tracking-wider transition-colors ${
-                    isActive
-                      ? "bg-white/15 text-white"
-                      : isCompleted
-                        ? "bg-white/5 text-white/70"
-                        : "bg-transparent text-white/40"
-                  }`}
-                >
-                  <span
-                    className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
-                      isActive
-                        ? "bg-gradient-to-br from-rose-500 to-violet-500 text-white"
-                        : isCompleted
-                          ? "bg-emerald-500/20 text-emerald-300"
-                          : "bg-white/10 text-white/50"
-                    }`}
-                  >
-                    {index + 1}
-                  </span>
-                  {s.label}
-                </div>
-                {index < STEPS.length - 1 && <div className="h-px w-4 bg-white/10" />}
-              </div>
-            );
-          })}
+          <div>
+            <h1 className="font-heading text-xl font-bold tracking-tight text-white">Create review</h1>
+            <p className="text-xs text-white/50">
+              {step === "product" && "Pick a product"}
+              {step === "record" && "Record a 5s video"}
+              {step === "finalize" && "Rate and post"}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -161,8 +118,8 @@ export function CreateReview() {
         key={step}
         initial={reducedMotion ? {} : { opacity: 0, x: 16 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
-        className="flex-1 overflow-y-auto p-4 pt-0"
+        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+        className="flex-1 overflow-y-auto p-4 pt-0 no-scrollbar"
       >
         {step === "product" && (
           <div className="flex flex-1 flex-col gap-3">
@@ -172,7 +129,7 @@ export function CreateReview() {
         )}
 
         {step === "record" && (
-          <CameraRecorder onRecorded={handleRecorded} onCancel={() => setStep("product")} />
+          <CameraRecorder onRecorded={handleRecorded} onCancel={() => setSelectedProduct(null)} />
         )}
 
         {step === "finalize" && previewUrlRef.current && (

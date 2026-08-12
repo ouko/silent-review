@@ -64,7 +64,7 @@ export function Login() {
   }
 
   return (
-    <AuthLayout title="Silent Review" subtitle="Guess the rating before the reveal.">
+    <AuthLayout title="Silent Review" subtitle="Guess the rating. Beat your friends.">
       <form onSubmit={handleSubmit} className="space-y-4">
         <AuthInput
           type="email"
@@ -95,13 +95,13 @@ export function Login() {
         )}
 
         <AuthButton type="submit" loading={loading}>
-          Log in with Email
+          Log in
         </AuthButton>
       </form>
 
       {oauthProviders.length > 0 && (
         <div className="mt-6 space-y-3">
-          <p className="text-center text-xs font-medium uppercase tracking-wide text-white/40">or</p>
+          <p className="text-center text-xs font-medium text-white/40">or continue with</p>
           {oauthProviders.map((provider) => (
             <SocialButton key={provider} provider={provider} onClick={() => handleOAuth(provider)} />
           ))}
@@ -109,8 +109,8 @@ export function Login() {
       )}
 
       <p className="mt-8 text-center text-sm text-white/50">
-        Don&apos;t have an account?{" "}
-        <a href="/register" className="font-semibold text-rose-400 hover:text-rose-300">
+        New here?{" "}
+        <a href="/register" className="font-semibold text-primary-400 hover:text-primary-300">
           Sign up
         </a>
       </p>

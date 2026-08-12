@@ -5,6 +5,7 @@ import { StatsChart } from "../stats/StatsChart";
 import { GuessFeedback } from "./GuessFeedback";
 import { ResultCardPreview } from "../share/ResultCardPreview";
 import { useGamification } from "../../hooks/useGamification";
+import { Button } from "../ui/Button";
 
 interface RevealScreenProps {
   rating: number;
@@ -56,7 +57,7 @@ export function RevealScreen({
     hidden: reducedMotion ? {} : { opacity: 0 },
     show: {
       opacity: 1,
-      transition: { staggerChildren: reducedMotion ? 0 : 0.1 },
+      transition: { staggerChildren: reducedMotion ? 0 : 0.08 },
     },
   };
 
@@ -70,17 +71,15 @@ export function RevealScreen({
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className="relative flex h-full flex-col items-center justify-center gap-5 p-2 text-center"
+      className="relative flex h-full flex-col items-center justify-center gap-4 p-2 text-center"
     >
       <motion.div variants={itemVariants} className="flex flex-col items-center">
-        <p className="text-xs font-bold uppercase tracking-widest text-white/50">
-          The actual rating was
-        </p>
+        <p className="text-xs font-bold uppercase tracking-[0.05em] text-white/50">The actual rating was</p>
         <motion.div
           initial={reducedMotion ? { scale: 1 } : { scale: 0.5, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: "spring", stiffness: 250, damping: 18 }}
-          className="text-8xl font-black leading-none tracking-tighter gradient-text"
+          className="font-heading text-8xl font-black leading-none tracking-tighter gradient-text"
           aria-label={`Actual rating ${rating} out of 10`}
         >
           {rating}
@@ -98,49 +97,31 @@ export function RevealScreen({
         <StatsChart distribution={distribution} totalGuesses={totalGuesses} />
       </motion.div>
 
-      <motion.button
-        variants={itemVariants}
-        whileTap={{ scale: 0.96 }}
-        onClick={() => setShowResultCard(true)}
-        className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-violet-500 py-3.5 font-bold text-white shadow-lg shadow-rose-500/20 transition-opacity hover:opacity-90"
-      >
-        <Trophy className="h-4 w-4" />
-        Share result card
-      </motion.button>
+      <motion.div variants={itemVariants} className="flex w-full max-w-sm flex-col gap-2">
+        <Button variant="primary" shape="rounded" className="w-full" onClick={() => setShowResultCard(true)}>
+          <Trophy className="h-4 w-4" />
+          Share result card
+        </Button>
 
-      {challengeComplete && onRematch && (
-        <motion.button
-          variants={itemVariants}
-          whileTap={{ scale: 0.96 }}
-          onClick={onRematch}
-          className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-rose-500 to-violet-500 py-3.5 font-bold text-white shadow-lg shadow-rose-500/20 transition-transform"
-        >
-          <Swords className="h-4 w-4" />
-          Rematch
-        </motion.button>
-      )}
+        {challengeComplete && onRematch && (
+          <Button variant="secondary" shape="rounded" className="w-full" onClick={onRematch}>
+            <Swords className="h-4 w-4" />
+            Rematch
+          </Button>
+        )}
 
-      {!challengeComplete && onChallengeFriend && (
-        <motion.button
-          variants={itemVariants}
-          whileTap={{ scale: 0.96 }}
-          onClick={onChallengeFriend}
-          className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-3.5 font-bold text-black transition-transform"
-        >
-          <Swords className="h-4 w-4" />
-          Challenge a friend
-        </motion.button>
-      )}
+        {!challengeComplete && onChallengeFriend && (
+          <Button variant="lime" shape="rounded" className="w-full" onClick={onChallengeFriend}>
+            <Swords className="h-4 w-4" />
+            Challenge a friend
+          </Button>
+        )}
 
-      <motion.button
-        variants={itemVariants}
-        whileTap={{ scale: 0.96 }}
-        onClick={onPlayAgain}
-        className="flex w-full max-w-sm items-center justify-center gap-2 rounded-2xl bg-white py-3.5 font-bold text-black transition-transform"
-      >
-        <RotateCcw className="h-4 w-4" />
-        Play again
-      </motion.button>
+        <Button variant="ghost" shape="rounded" className="w-full" onClick={onPlayAgain}>
+          <RotateCcw className="h-4 w-4" />
+          Play again
+        </Button>
+      </motion.div>
 
       {showResultCard && reviewId && userGuess !== null && (
         <ResultCardPreview

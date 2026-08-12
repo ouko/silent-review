@@ -60,7 +60,7 @@ describeOrSkip('DailyDropPlayer', () => {
     const ratingButton = screen.getByRole('radio', { name: '8' });
     fireEvent.click(ratingButton);
 
-    const submitButton = screen.getByRole('button', { name: /reveal rating/i });
+    const submitButton = screen.getByRole('button', { name: /lock it in/i });
     fireEvent.click(submitButton);
 
     expect(onAttempt).toHaveBeenCalledWith(8);

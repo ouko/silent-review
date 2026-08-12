@@ -30,6 +30,6 @@ describe("StreakHeader", () => {
 
     render(<StreakHeader />);
     expect(screen.getByText("5")).toBeInTheDocument();
-    expect(screen.getByText("1,280")).toBeInTheDocument();
+    expect(screen.getByText("1,280 pts")).toBeInTheDocument();
   });
 });

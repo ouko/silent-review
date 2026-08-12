@@ -36,16 +36,16 @@ export function MainLayout() {
   const shouldShowNav = showBottomNav && !hideNavOnAuth;
 
   return (
-    <div className="flex h-dvh flex-col bg-black text-white">
+    <div className="flex h-dvh flex-col bg-void text-white">
       <ChallengeNotificationToast />
       <main className="relative flex-1 overflow-hidden">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
-            initial={reducedMotion ? {} : { opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={reducedMotion ? {} : { opacity: 0, scale: 1.01 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
+            initial={reducedMotion ? {} : { opacity: 0, scale: 0.98, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={reducedMotion ? {} : { opacity: 0, scale: 1.01, y: -8 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
             className="h-full w-full"
           >
             <Outlet />
@@ -58,7 +58,7 @@ export function MainLayout() {
           y: shouldShowNav ? 0 : "100%",
           opacity: shouldShowNav ? 1 : 0,
         }}
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        transition={{ type: "spring", stiffness: 400, damping: 32 }}
         className="z-50 will-change-transform"
       >
         <BottomNav />

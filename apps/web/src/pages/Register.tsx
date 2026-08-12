@@ -67,7 +67,7 @@ export function Register() {
   }
 
   return (
-    <AuthLayout title="Create account" subtitle="Join Silent Review and start guessing.">
+    <AuthLayout title="Create account" subtitle="Join the guessing game.">
       <form onSubmit={handleSubmit} className="space-y-4">
         <AuthInput
           type="email"
@@ -110,13 +110,13 @@ export function Register() {
         )}
 
         <AuthButton type="submit" loading={isLoading}>
-          Sign up with Email
+          Sign up
         </AuthButton>
       </form>
 
       {oauthProviders.length > 0 && (
         <div className="mt-6 space-y-3">
-          <p className="text-center text-xs font-medium uppercase tracking-wide text-white/40">or</p>
+          <p className="text-center text-xs font-medium text-white/40">or continue with</p>
           {oauthProviders.map((provider) => (
             <SocialButton key={provider} provider={provider} onClick={() => handleOAuth(provider)} />
           ))}
@@ -124,8 +124,8 @@ export function Register() {
       )}
 
       <p className="mt-8 text-center text-sm text-white/50">
-        Already have an account?{" "}
-        <a href="/login" className="font-semibold text-rose-400 hover:text-rose-300">
+        Already playing?{" "}
+        <a href="/login" className="font-semibold text-primary-400 hover:text-primary-300">
           Log in
         </a>
       </p>

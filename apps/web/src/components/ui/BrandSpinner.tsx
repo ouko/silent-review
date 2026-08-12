@@ -10,9 +10,9 @@ const SIZE_MAP = {
 
 export function BrandSpinner({ size = "md" }: BrandSpinnerProps) {
   return (
-    <div className={`${SIZE_MAP[size]} relative animate-spin`}>
-      <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-rose-500 via-pink-500 to-violet-500 opacity-30 blur-sm" />
-      <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-rose-500 border-r-pink-500" />
+    <div className={`${SIZE_MAP[size]} relative animate-spin`} aria-label="Loading">
+      <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary-500 via-accent-pink to-accent-cyan opacity-30 blur-sm" />
+      <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary-500 border-r-accent-pink" />
     </div>
   );
 }
