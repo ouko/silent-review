@@ -91,6 +91,57 @@ export function Home() {
     });
   }
 
+  const feedBody = (() => {
+    if (status === "pending") {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-3">
+          <BrandSpinner size="lg" />
+          <p className="text-sm font-medium text-white/50">Loading reviews...</p>
+        </div>
+      );
+    }
+
+    if (status === "error") {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-4 px-6 text-center">
+          <p className="text-base font-medium text-white/80">We couldn&apos;t load the feed.</p>
+          <p className="text-sm text-white/50">Check your connection and try again.</p>
+          <button
+            onClick={() => refetch()}
+            className="rounded-full bg-white/10 px-5 py-2 text-sm font-semibold text-white hover:bg-white/20 active:scale-95"
+          >
+            Retry
+          </button>
+        </div>
+      );
+    }
+
+    if (reviews.length === 0) {
+      return (
+        <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
+          <p className="text-base font-medium text-white/80">No reviews yet.</p>
+          <p className="text-sm text-white/50">Be the first to share one.</p>
+        </div>
+      );
+    }
+
+    return (
+      <Feed
+        reviews={reviews}
+        selectedRatings={selectedRatings}
+        onSelectRating={selectRating}
+        onReveal={handleReveal}
+        revealed={revealed}
+        revealData={revealData}
+        onLoadMore={() => hasNextPage && fetchNextPage()}
+        isLoadingMore={isFetchingNextPage}
+        onRefresh={() => refetch()}
+        onPlayAgain={handlePlayAgain}
+        onScrollDirection={handleScrollDirection}
+      />
+    );
+  })();
+
   return (
     <div className="flex h-full flex-col">
       <FeedTabs
@@ -98,27 +149,7 @@ export function Home() {
         activeId={activeTab}
         onSelect={(id) => setActiveTab(id as FeedType)}
       />
-
-      {status === "pending" ? (
-        <div className="flex h-full flex-col items-center justify-center gap-3">
-          <BrandSpinner size="lg" />
-          <p className="text-sm font-medium text-white/50">Loading reviews...</p>
-        </div>
-      ) : (
-        <Feed
-          reviews={reviews}
-          selectedRatings={selectedRatings}
-          onSelectRating={selectRating}
-          onReveal={handleReveal}
-          revealed={revealed}
-          revealData={revealData}
-          onLoadMore={() => hasNextPage && fetchNextPage()}
-          isLoadingMore={isFetchingNextPage}
-          onRefresh={() => refetch()}
-          onPlayAgain={handlePlayAgain}
-          onScrollDirection={handleScrollDirection}
-        />
-      )}
+      {feedBody}
     </div>
   );
 }
