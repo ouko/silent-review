@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { queryClient, persister } from "./lib/queryClient";
+import { queryClient, persister, CACHE_MAX_AGE_MS, shouldDehydrateQuery } from "./lib/queryClient";
 import App from "./App";
 import "./index.css";
 
@@ -9,14 +9,18 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 }}
-      onSuccess={() => queryClient.resumePausedMutations()}
+      persistOptions={{
+        persister,
+        maxAge: CACHE_MAX_AGE_MS,
+        dehydrateOptions: { shouldDehydrateQuery },
+      }}
     >
       <App />
     </PersistQueryClientProvider>
   </React.StrictMode>
 );
 
+// Register the service worker for PWA offline support.
 if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
     navigator.serviceWorker
