@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useRef } from "react";
 import { trackEvent } from "../../lib/analytics";
+import { preloadBrowse } from "../../router";
 
 const LINKS = [
   { to: "/play", icon: Gamepad2, label: "Play" },
@@ -51,6 +52,8 @@ export function BottomNav() {
         <NavLink
           key={link.to}
           to={link.to}
+          onMouseEnter={link.to === "/browse" ? preloadBrowse : undefined}
+          onTouchStart={link.to === "/browse" ? preloadBrowse : undefined}
           onClick={(e) => {
             handleNavClick(link.to);
             if (isLinkActive(location.pathname, link.to)) {
