@@ -228,13 +228,25 @@ async function main() {
   console.log("Created notifications for @serge");
 
   // 8. Demo content for the affiliate link feature
-  let affiliateProduct = products.find((p) => p.affiliateUrl && p.affiliateUrl.trim().length > 0);
+  const DEMO_AFFILIATE_URL = "https://example.com/shop/demo-product?ref=silent-review";
+  let affiliateProduct = await prisma.product.findFirst({ where: { name: "Affiliate Demo Product" } });
   if (!affiliateProduct) {
-    affiliateProduct = await prisma.product.update({
-      where: { id: pick(products).id },
-      data: { affiliateUrl: "https://example.com/shop/demo-product?ref=silent-review" },
+    affiliateProduct = await prisma.product.create({
+      data: {
+        name: "Affiliate Demo Product",
+        brand: "Demo",
+        category: "demo",
+        description: "A dedicated demo product for testing affiliate click-throughs.",
+        affiliateUrl: DEMO_AFFILIATE_URL,
+        tags: ["demo"],
+        searchVector: "affiliate demo product",
+      },
     });
-    console.log("No product had an affiliate URL; set one on", affiliateProduct.name);
+  } else if (!affiliateProduct.affiliateUrl) {
+    affiliateProduct = await prisma.product.update({
+      where: { id: affiliateProduct.id },
+      data: { affiliateUrl: DEMO_AFFILIATE_URL },
+    });
   }
 
   // Create two fresh, recent reviews for the affiliate product so it is easy to find.
@@ -248,8 +260,8 @@ async function main() {
       duration: 5,
       format: "video/mp4",
       rating: randomRating(),
-      caption: `Check out the ${affiliateProduct.name} — shop link below!`,
-      productTag: affiliateProduct.category,
+      caption: "AFFILIATE DEMO — scroll no more. Tap Shop this product to test the affiliate link.",
+      productTag: "demo",
       status: "PUBLISHED",
     },
   });
@@ -263,19 +275,23 @@ async function main() {
       duration: 5,
       format: "video/mp4",
       rating: randomRating(),
-      caption: `My review of the ${affiliateProduct.name}. Tap Shop this product to buy it.`,
-      productTag: affiliateProduct.category,
+      caption: "AFFILIATE DEMO by @serge — the Shop this product button should appear below.",
+      productTag: "demo",
       status: "PUBLISHED",
     },
   });
 
-  console.log("Affiliate demo product:", affiliateProduct.name);
+  console.log("\n============================================");
+  console.log("AFFILIATE DEMO CONTENT CREATED");
+  console.log("============================================");
+  console.log("Product:", affiliateProduct.name);
   console.log("Affiliate URL:", affiliateProduct.affiliateUrl);
   console.log("Review by another user:", affiliateReview1.id);
   console.log("Review by @serge:", affiliateReview2.id);
-  console.log("Direct links:");
+  console.log("Direct links (open these in the app):");
   console.log(`  /review/${affiliateReview1.id}`);
   console.log(`  /review/${affiliateReview2.id}`);
+  console.log("============================================\n");
 
   // Refresh published reviews list so challenges can pick from the new reviews too
   publishedReviews.push(
