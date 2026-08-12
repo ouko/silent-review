@@ -6,7 +6,7 @@ import { trackEvent } from "../../lib/analytics";
 
 const LINKS = [
   { to: "/play", icon: Gamepad2, label: "Play" },
-  { to: "/browse", icon: Compass, label: "Browse" },
+  { to: "/browse", icon: Compass, label: "Browse", preload: () => import("../../pages/Home").catch(() => {}) },
   { to: "/record", icon: PlusCircle, label: "Create" },
   { to: "/activity", icon: Bell, label: "Activity" },
   { to: "/profile/me", icon: User, label: "Profile" },
@@ -51,6 +51,8 @@ export function BottomNav() {
         <NavLink
           key={link.to}
           to={link.to}
+          onMouseEnter={link.preload}
+          onTouchStart={link.preload}
           onClick={(e) => {
             handleNavClick(link.to);
             if (isLinkActive(location.pathname, link.to)) {
