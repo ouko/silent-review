@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, keepPreviousData } from "@tanstack/react-query";
 import { api } from "../lib/api";
 
 export interface FeedReview {
@@ -31,6 +31,7 @@ export function useFeed(feedType: FeedType = "for-you", category?: string) {
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+    placeholderData: keepPreviousData,
     queryFn: async ({ pageParam }) => {
       const params = new URLSearchParams();
       if (pageParam) params.set("cursor", String(pageParam));

@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useFeed, type FeedType } from "../hooks/useFeed";
 import { Feed } from "../components/feed/Feed";
 import { FeedTabs } from "../components/feed/FeedTabs";
-import { BrandSpinner } from "../components/ui/BrandSpinner";
+import { Skeleton } from "../components/ui/Skeleton";
 import { useUIStore } from "../stores/uiStore";
 import { usePlayStore } from "../stores/playStore";
 import { api } from "../lib/api";
@@ -17,6 +17,21 @@ const TABS: { id: FeedType; label: string }[] = [
 
 function isFeedType(value: string | null): value is FeedType {
   return value === "for-you" || value === "following" || value === "trending";
+}
+
+function FeedSkeleton() {
+  return (
+    <div className="flex flex-1 flex-col gap-3 rounded-3xl border border-white/10 bg-white/5 p-4 backdrop-blur-2xl">
+      <Skeleton className="min-h-0 flex-1 rounded-2xl" />
+      <div className="flex items-center gap-3">
+        <Skeleton circle className="h-10 w-10" />
+        <div className="flex-1 space-y-2">
+          <Skeleton className="h-4 w-2/3 rounded-lg" />
+          <Skeleton className="h-3 w-1/2 rounded-lg" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function Home() {
@@ -100,9 +115,9 @@ export function Home() {
       />
 
       {status === "pending" ? (
-        <div className="flex h-full flex-col items-center justify-center gap-3">
-          <BrandSpinner size="lg" />
-          <p className="text-sm font-medium text-white/50">Loading reviews...</p>
+        <div className="flex h-full flex-col gap-4 overflow-hidden px-4 py-4">
+          <FeedSkeleton />
+          <FeedSkeleton />
         </div>
       ) : (
         <Feed

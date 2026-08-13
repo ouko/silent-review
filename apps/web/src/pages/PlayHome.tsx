@@ -6,6 +6,8 @@ import { useTodaysDailyDrop } from "../hooks/useDailyDrop";
 import { useChallenges } from "../hooks/useChallenges";
 import { usePlayStore } from "../stores/playStore";
 import { useAuthStore } from "../stores/authStore";
+import { usePrefetchFeed } from "../hooks/usePrefetchFeed";
+import { preloadBrowse } from "../lib/routePreload";
 import { StreakHeader } from "../components/play/StreakHeader";
 import { DailyDropCard } from "../components/play/DailyDropCard";
 import { ChallengeInbox } from "../components/play/ChallengeInbox";
@@ -25,6 +27,7 @@ export function PlayHome() {
   const playedIds = usePlayStore((s) => s.playedReviewIds);
   const user = useAuthStore((s) => s.user);
   const reducedMotion = useReducedMotion();
+  usePrefetchFeed();
 
   const reviews = feedData?.pages.flatMap((page) => page.reviews) ?? [];
   const continueList = reviews.filter((r) => r.id !== dailyDropData?.dailyDrop.review.id).slice(0, 10);
@@ -44,6 +47,7 @@ export function PlayHome() {
     if (!stored) {
       sessionStorage.setItem(APP_OPEN_TIME_KEY, String(appOpenTimeRef.current));
     }
+    preloadBrowse();
   }, []);
 
   function trackFirstRoundStart() {

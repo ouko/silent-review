@@ -12,12 +12,9 @@ import { ChallengeLanding } from "./pages/ChallengeLanding";
 import { Status } from "./pages/Status";
 import { Loading } from "./components/common/Loading";
 import { NotificationSettings } from "./components/notifications/NotificationSettings";
+import { Browse, preloadBrowse } from "./lib/routePreload";
 
-const browseImport = () => import("./pages/Home").then((m) => ({ default: m.Home }));
-const Browse = lazy(browseImport);
-export function preloadBrowse() {
-  void browseImport();
-}
+export { preloadBrowse };
 
 const Record = lazy(() => import("./pages/Record").then((m) => ({ default: m.Record })));
 const Activity = lazy(() => import("./pages/Activity").then((m) => ({ default: m.Activity })));
